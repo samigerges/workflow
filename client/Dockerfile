@@ -14,6 +14,7 @@ RUN npm ci
 COPY client ./client
 COPY shared ./shared
 COPY tsconfig.json vite.config.ts tailwind.config.ts postcss.config.js components.json ./
+COPY attached_assets ./attached_assets
 
 # Build the frontend
 RUN npx vite build
