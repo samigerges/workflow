@@ -48,10 +48,12 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  // importantly only setup Vite when explicitly in development.
+  // `app.get("env")` defaults to "development" when NODE_ENV is unset,
+  // which caused the production build to try loading the optional `vite`
+  // package. Instead, rely on `process.env.NODE_ENV` so that the default
+  // is effectively "production" when the variable is undefined.
+  if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
