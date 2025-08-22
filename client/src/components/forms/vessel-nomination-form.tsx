@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { insertVesselSchema } from "@shared/schema";
+import { insertVesselSchema } from "@samy/shared";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,11 +97,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
       const url = vessel ? `/api/vessels/${vessel.id}` : "/api/vessels";
       const method = vessel ? "PUT" : "POST";
       
-      const response = await fetch(url, {
-        method,
-        body: formData,
-        credentials: "include",
-      });
+        const response = await apiRequest(method, url, formData);
 
       if (!response.ok) {
         throw new Error(`${response.status}: ${response.statusText}`);

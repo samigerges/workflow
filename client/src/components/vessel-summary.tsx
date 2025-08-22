@@ -324,27 +324,27 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
           )}
 
           {/* Associated Letters of Credit */}
-          {vesselLCs && vesselLCs.length > 0 && (
+          {vesselLCsArray.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center space-x-2">
                   <University className="h-5 w-5" />
-                  <span>Associated Letters of Credit ({vesselLCs.length})</span>
+                    <span>Associated Letters of Credit ({vesselLCsArray.length})</span>
                 </CardTitle>
-                {vesselLCs.length > 0 && (
+                  {vesselLCsArray.length > 0 && (
                   <div className="flex items-center space-x-2 text-sm">
                     <Package className="h-4 w-4 text-gray-500" />
                     <span className="font-medium text-gray-500">Total LC Quantity:</span>
                     <span className="font-semibold text-gray-900">
-                      {vesselLCs.reduce((total: number, lc: any) => total + (lc.quantity || 0), 0).toLocaleString()} tons
+                        {vesselLCsArray.reduce((total: number, lc: any) => total + (lc.quantity || 0), 0).toLocaleString()} tons
                     </span>
                   </div>
                 )}
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {vesselLCs.map((vesselLC: any, index: number) => {
-                    const lc = lcs.find((l: any) => l.id === vesselLC.lcId);
+                  {vesselLCsArray.map((vesselLC: any, index: number) => {
+                      const lc = lcsArray.find((l: any) => l.id === vesselLC.lcId);
                     return (
                       <div key={index} className="border rounded-lg p-4 bg-gray-50">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

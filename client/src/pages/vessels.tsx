@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import MainLayout from "@/components/layout/main-layout";
 import VesselNominationForm from "@/components/forms/vessel-nomination-form";
@@ -59,11 +60,8 @@ export default function Vessels() {
 
   // Delete vessel mutation
   const deleteVesselMutation = useMutation({
-    mutationFn: async (vesselId: number) => {
-      const response = await fetch(`/api/vessels/${vesselId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      mutationFn: async (vesselId: number) => {
+        const response = await apiRequest("DELETE", `/api/vessels/${vesselId}`);
       
       if (!response.ok) {
         let errorMessage = `${response.status}: ${response.statusText}`;
@@ -76,14 +74,14 @@ export default function Vessels() {
         throw new Error(errorMessage);
       }
       
-      // For DELETE requests, the response might be empty or not JSON
-      const text = await response.text();
-      try {
-        return text ? JSON.parse(text) : { success: true };
-      } catch {
-        return { success: true }; // Assume success if response is not JSON
-      }
-    },
+        // For DELETE requests, the response might be empty or not JSON
+        const text = await response.text();
+        try {
+          return text ? JSON.parse(text) : { success: true };
+        } catch {
+          return { success: true }; // Assume success if response is not JSON
+        }
+      },
     onSuccess: () => {
       // Remove all vessel-related queries from cache completely
       queryClient.removeQueries({ queryKey: ["/api/vessels"] });

@@ -50,7 +50,7 @@ import {
   type InsertDocumentComment,
   type DocumentAuditLog,
   type InsertDocumentAuditLog,
-} from "@shared/schema";
+} from "@samy/shared";
 import { db } from "./db";
 import { eq, desc, and, count } from "drizzle-orm";
 

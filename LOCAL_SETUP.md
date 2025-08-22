@@ -60,9 +60,16 @@ npm install
 npm run db:push
 ```
 
-### 5. Start the Application
+### 5. Build and Start the Application
 
-For local development:
+Build the shared schema package and frontend:
+
+```bash
+npm --prefix shared run build
+npm run build
+```
+
+For local development of the server:
 
 ```bash
 npm run dev:local

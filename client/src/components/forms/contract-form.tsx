@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { insertContractSchema } from "@shared/schema";
+import { insertContractSchema } from "@samy/shared";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,11 +94,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
       const url = contract ? `/api/contracts/${contract.id}` : "/api/contracts";
       const method = contract ? "PUT" : "POST";
       
-      const response = await fetch(url, {
-        method,
-        body: formData,
-        credentials: "include",
-      });
+        const response = await apiRequest(method, url, formData);
 
       if (!response.ok) {
         throw new Error(`${response.status}: ${response.statusText}`);
@@ -138,10 +134,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
     mutationFn: async () => {
       if (!contract?.id) throw new Error("Contract ID is required");
       
-      const response = await fetch(`/api/contracts/${contract.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+        const response = await apiRequest("DELETE", `/api/contracts/${contract.id}`);
       
       if (!response.ok) {
         throw new Error(`${response.status}: ${response.statusText}`);

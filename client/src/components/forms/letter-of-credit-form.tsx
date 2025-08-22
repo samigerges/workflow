@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { insertLetterOfCreditSchema } from "@shared/schema";
+import { insertLetterOfCreditSchema } from "@samy/shared";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,11 +112,7 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
       const url = lc ? `/api/letters-of-credit/${lc.id}` : "/api/letters-of-credit";
       const method = lc ? "PUT" : "POST";
       
-      const response = await fetch(url, {
-        method,
-        body: formData,
-        credentials: "include",
-      });
+        const response = await apiRequest(method, url, formData);
 
       if (!response.ok) {
         throw new Error(`${response.status}: ${response.statusText}`);

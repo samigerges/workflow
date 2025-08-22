@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import MainLayout from "@/components/layout/main-layout";
 import LetterOfCreditForm from "@/components/forms/letter-of-credit-form";
@@ -27,19 +28,14 @@ export default function LettersCredit() {
 
   // Delete LC mutation
   const deleteLCMutation = useMutation({
-    mutationFn: async (lcId: number) => {
-      const response = await fetch(`/api/letters-of-credit/${lcId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `${response.status}: ${response.statusText}`);
-      }
-      
-      return response.json();
-    },
+      mutationFn: async (lcId: number) => {
+        const response = await apiRequest("DELETE", `/api/letters-of-credit/${lcId}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      },
     onSuccess: () => {
       // Remove all LC-related queries from cache completely
       queryClient.removeQueries({ queryKey: ["/api/letters-of-credit"] });
@@ -331,26 +327,22 @@ export default function LettersCredit() {
                               const formData = new FormData();
                               formData.append('status', newStatus);
                               
-                              fetch(`/api/letters-of-credit/${lc.id}`, {
-                                method: 'PUT',
-                                body: formData,
-                                credentials: 'include'
-                              }).then(response => {
-                                if (response.ok) {
-                                  queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
-                                  queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-                                  toast({
-                                    title: "Success",
-                                    description: "LC status updated successfully",
-                                  });
-                                } else {
-                                  toast({
-                                    title: "Error",
-                                    description: "Failed to update LC status",
-                                    variant: "destructive",
-                                  });
-                                }
-                              });
+                                apiRequest('PUT', `/api/letters-of-credit/${lc.id}`, formData).then(response => {
+                                  if (response.ok) {
+                                    queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
+                                    queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+                                    toast({
+                                      title: "Success",
+                                      description: "LC status updated successfully",
+                                    });
+                                  } else {
+                                    toast({
+                                      title: "Error",
+                                      description: "Failed to update LC status",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                });
                             }}
                           >
                             <SelectTrigger className="w-32">

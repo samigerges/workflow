@@ -13,7 +13,7 @@ import {
   insertContractVoteSchema,
   insertVesselLetterOfCreditSchema,
   insertVesselLoadingPortSchema,
-} from "@shared/schema";
+} from "@samy/shared";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -60,6 +60,13 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   // Auth routes are handled in localAuth.ts
 
   // Dashboard stats
+/**
+ * List dashboard
+ * @route GET /api/dashboard/stats
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getRequests
+ */
   app.get("/api/dashboard/stats", isAuthenticated, async (req, res) => {
     try {
       const requests = await storage.getRequests();
@@ -86,6 +93,13 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Needs routes
+/**
+ * List needs
+ * @route GET /api/needs
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getNeeds
+ */
   app.get("/api/needs", isAuthenticated, async (req, res) => {
     try {
       const needs = await storage.getNeeds();
@@ -96,6 +110,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create need
+ * @route POST /api/needs
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createNeed
+ */
   app.post("/api/needs", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertNeedSchema.parse(req.body);
@@ -107,6 +129,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Get needs by ID
+ * @route GET /api/needs/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getNeed
+ */
   app.get("/api/needs/:id", isAuthenticated, async (req, res) => {
     try {
       const need = await storage.getNeed(parseInt(req.params.id));
@@ -120,6 +150,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update need
+ * @route PATCH /api/needs/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateNeed
+ */
   app.patch("/api/needs/:id", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertNeedSchema.partial().parse(req.body);
@@ -131,6 +170,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete need
+ * @route DELETE /api/needs/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteNeed
+ */
   app.delete("/api/needs/:id", isAuthenticated, async (req, res) => {
     try {
       await storage.deleteNeed(parseInt(req.params.id));
@@ -142,6 +189,13 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Requests routes
+/**
+ * List requests
+ * @route GET /api/requests
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getRequests
+ */
   app.get("/api/requests", isAuthenticated, async (req, res) => {
     try {
       const requests = await storage.getRequests();
@@ -152,6 +206,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create request
+ * @route POST /api/requests
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createRequest
+ */
   app.post("/api/requests", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertRequestSchema.parse(req.body);
@@ -163,6 +225,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Get requests by ID
+ * @route GET /api/requests/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getRequest
+ */
   app.get("/api/requests/:id", isAuthenticated, async (req, res) => {
     try {
       const request = await storage.getRequest(parseInt(req.params.id));
@@ -176,6 +246,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update request
+ * @route PATCH /api/requests/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateRequest
+ */
   app.patch("/api/requests/:id", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertRequestSchema.partial().parse(req.body);
@@ -187,6 +266,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete request
+ * @route DELETE /api/requests/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteRequest
+ */
   app.delete("/api/requests/:id", isAuthenticated, async (req, res) => {
     try {
       await storage.deleteRequest(parseInt(req.params.id));
@@ -198,6 +285,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Request votes
+/**
+ * Get requests by ID
+ * @route GET /api/requests/:id/votes
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getRequestVotes
+ */
   app.get("/api/requests/:id/votes", isAuthenticated, async (req, res) => {
     try {
       const votes = await storage.getRequestVotes(parseInt(req.params.id));
@@ -208,6 +303,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create request
+ * @route POST /api/requests/:id/votes
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createRequestVote
+ */
   app.post("/api/requests/:id/votes", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertRequestVoteSchema.parse({
@@ -224,6 +328,13 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Contracts routes
+/**
+ * List contracts
+ * @route GET /api/contracts
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getContracts
+ */
   app.get("/api/contracts", isAuthenticated, async (req, res) => {
     try {
       const contracts = await storage.getContracts();
@@ -234,6 +345,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create contract
+ * @route POST /api/contracts
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createContract
+ */
   app.post("/api/contracts", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertContractSchema.parse(req.body);
@@ -245,6 +364,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Get contracts by ID
+ * @route GET /api/contracts/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getContract
+ */
   app.get("/api/contracts/:id", isAuthenticated, async (req, res) => {
     try {
       const contract = await storage.getContract(parseInt(req.params.id));
@@ -258,6 +385,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update contract
+ * @route PATCH /api/contracts/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateContract
+ */
   app.patch("/api/contracts/:id", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertContractSchema.partial().parse(req.body);
@@ -269,6 +405,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete contract
+ * @route DELETE /api/contracts/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteContract
+ */
   app.delete("/api/contracts/:id", isAuthenticated, async (req, res) => {
     try {
       await storage.deleteContract(parseInt(req.params.id));
@@ -280,6 +424,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Contract votes
+/**
+ * Get contracts by ID
+ * @route GET /api/contracts/:id/votes
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getContractVotes
+ */
   app.get("/api/contracts/:id/votes", isAuthenticated, async (req, res) => {
     try {
       const votes = await storage.getContractVotes(parseInt(req.params.id));
@@ -290,6 +442,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create contract
+ * @route POST /api/contracts/:id/votes
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createContractVote
+ */
   app.post("/api/contracts/:id/votes", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertContractVoteSchema.parse({
@@ -306,6 +467,13 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Letters of Credit routes
+/**
+ * List letters-of-credit
+ * @route GET /api/letters-of-credit
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getLettersOfCredit
+ */
   app.get("/api/letters-of-credit", isAuthenticated, async (req, res) => {
     try {
       const lcs = await storage.getLettersOfCredit();
@@ -316,6 +484,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create letters-of-credi
+ * @route POST /api/letters-of-credit
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createLetterOfCredit
+ */
   app.post("/api/letters-of-credit", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertLetterOfCreditSchema.parse(req.body);
@@ -327,6 +503,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Get letters-of-credit by ID
+ * @route GET /api/letters-of-credit/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getLetterOfCredit
+ */
   app.get("/api/letters-of-credit/:id", isAuthenticated, async (req, res) => {
     try {
       const lc = await storage.getLetterOfCredit(parseInt(req.params.id));
@@ -340,6 +524,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update letters-of-credi
+ * @route PATCH /api/letters-of-credit/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateLetterOfCredit
+ */
   app.patch("/api/letters-of-credit/:id", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertLetterOfCreditSchema.partial().parse(req.body);
@@ -351,6 +544,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete letters-of-credi
+ * @route DELETE /api/letters-of-credit/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteLetterOfCredit
+ */
   app.delete("/api/letters-of-credit/:id", isAuthenticated, async (req, res) => {
     try {
       await storage.deleteLetterOfCredit(parseInt(req.params.id));
@@ -362,6 +563,13 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Vessels routes
+/**
+ * List vessels
+ * @route GET /api/vessels
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getVessels
+ */
   app.get("/api/vessels", isAuthenticated, async (req, res) => {
     try {
       const vessels = await storage.getVessels();
@@ -372,6 +580,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create vessel
+ * @route POST /api/vessels
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createVessel
+ */
   app.post("/api/vessels", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertVesselSchema.parse(req.body);
@@ -383,6 +599,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Get vessels by ID
+ * @route GET /api/vessels/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getVessel
+ */
   app.get("/api/vessels/:id", isAuthenticated, async (req, res) => {
     try {
       const vessel = await storage.getVessel(parseInt(req.params.id));
@@ -396,6 +620,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update vessel
+ * @route PATCH /api/vessels/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateVessel
+ */
   app.patch("/api/vessels/:id", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertVesselSchema.partial().parse(req.body);
@@ -407,6 +640,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update vessel
+ * @route PATCH /api/vessels/:id/status
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateVesselStatus
+ */
   app.patch("/api/vessels/:id/status", isAuthenticated, async (req, res) => {
     try {
       const { status } = req.body;
@@ -418,6 +660,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete vessel
+ * @route DELETE /api/vessels/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteVessel
+ */
   app.delete("/api/vessels/:id", isAuthenticated, async (req, res) => {
     try {
       await storage.deleteVessel(parseInt(req.params.id));
@@ -429,6 +679,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Vessel documents
+/**
+ * Get vessels by ID
+ * @route GET /api/vessels/:id/documents
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getVesselDocuments
+ */
   app.get("/api/vessels/:id/documents", isAuthenticated, async (req, res) => {
     try {
       const documents = await storage.getVesselDocuments(parseInt(req.params.id));
@@ -439,6 +697,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create vessel
+ * @route POST /api/vessels/:id/documents
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createDocument
+ */
   app.post("/api/vessels/:id/documents", isAuthenticated, upload.single('document'), async (req, res) => {
     try {
       if (!req.file) {
@@ -463,6 +730,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Vessel letters of credit
+/**
+ * Get vessels by ID
+ * @route GET /api/vessels/:id/letters-of-credit
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getVesselLettersOfCredit
+ */
   app.get("/api/vessels/:id/letters-of-credit", isAuthenticated, async (req, res) => {
     try {
       const lcs = await storage.getVesselLettersOfCredit(parseInt(req.params.id));
@@ -473,6 +748,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create vessel
+ * @route POST /api/vessels/:id/letters-of-credit
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createVesselLetterOfCredit
+ */
   app.post("/api/vessels/:id/letters-of-credit", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertVesselLetterOfCreditSchema.parse({
@@ -488,6 +772,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Vessel loading ports
+/**
+ * Get vessels by ID
+ * @route GET /api/vessels/:id/loading-ports
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getVesselLoadingPorts
+ */
   app.get("/api/vessels/:id/loading-ports", isAuthenticated, async (req, res) => {
     try {
       const loadingPorts = await storage.getVesselLoadingPorts(parseInt(req.params.id));
@@ -498,6 +790,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create vessel
+ * @route POST /api/vessels/:id/loading-ports
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createVesselLoadingPort
+ */
   app.post("/api/vessels/:id/loading-ports", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertVesselLoadingPortSchema.parse({
@@ -513,6 +814,13 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Documents routes
+/**
+ * List documents
+ * @route GET /api/documents
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getDocuments
+ */
   app.get("/api/documents", isAuthenticated, async (req, res) => {
     try {
       const documents = await storage.getDocuments();
@@ -523,6 +831,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Get documents by ID
+ * @route GET /api/documents/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getDocument
+ */
   app.get("/api/documents/:id", isAuthenticated, async (req, res) => {
     try {
       const document = await storage.getDocument(parseInt(req.params.id));
@@ -536,6 +852,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Get documents by ID
+ * @route GET /api/documents/:id/download
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getDocument
+ */
   app.get("/api/documents/:id/download", isAuthenticated, async (req, res) => {
     try {
       const document = await storage.getDocument(parseInt(req.params.id));
@@ -556,6 +880,14 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
   });
 
   // Document votes
+/**
+ * Get documents by ID
+ * @route GET /api/documents/:id/votes
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getDocumentVotes
+ */
   app.get("/api/documents/:id/votes", isAuthenticated, async (req, res) => {
     try {
       const votes = await storage.getDocumentVotes(parseInt(req.params.id));
@@ -566,6 +898,15 @@ export async function registerLocalRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create document
+ * @route POST /api/documents/:id/votes
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createDocumentVote
+ */
   app.post("/api/documents/:id/votes", isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertDocumentVoteSchema.parse({

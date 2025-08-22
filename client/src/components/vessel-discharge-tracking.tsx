@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,18 +76,18 @@ export default function VesselDischargeTracking({ vessel, isOpen, onClose }: Ves
         formData.append('customsReleaseFile', customsReleaseFile);
       }
 
-      const response = await fetch(`/api/vessels/${vessel.id}`, {
-        method: "PUT",
-        body: formData,
-        credentials: "include",
-      });
+        const response = await apiRequest(
+          "PUT",
+          `/api/vessels/${vessel.id}`,
+          formData,
+        );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `${response.status}: ${response.statusText}`);
-      }
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `${response.status}: ${response.statusText}`);
+        }
 
-      return response.json();
+        return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vessels"] });

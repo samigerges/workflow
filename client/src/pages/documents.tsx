@@ -61,19 +61,19 @@ export default function Documents() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Fetch requests for linking documents
-  const { data: requests = [] } = useQuery({
+  const { data: requests = [] } = useQuery<any[]>({
     queryKey: ["/api/requests"],
     retry: false,
   });
 
   // Fetch contracts for linking documents
-  const { data: contracts = [] } = useQuery({
+  const { data: contracts = [] } = useQuery<any[]>({
     queryKey: ["/api/contracts"],
     retry: false,
   });
 
   // Fetch vessels for linking documents
-  const { data: vessels = [] } = useQuery({
+  const { data: vessels = [] } = useQuery<any[]>({
     queryKey: ["/api/vessels"],
     retry: false,
   });
@@ -87,33 +87,33 @@ export default function Documents() {
       const allDocs: any[] = [];
       
       // Get documents from requests
-      for (const request of requests) {
-        try {
-          const requestDocs = await apiRequest("GET", `/api/document-votes/request/${request.id}`);
-          allDocs.push(...(requestDocs as any[]).map(doc => ({ ...doc, sourceType: 'request', sourceTitle: request.title })));
-        } catch (error) {
-          console.error(`Failed to fetch documents for request ${request.id}`);
+        for (const request of requests) {
+          try {
+            const requestDocs = await apiRequest("GET", `/api/document-votes/request/${request.id}`).then(res => res.json());
+            allDocs.push(...(requestDocs as any[]).map(doc => ({ ...doc, sourceType: 'request', sourceTitle: request.title }))); 
+          } catch (error) {
+            console.error(`Failed to fetch documents for request ${request.id}`);
+          }
         }
-      }
       
       // Get documents from contracts
-      for (const contract of contracts) {
-        try {
-          const contractDocs = await apiRequest("GET", `/api/document-votes/contract/${contract.id}`);
-          allDocs.push(...(contractDocs as any[]).map(doc => ({ ...doc, sourceType: 'contract', sourceTitle: contract.supplierName || `Contract ${contract.id}` })));
-        } catch (error) {
-          console.error(`Failed to fetch documents for contract ${contract.id}`);
+        for (const contract of contracts) {
+          try {
+            const contractDocs = await apiRequest("GET", `/api/document-votes/contract/${contract.id}`).then(res => res.json());
+            allDocs.push(...(contractDocs as any[]).map(doc => ({ ...doc, sourceType: 'contract', sourceTitle: contract.supplierName || `Contract ${contract.id}` }))); 
+          } catch (error) {
+            console.error(`Failed to fetch documents for contract ${contract.id}`);
+          }
         }
-      }
 
       // Get documents from vessels
-      for (const vessel of vessels) {
-        try {
-          const vesselDocs = await apiRequest("GET", `/api/vessels/${vessel.id}/documents`);
-          allDocs.push(...(vesselDocs as any[]).map(doc => ({ 
-            ...doc, 
-            sourceType: 'vessel', 
-            sourceTitle: vessel.vesselName,
+        for (const vessel of vessels) {
+          try {
+            const vesselDocs = await apiRequest("GET", `/api/vessels/${vessel.id}/documents`).then(res => res.json());
+            allDocs.push(...(vesselDocs as any[]).map(doc => ({
+              ...doc,
+              sourceType: 'vessel',
+              sourceTitle: vessel.vesselName,
             entityType: 'vessel',
             entityId: vessel.id,
             fileName: doc.fileName,
@@ -131,18 +131,13 @@ export default function Documents() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const response = await fetch('/api/upload-document', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      return response.json();
-    },
+      mutationFn: async (formData: FormData) => {
+        const response = await apiRequest('POST', '/api/upload-document', formData);
+        if (!response.ok) {
+          throw new Error('Upload failed');
+        }
+        return response.json();
+      },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       setShowUploadDialog(false);

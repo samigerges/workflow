@@ -17,7 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Plus, Edit, Trash, Settings, Eye, Calendar, Package, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
-import type { Need } from "@shared/schema";
+import type { Need } from "@samy/shared";
 
 export default function Needs() {
   const { toast } = useToast();
@@ -540,11 +540,11 @@ export default function Needs() {
                               <DialogHeader>
                                 <DialogTitle>Edit Need</DialogTitle>
                               </DialogHeader>
-                              <NeedsForm
-                                defaultValues={need}
-                                onSubmit={(data: any) => updateNeedMutation.mutate({ id: need.id, data })}
-                                isLoading={updateNeedMutation.isPending}
-                              />
+                                <NeedsForm
+                                  defaultValues={need as any}
+                                  onSubmit={(data: any) => updateNeedMutation.mutate({ id: need.id, data })}
+                                  isLoading={updateNeedMutation.isPending}
+                                />
                             </DialogContent>
                           </Dialog>
 
