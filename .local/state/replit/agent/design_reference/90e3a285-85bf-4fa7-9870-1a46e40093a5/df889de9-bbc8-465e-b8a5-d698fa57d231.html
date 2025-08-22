@@ -1,0 +1,1096 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#E3F2FD',
+                            500: '#1976D2',
+                            600: '#1565C0',
+                            700: '#0D47A1'
+                        },
+                        secondary: {
+                            50: '#FAFAFA',
+                            100: '#F5F5F5',
+                            200: '#EEEEEE',
+                            300: '#E0E0E0',
+                            400: '#BDBDBD',
+                            500: '#9E9E9E',
+                            600: '#757575',
+                            700: '#616161',
+                            800: '#424242',
+                            900: '#212121'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="bg-secondary-50 font-sans">
+    <!-- @COMPONENT: AppLayout -->
+    <div class="min-h-screen flex">
+        <!-- @COMPONENT: Sidebar -->
+        <aside class="w-64 bg-white shadow-lg fixed h-full z-30 transform transition-transform duration-300 ease-in-out">
+            <div class="p-6 border-b border-secondary-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-primary-500 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-ship text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-secondary-900">ImportFlow</h1>
+                        <p class="text-sm text-secondary-600">Management System</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="p-4 space-y-2">
+                <a href="#dashboard" class="flex items-center space-x-3 px-4 py-3 bg-primary-50 text-primary-700 rounded-lg font-medium">
+                    <i class="fas fa-chart-dashboard w-5"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#requests" class="flex items-center space-x-3 px-4 py-3 text-secondary-700 hover:bg-secondary-100 rounded-lg">
+                    <i class="fas fa-file-text w-5"></i>
+                    <span>Import Requests</span>
+                </a>
+                <a href="#contracts" class="flex items-center space-x-3 px-4 py-3 text-secondary-700 hover:bg-secondary-100 rounded-lg">
+                    <i class="fas fa-file-contract w-5"></i>
+                    <span>Contracts</span>
+                </a>
+                <a href="#letters-credit" class="flex items-center space-x-3 px-4 py-3 text-secondary-700 hover:bg-secondary-100 rounded-lg">
+                    <i class="fas fa-university w-5"></i>
+                    <span>Letters of Credit</span>
+                </a>
+                <a href="#vessels" class="flex items-center space-x-3 px-4 py-3 text-secondary-700 hover:bg-secondary-100 rounded-lg">
+                    <i class="fas fa-ship w-5"></i>
+                    <span>Vessels</span>
+                </a>
+                <a href="#shipments" class="flex items-center space-x-3 px-4 py-3 text-secondary-700 hover:bg-secondary-100 rounded-lg">
+                    <i class="fas fa-box w-5"></i>
+                    <span>Shipments</span>
+                </a>
+                <a href="#reports" class="flex items-center space-x-3 px-4 py-3 text-secondary-700 hover:bg-secondary-100 rounded-lg">
+                    <i class="fas fa-chart-bar w-5"></i>
+                    <span>Reports</span>
+                </a>
+            </nav>
+            
+            <div class="absolute bottom-0 w-full p-4 border-t border-secondary-200">
+                <div class="flex items-center space-x-3 mb-4">
+                    <!-- A professional headshot of a business person in office attire -->
+                    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=80&h=80" alt="User avatar" class="w-10 h-10 rounded-full object-cover">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-secondary-900" data-bind="user.name">Ahmed Hassan</p>
+                        <p class="text-xs text-secondary-600" data-bind="user.role">Admin</p>
+                    </div>
+                </div>
+                <button class="w-full flex items-center justify-center space-x-2 px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100 rounded-lg">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Sign Out</span>
+                </button>
+            </div>
+        </aside>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- @COMPONENT: MainContent -->
+        <main class="flex-1 ml-64">
+            <!-- @COMPONENT: TopBar -->
+            <header class="bg-white shadow-sm border-b border-secondary-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-secondary-900">Dashboard</h1>
+                        <p class="text-secondary-600">Welcome back, manage your import operations</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button class="flex items-center space-x-2 px-4 py-2 text-sm border border-secondary-300 rounded-lg hover:bg-secondary-50">
+                            <i class="fas fa-globe"></i>
+                            <span>EN</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <button class="relative p-2 text-secondary-600 hover:text-secondary-900">
+                            <i class="fas fa-bell text-lg"></i>
+                            <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+            <!-- @END_COMPONENT: TopBar -->
+
+            <!-- @COMPONENT: DashboardContent -->
+            <div class="p-6 space-y-6">
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-secondary-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-secondary-600">Active Requests</p>
+                                <p class="text-3xl font-bold text-secondary-900" data-bind="stats.activeRequests">24</p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-file-text text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm">
+                            <span class="text-green-600 font-medium">+12%</span>
+                            <span class="text-secondary-600 ml-2">from last month</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-secondary-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-secondary-600">Ships in Transit</p>
+                                <p class="text-3xl font-bold text-secondary-900" data-bind="stats.shipsInTransit">7</p>
+                            </div>
+                            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-ship text-orange-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm">
+                            <span class="text-orange-600 font-medium">2 arriving today</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-secondary-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-secondary-600">LC Value</p>
+                                <p class="text-3xl font-bold text-secondary-900" data-bind="stats.lcValue">$2.4M</p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-university text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm">
+                            <span class="text-green-600 font-medium">+8%</span>
+                            <span class="text-secondary-600 ml-2">from last month</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm p-6 border border-secondary-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-secondary-600">Completed</p>
+                                <p class="text-3xl font-bold text-secondary-900" data-bind="stats.completed">156</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-check-circle text-purple-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm">
+                            <span class="text-green-600 font-medium">+15%</span>
+                            <span class="text-secondary-600 ml-2">completion rate</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workflow Overview -->
+                <div class="bg-white rounded-xl shadow-sm border border-secondary-200">
+                    <div class="p-6 border-b border-secondary-200">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-xl font-bold text-secondary-900">Import Workflow Overview</h2>
+                            <button class="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 font-medium">
+                                <i class="fas fa-plus mr-2"></i>New Request
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <!-- Workflow Steps -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
+                            <div class="text-center">
+                                <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-file-text text-blue-600 text-xl"></i>
+                                </div>
+                                <h3 class="font-semibold text-secondary-900 mb-1">Statement of Needs</h3>
+                                <p class="text-sm text-secondary-600">Initial request</p>
+                                <div class="mt-2 bg-secondary-100 rounded-full h-2">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: 85%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-file-contract text-orange-600 text-xl"></i>
+                                </div>
+                                <h3 class="font-semibold text-secondary-900 mb-1">Contract</h3>
+                                <p class="text-sm text-secondary-600">Review & approval</p>
+                                <div class="mt-2 bg-secondary-100 rounded-full h-2">
+                                    <div class="bg-orange-500 h-2 rounded-full" style="width: 70%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-university text-green-600 text-xl"></i>
+                                </div>
+                                <h3 class="font-semibold text-secondary-900 mb-1">Letter of Credit</h3>
+                                <p class="text-sm text-secondary-600">Financial setup</p>
+                                <div class="mt-2 bg-secondary-100 rounded-full h-2">
+                                    <div class="bg-green-500 h-2 rounded-full" style="width: 60%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-ship text-purple-600 text-xl"></i>
+                                </div>
+                                <h3 class="font-semibold text-secondary-900 mb-1">Shipping</h3>
+                                <p class="text-sm text-secondary-600">Vessel & transport</p>
+                                <div class="mt-2 bg-secondary-100 rounded-full h-2">
+                                    <div class="bg-purple-500 h-2 rounded-full" style="width: 45%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-dollar-sign text-gray-600 text-xl"></i>
+                                </div>
+                                <h3 class="font-semibold text-secondary-900 mb-1">Settlement</h3>
+                                <p class="text-sm text-secondary-600">Final payment</p>
+                                <div class="mt-2 bg-secondary-100 rounded-full h-2">
+                                    <div class="bg-gray-500 h-2 rounded-full" style="width: 30%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Requests -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-secondary-200">
+                        <div class="p-6 border-b border-secondary-200">
+                            <h2 class="text-xl font-bold text-secondary-900">Recent Requests</h2>
+                        </div>
+                        <div class="p-6">
+                            <!-- @MAP: recentRequests.map(request => ( -->
+                            <div class="space-y-4">
+                                <div class="flex items-center space-x-4 p-4 bg-secondary-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-box text-blue-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-secondary-900" data-bind="request.title">Steel Products Import</h3>
+                                        <p class="text-sm text-secondary-600" data-bind="request.description">500 tons of construction steel</p>
+                                        <div class="flex items-center space-x-2 mt-1">
+                                            <span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full font-medium">Contract Review</span>
+                                            <span class="text-xs text-secondary-500" data-bind="request.createdAt">2 hours ago</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center space-x-4 p-4 bg-secondary-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-leaf text-green-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-secondary-900" data-bind="request.title">Agricultural Equipment</h3>
+                                        <p class="text-sm text-secondary-600" data-bind="request.description">Farm machinery and tools</p>
+                                        <div class="flex items-center space-x-2 mt-1">
+                                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">LC Opened</span>
+                                            <span class="text-xs text-secondary-500" data-bind="request.createdAt">5 hours ago</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center space-x-4 p-4 bg-secondary-50 rounded-lg">
+                                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-microchip text-purple-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-secondary-900" data-bind="request.title">Electronic Components</h3>
+                                        <p class="text-sm text-secondary-600" data-bind="request.description">Semiconductors and circuits</p>
+                                        <div class="flex items-center space-x-2 mt-1">
+                                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">Vessel Nominated</span>
+                                            <span class="text-xs text-secondary-500" data-bind="request.createdAt">1 day ago</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+
+                    <!-- Upcoming Arrivals -->
+                    <div class="bg-white rounded-xl shadow-sm border border-secondary-200">
+                        <div class="p-6 border-b border-secondary-200">
+                            <h2 class="text-xl font-bold text-secondary-900">Upcoming Arrivals</h2>
+                        </div>
+                        <div class="p-6">
+                            <!-- @MAP: upcomingArrivals.map(arrival => ( -->
+                            <div class="space-y-4">
+                                <div class="flex items-center space-x-4 p-4 border border-secondary-200 rounded-lg">
+                                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-ship text-blue-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-secondary-900" data-bind="vessel.name">MV Atlantic Trader</h3>
+                                        <p class="text-sm text-secondary-600" data-bind="vessel.origin">From Shanghai, China</p>
+                                        <div class="flex items-center space-x-4 mt-2">
+                                            <div class="flex items-center space-x-1">
+                                                <i class="fas fa-calendar text-secondary-400 text-xs"></i>
+                                                <span class="text-sm text-secondary-600" data-bind="vessel.eta">Dec 15, 2024</span>
+                                            </div>
+                                            <div class="flex items-center space-x-1">
+                                                <i class="fas fa-map-marker-alt text-secondary-400 text-xs"></i>
+                                                <span class="text-sm text-secondary-600" data-bind="vessel.port">Port of Jeddah</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium">On Time</span>
+                                </div>
+                                
+                                <div class="flex items-center space-x-4 p-4 border border-secondary-200 rounded-lg">
+                                    <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-ship text-orange-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-secondary-900" data-bind="vessel.name">MV Mediterranean Star</h3>
+                                        <p class="text-sm text-secondary-600" data-bind="vessel.origin">From Hamburg, Germany</p>
+                                        <div class="flex items-center space-x-4 mt-2">
+                                            <div class="flex items-center space-x-1">
+                                                <i class="fas fa-calendar text-secondary-400 text-xs"></i>
+                                                <span class="text-sm text-secondary-600" data-bind="vessel.eta">Dec 18, 2024</span>
+                                            </div>
+                                            <div class="flex items-center space-x-1">
+                                                <i class="fas fa-map-marker-alt text-secondary-400 text-xs"></i>
+                                                <span class="text-sm text-secondary-600" data-bind="vessel.port">Port of Dammam</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="px-3 py-1 bg-orange-100 text-orange-800 text-sm rounded-full font-medium">Delayed</span>
+                                </div>
+                                
+                                <div class="flex items-center space-x-4 p-4 border border-secondary-200 rounded-lg">
+                                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-ship text-purple-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-secondary-900" data-bind="vessel.name">MV Pacific Explorer</h3>
+                                        <p class="text-sm text-secondary-600" data-bind="vessel.origin">From Tokyo, Japan</p>
+                                        <div class="flex items-center space-x-4 mt-2">
+                                            <div class="flex items-center space-x-1">
+                                                <i class="fas fa-calendar text-secondary-400 text-xs"></i>
+                                                <span class="text-sm text-secondary-600" data-bind="vessel.eta">Dec 22, 2024</span>
+                                            </div>
+                                            <div class="flex items-center space-x-1">
+                                                <i class="fas fa-map-marker-alt text-secondary-400 text-xs"></i>
+                                                <span class="text-sm text-secondary-600" data-bind="vessel.port">Port of Riyadh</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">Scheduled</span>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Forms Section -->
+                <div class="space-y-8">
+                    <!-- Statement of Needs Form -->
+                    <div class="bg-white rounded-xl shadow-sm border border-secondary-200">
+                        <div class="p-6 border-b border-secondary-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-file-text text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-secondary-900">Statement of Needs</h2>
+                                    <p class="text-secondary-600">Create a new import request</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <form class="space-y-6" data-form="statement-of-needs">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Request Title *</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Brief description of import goods" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Priority Level *</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>High</option>
+                                            <option>Medium</option>
+                                            <option>Low</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Detailed Description *</label>
+                                    <textarea rows="4" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Detailed description of goods, specifications, and requirements" data-mock="true"></textarea>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Quantity *</label>
+                                        <input type="number" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. 500" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Unit of Measure *</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>Tons</option>
+                                            <option>Pieces</option>
+                                            <option>Containers</option>
+                                            <option>Pallets</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Estimated Value (USD) *</label>
+                                        <input type="number" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. 250000" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Business Justification *</label>
+                                    <textarea rows="3" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Explain the business need and importance of this import" data-mock="true"></textarea>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Required Delivery Date</label>
+                                        <input type="date" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Department/Project Code</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. PROJ-2024-001" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3">
+                                    <button type="button" class="px-6 py-3 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 font-medium">Save as Draft</button>
+                                    <button type="submit" class="px-6 py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 font-medium" data-event="click:submitNeedsStatement">Submit Request</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Contract Management Form -->
+                    <div class="bg-white rounded-xl shadow-sm border border-secondary-200">
+                        <div class="p-6 border-b border-secondary-200">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-file-contract text-orange-600"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xl font-bold text-secondary-900">Contract Management</h2>
+                                        <p class="text-secondary-600">Review and manage import contracts</p>
+                                    </div>
+                                </div>
+                                <span class="px-3 py-1 bg-orange-100 text-orange-800 text-sm rounded-full font-medium">Pending Review</span>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <form class="space-y-6" data-form="contract-management">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Related Request ID *</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>REQ-2024-001 - Steel Products Import</option>
+                                            <option>REQ-2024-002 - Agricultural Equipment</option>
+                                            <option>REQ-2024-003 - Electronic Components</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Contract Status</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>Draft</option>
+                                            <option>Under Review</option>
+                                            <option>Approved</option>
+                                            <option>Rejected</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Supplier/Vendor Name *</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Company name" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Contract Value (USD) *</label>
+                                        <input type="number" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. 250000" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <!-- Contract Document Upload -->
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Contract Document *</label>
+                                    <div class="border-2 border-dashed border-secondary-300 rounded-lg p-6 text-center hover:border-primary-400 transition-colors">
+                                        <div class="mx-auto w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mb-4">
+                                            <i class="fas fa-cloud-upload-alt text-secondary-600 text-xl"></i>
+                                        </div>
+                                        <p class="text-sm text-secondary-600 mb-2">Drop contract files here or <span class="text-primary-500 font-medium cursor-pointer">browse</span></p>
+                                        <p class="text-xs text-secondary-500">PDF, DOC, DOCX up to 10MB</p>
+                                        <input type="file" class="hidden" accept=".pdf,.doc,.docx" data-implementation="File upload component for contract documents">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Contract Terms & Conditions</label>
+                                    <textarea rows="4" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Key terms, payment conditions, delivery terms, etc." data-mock="true"></textarea>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Contract Start Date</label>
+                                        <input type="date" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Contract End Date</label>
+                                        <input type="date" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Review Notes</label>
+                                    <textarea rows="3" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Administrative notes and comments" data-mock="true"></textarea>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3">
+                                    <button type="button" class="px-6 py-3 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 font-medium">Reject Contract</button>
+                                    <button type="button" class="px-6 py-3 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 font-medium">Save Draft</button>
+                                    <button type="submit" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium" data-event="click:approveContract">Approve Contract</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Letter of Credit Form -->
+                    <div class="bg-white rounded-xl shadow-sm border border-secondary-200">
+                        <div class="p-6 border-b border-secondary-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-university text-green-600"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-secondary-900">Letter of Credit (LC)</h2>
+                                    <p class="text-secondary-600">Financial instrument setup and management</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <form class="space-y-6" data-form="letter-of-credit">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">LC Number *</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="LC-2024-001" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Related Contract ID *</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>CNT-2024-001 - Steel Products Contract</option>
+                                            <option>CNT-2024-002 - Agricultural Equipment Contract</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">LC Amount (USD) *</label>
+                                        <input type="number" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="250000" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Currency</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>USD</option>
+                                            <option>EUR</option>
+                                            <option>SAR</option>
+                                            <option>GBP</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Issuing Bank *</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Bank name" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Advising Bank</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Bank name" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Issue Date *</label>
+                                        <input type="date" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Expiry Date *</label>
+                                        <input type="date" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">LC Terms & Conditions</label>
+                                    <textarea rows="4" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Payment terms, shipping terms, document requirements, etc." data-mock="true"></textarea>
+                                </div>
+                                
+                                <!-- LC Document Upload -->
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">LC Documentation</label>
+                                    <div class="border-2 border-dashed border-secondary-300 rounded-lg p-6 text-center hover:border-primary-400 transition-colors">
+                                        <div class="mx-auto w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mb-4">
+                                            <i class="fas fa-file-upload text-secondary-600 text-xl"></i>
+                                        </div>
+                                        <p class="text-sm text-secondary-600 mb-2">Upload LC documents <span class="text-primary-500 font-medium cursor-pointer">browse files</span></p>
+                                        <p class="text-xs text-secondary-500">PDF files up to 10MB each</p>
+                                        <input type="file" class="hidden" accept=".pdf" multiple data-implementation="File upload component for LC documents">
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3">
+                                    <button type="button" class="px-6 py-3 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 font-medium">Save Draft</button>
+                                    <button type="submit" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium" data-event="click:issueLc">Issue LC</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Vessel Nomination Form -->
+                    <div class="bg-white rounded-xl shadow-sm border border-secondary-200">
+                        <div class="p-6 border-b border-secondary-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-ship text-purple-600"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-secondary-900">Vessel Nomination</h2>
+                                    <p class="text-secondary-600">Assign vessel and shipping details</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <form class="space-y-6" data-form="vessel-nomination">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Vessel Name *</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="MV Atlantic Trader" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">IMO Number</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="9123456" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Country of Origin *</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>China</option>
+                                            <option>Germany</option>
+                                            <option>Japan</option>
+                                            <option>South Korea</option>
+                                            <option>United States</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Port of Loading *</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Port of Shanghai" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Port of Discharge *</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>Port of Jeddah</option>
+                                            <option>Port of Dammam</option>
+                                            <option>Port of Riyadh</option>
+                                            <option>Port of Yanbu</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Estimated Time of Arrival (ETA) *</label>
+                                        <input type="datetime-local" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <!-- Agent & Inspection Company Selection -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Shipping Agent *</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>Select an agent...</option>
+                                            <option>Maritime Services LLC</option>
+                                            <option>Gulf Shipping Agents</option>
+                                            <option>Red Sea Maritime</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Inspection Company *</label>
+                                        <select class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                            <option>Select inspection company...</option>
+                                            <option>SGS Saudi Arabia</option>
+                                            <option>Bureau Veritas</option>
+                                            <option>Intertek Testing Services</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Shipping Instructions</label>
+                                    <textarea rows="4" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Special handling instructions, cargo details, loading requirements..." data-mock="true"></textarea>
+                                </div>
+                                
+                                <!-- Shipping Instructions File Upload -->
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Shipping Instructions Document</label>
+                                    <div class="border-2 border-dashed border-secondary-300 rounded-lg p-6 text-center hover:border-primary-400 transition-colors">
+                                        <div class="mx-auto w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mb-4">
+                                            <i class="fas fa-file-text text-secondary-600 text-xl"></i>
+                                        </div>
+                                        <p class="text-sm text-secondary-600 mb-2">Upload shipping instructions <span class="text-primary-500 font-medium cursor-pointer">browse files</span></p>
+                                        <p class="text-xs text-secondary-500">PDF, DOC, DOCX up to 5MB</p>
+                                        <input type="file" class="hidden" accept=".pdf,.doc,.docx" data-implementation="File upload for shipping instructions">
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3">
+                                    <button type="button" class="px-6 py-3 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 font-medium">Save Draft</button>
+                                    <button type="submit" class="px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium" data-event="click:nominateVessel">Nominate Vessel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Shipment Tracking Form -->
+                    <div class="bg-white rounded-xl shadow-sm border border-secondary-200">
+                        <div class="p-6 border-b border-secondary-200">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-box text-blue-600"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-xl font-bold text-secondary-900">Shipment Tracking</h2>
+                                        <p class="text-secondary-600">Monitor loading, transit, and discharge</p>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">In Transit</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <!-- Shipment Status Timeline -->
+                            <div class="mb-8">
+                                <h3 class="text-lg font-semibold text-secondary-900 mb-4">Shipment Progress</h3>
+                                <div class="relative">
+                                    <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-secondary-200"></div>
+                                    <div class="space-y-6">
+                                        <!-- Loading Complete -->
+                                        <div class="relative flex items-start space-x-4">
+                                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-check text-green-600"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h4 class="font-semibold text-secondary-900">Loading Complete</h4>
+                                                <p class="text-sm text-secondary-600">Cargo loaded at Port of Shanghai</p>
+                                                <p class="text-xs text-secondary-500">Dec 10, 2024 at 14:30 UTC</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- In Transit -->
+                                        <div class="relative flex items-start space-x-4">
+                                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-ship text-blue-600"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h4 class="font-semibold text-secondary-900">In Transit</h4>
+                                                <p class="text-sm text-secondary-600">Vessel en route to Port of Jeddah</p>
+                                                <p class="text-xs text-secondary-500">ETA: Dec 15, 2024</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Pending Steps -->
+                                        <div class="relative flex items-start space-x-4 opacity-50">
+                                            <div class="w-12 h-12 bg-secondary-100 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-anchor text-secondary-600"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h4 class="font-semibold text-secondary-900">Notice of Readiness</h4>
+                                                <p class="text-sm text-secondary-600">Pending vessel arrival</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="relative flex items-start space-x-4 opacity-50">
+                                            <div class="w-12 h-12 bg-secondary-100 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-download text-secondary-600"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <h4 class="font-semibold text-secondary-900">Discharge</h4>
+                                                <p class="text-sm text-secondary-600">Cargo unloading</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <form class="space-y-6" data-form="shipment-tracking">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Loading Date *</label>
+                                        <input type="date" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Bill of Lading Number *</label>
+                                        <input type="text" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="BL-2024-001" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <!-- Bill of Lading Upload -->
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Bill of Lading Document *</label>
+                                    <div class="border-2 border-dashed border-secondary-300 rounded-lg p-6 text-center hover:border-primary-400 transition-colors">
+                                        <div class="mx-auto w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mb-4">
+                                            <i class="fas fa-file-pdf text-secondary-600 text-xl"></i>
+                                        </div>
+                                        <p class="text-sm text-secondary-600 mb-2">Upload Bill of Lading <span class="text-primary-500 font-medium cursor-pointer">browse files</span></p>
+                                        <p class="text-xs text-secondary-500">PDF files up to 5MB</p>
+                                        <input type="file" class="hidden" accept=".pdf" data-implementation="File upload for Bill of Lading">
+                                    </div>
+                                </div>
+                                
+                                <!-- NOR Section -->
+                                <div class="border border-secondary-200 rounded-lg p-6">
+                                    <h3 class="text-lg font-semibold text-secondary-900 mb-4">Notice of Readiness (NOR)</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-medium text-secondary-700 mb-2">NOR Date & Time</label>
+                                            <input type="datetime-local" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-secondary-700 mb-2">Actual Arrival Time</label>
+                                            <input type="datetime-local" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-4">
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">NOR Document</label>
+                                        <div class="border-2 border-dashed border-secondary-300 rounded-lg p-4 text-center hover:border-primary-400 transition-colors">
+                                            <i class="fas fa-file-upload text-secondary-400 text-lg mb-2"></i>
+                                            <p class="text-sm text-secondary-600">Upload NOR document</p>
+                                            <input type="file" class="hidden" accept=".pdf" data-implementation="File upload for NOR document">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Discharge Section -->
+                                <div class="border border-secondary-200 rounded-lg p-6">
+                                    <h3 class="text-lg font-semibold text-secondary-900 mb-4">Discharge Information</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-medium text-secondary-700 mb-2">Discharge Start Date</label>
+                                            <input type="datetime-local" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-secondary-700 mb-2">Discharge End Date</label>
+                                            <input type="datetime-local" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-secondary-700 mb-2">Quantity Unloaded</label>
+                                            <input type="number" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. 500" data-mock="true">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3">
+                                    <button type="button" class="px-6 py-3 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 font-medium">Save Progress</button>
+                                    <button type="submit" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium" data-event="click:updateShipment">Update Shipment</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Final Settlement Form -->
+                    <div class="bg-white rounded-xl shadow-sm border border-secondary-200">
+                        <div class="p-6 border-b border-secondary-200">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-dollar-sign text-green-600"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-secondary-900">Final Settlement</h2>
+                                    <p class="text-secondary-600">Complete financial settlement and close import</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <form class="space-y-6" data-form="final-settlement">
+                                <!-- Financial Summary -->
+                                <div class="bg-secondary-50 rounded-lg p-6 mb-6">
+                                    <h3 class="text-lg font-semibold text-secondary-900 mb-4">Financial Summary</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <p class="text-sm text-secondary-600">LC Amount</p>
+                                            <p class="text-2xl font-bold text-secondary-900" data-bind="settlement.lcAmount">$250,000.00</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-secondary-600">Total Paid</p>
+                                            <p class="text-2xl font-bold text-green-600" data-bind="settlement.totalPaid">$235,750.00</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-secondary-600">Remaining Balance</p>
+                                            <p class="text-2xl font-bold text-orange-600" data-bind="settlement.remainingBalance">$14,250.00</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Final Invoice Amount *</label>
+                                        <input type="number" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="235750" data-mock="true">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-secondary-700 mb-2">Settlement Date *</label>
+                                        <input type="date" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" data-mock="true">
+                                    </div>
+                                </div>
+                                
+                                <!-- Cost Breakdown -->
+                                <div>
+                                    <h3 class="text-lg font-semibold text-secondary-900 mb-4">Cost Breakdown</h3>
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-secondary-700 mb-2">Goods Cost</label>
+                                                <input type="number" class="w-full px-3 py-2 border border-secondary-300 rounded-lg" placeholder="200000" data-mock="true">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-secondary-700 mb-2">Shipping Cost</label>
+                                                <input type="number" class="w-full px-3 py-2 border border-secondary-300 rounded-lg" placeholder="15000" data-mock="true">
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-secondary-700 mb-2">Insurance</label>
+                                                <input type="number" class="w-full px-3 py-2 border border-secondary-300 rounded-lg" placeholder="2500" data-mock="true">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-secondary-700 mb-2">Port Charges</label>
+                                                <input type="number" class="w-full px-3 py-2 border border-secondary-300 rounded-lg" placeholder="3250" data-mock="true">
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-secondary-700 mb-2">Customs Duties</label>
+                                                <input type="number" class="w-full px-3 py-2 border border-secondary-300 rounded-lg" placeholder="12000" data-mock="true">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-secondary-700 mb-2">Other Fees</label>
+                                                <input type="number" class="w-full px-3 py-2 border border-secondary-300 rounded-lg" placeholder="3000" data-mock="true">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Settlement Notes</label>
+                                    <textarea rows="4" class="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Final settlement notes, discrepancies, adjustments..." data-mock="true"></textarea>
+                                </div>
+                                
+                                <!-- Settlement Documents Upload -->
+                                <div>
+                                    <label class="block text-sm font-medium text-secondary-700 mb-2">Settlement Documents</label>
+                                    <div class="border-2 border-dashed border-secondary-300 rounded-lg p-6 text-center hover:border-primary-400 transition-colors">
+                                        <div class="mx-auto w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mb-4">
+                                            <i class="fas fa-receipt text-secondary-600 text-xl"></i>
+                                        </div>
+                                        <p class="text-sm text-secondary-600 mb-2">Upload invoices, receipts, settlement docs <span class="text-primary-500 font-medium cursor-pointer">browse files</span></p>
+                                        <p class="text-xs text-secondary-500">PDF files up to 10MB each</p>
+                                        <input type="file" class="hidden" accept=".pdf" multiple data-implementation="File upload for settlement documents">
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3">
+                                    <button type="button" class="px-6 py-3 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 font-medium">Save Draft</button>
+                                    <button type="submit" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-medium" data-event="click:finalizeSettlement">Complete Settlement</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: DashboardContent -->
+        </main>
+        <!-- @END_COMPONENT: MainContent -->
+    </div>
+    <!-- @END_COMPONENT: AppLayout -->
+
+    <!-- Mobile Menu Toggle (Hidden in desktop) -->
+    <div class="lg:hidden fixed bottom-4 right-4 z-50">
+        <button class="w-14 h-14 bg-primary-500 text-white rounded-full shadow-lg flex items-center justify-center">
+            <i class="fas fa-bars text-xl"></i>
+        </button>
+    </div>
+
+    <script>
+        // TODO: Implement business logic, API calls, and state management
+        (function() {
+            // Basic form validation example
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    // TODO: Implement form submission logic
+                    console.log('Form submitted:', form.dataset.form);
+                });
+            });
+            
+            // File upload preview (basic implementation)
+            const fileInputs = document.querySelectorAll('input[type="file"]');
+            fileInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    // TODO: Implement file upload handling
+                    console.log('File selected:', this.files);
+                });
+            });
+            
+            // Basic responsive sidebar toggle for mobile
+            let sidebarVisible = true;
+            function toggleSidebar() {
+                const sidebar = document.querySelector('aside');
+                const main = document.querySelector('main');
+                sidebarVisible = !sidebarVisible;
+                
+                if (window.innerWidth < 1024) {
+                    if (sidebarVisible) {
+                        sidebar.style.transform = 'translateX(0)';
+                        main.style.marginLeft = '256px';
+                    } else {
+                        sidebar.style.transform = 'translateX(-100%)';
+                        main.style.marginLeft = '0';
+                    }
+                }
+            }
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 1024) {
+                    const sidebar = document.querySelector('aside');
+                    const main = document.querySelector('main');
+                    sidebar.style.transform = 'translateX(0)';
+                    main.style.marginLeft = '256px';
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
