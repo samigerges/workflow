@@ -81,11 +81,7 @@ export default function VesselDocuments({ vessel }: VesselDocumentsProps) {
         formData.append('notes', data.notes);
       }
 
-      const response = await fetch(`/api/vessels/${vessel.id}/documents`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+        const response = await apiRequest('POST', `/api/vessels/${vessel.id}/documents`, formData);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -118,10 +114,7 @@ export default function VesselDocuments({ vessel }: VesselDocumentsProps) {
   // Delete document mutation
   const deleteMutation = useMutation({
     mutationFn: async (documentId: number) => {
-      const response = await fetch(`/api/vessels/${vessel.id}/documents/${documentId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+        const response = await apiRequest("DELETE", `/api/vessels/${vessel.id}/documents/${documentId}`);
       if (!response.ok) {
         throw new Error("Failed to delete document");
       }

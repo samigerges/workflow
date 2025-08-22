@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { insertRequestSchema } from "@shared/schema";
+import { insertRequestSchema } from "@samy/shared";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,10 +108,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
         formData.append('entityType', 'request');
         formData.append('entityId', (requestResult as any).id || request?.id);
         
-        const uploadResponse = await fetch('/api/upload-document', {
-          method: 'POST',
-          body: formData,
-        });
+          const uploadResponse = await apiRequest('POST', '/api/upload-document', formData);
 
         if (uploadResponse.ok) {
           const uploadResult = await uploadResponse.json();

@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { insertFinalSettlementSchema } from "@shared/schema";
+import { insertFinalSettlementSchema } from "@samy/shared";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,11 +67,7 @@ export default function FinalSettlementForm({ onSuccess, onCancel, requests, set
       const url = settlement ? `/api/final-settlements/${settlement.id}` : "/api/final-settlements";
       const method = settlement ? "PUT" : "POST";
       
-      const response = await fetch(url, {
-        method,
-        body: formData,
-        credentials: "include",
-      });
+        const response = await apiRequest(method, url, formData);
 
       if (!response.ok) {
         throw new Error(`${response.status}: ${response.statusText}`);

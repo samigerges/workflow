@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Login() {
   // Login form state
@@ -29,12 +29,11 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
-      });
+      try {
+        const response = await apiRequest("POST", "/api/login", {
+          email: loginEmail,
+          password: loginPassword,
+        });
 
       if (response.ok) {
         // Invalidate auth query to refetch user data
@@ -71,17 +70,13 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: regEmail, 
-          password: regPassword, 
-          firstName, 
-          lastName, 
-          role 
-        }),
-      });
+        const response = await apiRequest("POST", "/api/register", {
+          email: regEmail,
+          password: regPassword,
+          firstName,
+          lastName,
+          role,
+        });
 
       if (response.ok) {
         toast({

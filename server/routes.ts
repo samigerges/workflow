@@ -13,7 +13,7 @@ import {
   insertContractVoteSchema,
   insertVesselLetterOfCreditSchema,
   insertVesselLoadingPortSchema,
-} from "@shared/schema";
+} from "@samy/shared";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -60,6 +60,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes are handled in localAuth.ts
 
   // Needs routes
+/**
+ * List needs
+ * @route GET /api/needs
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getNeeds
+ */
   app.get('/api/needs', isAuthenticated, async (req: any, res) => {
     try {
       const needs = await storage.getNeeds();
@@ -70,6 +77,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Get needs by ID
+ * @route GET /api/needs/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getNeed
+ */
   app.get('/api/needs/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -84,6 +99,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create need
+ * @route POST /api/needs
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createNeed
+ */
   app.post('/api/needs', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -103,6 +126,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Replace need
+ * @route PUT /api/needs/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateNeed
+ */
   app.put('/api/needs/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -121,6 +153,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update need
+ * @route PATCH /api/needs/:id/status
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateNeedStatus
+ */
   app.patch('/api/needs/:id/status', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -136,6 +177,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update need
+ * @route PATCH /api/needs/:id/progress
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateNeedProgress
+ */
   app.patch('/api/needs/:id/progress', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -151,6 +201,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete need
+ * @route DELETE /api/needs/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteNeed
+ */
   app.delete('/api/needs/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -163,6 +221,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Progress tracking routes
+/**
+ * Create need
+ * @route POST /api/needs/update-progress
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateNeedsProgressFromVessels
+ */
   app.post('/api/needs/update-progress', isAuthenticated, async (req: any, res) => {
     try {
       await storage.updateNeedsProgressFromVessels();
@@ -173,6 +239,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * List needs
+ * @route GET /api/needs/progress-report
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getNeedsProgressReport
+ */
   app.get('/api/needs/progress-report', isAuthenticated, async (req: any, res) => {
     try {
       const { startDate, endDate } = req.query;
@@ -188,6 +261,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Requests routes
+/**
+ * List requests
+ * @route GET /api/requests
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getRequests
+ */
   app.get('/api/requests', isAuthenticated, async (req: any, res) => {
     try {
       const requests = await storage.getRequests();
@@ -198,6 +278,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create request
+ * @route POST /api/requests
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createRequest
+ */
   app.post('/api/requests', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -221,6 +309,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Replace request
+ * @route PUT /api/requests/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateRequest
+ */
   app.put('/api/requests/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -236,6 +333,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update request
+ * @route PATCH /api/requests/:id/status
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateRequestStatus
+ */
   app.patch('/api/requests/:id/status', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -248,6 +354,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete request
+ * @route DELETE /api/requests/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteRequest
+ */
   app.delete('/api/requests/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -260,6 +374,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Request voting routes
+/**
+ * Get requests by ID
+ * @route GET /api/requests/:id/votes
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getRequestVotes
+ */
   app.get('/api/requests/:id/votes', isAuthenticated, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
@@ -271,6 +393,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create request
+ * @route POST /api/requests/:id/votes
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getRequestVotes
+ */
   app.post('/api/requests/:id/votes', isAuthenticated, async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
@@ -302,6 +433,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contract voting routes
+/**
+ * Get contracts by ID
+ * @route GET /api/contracts/:id/votes
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getContractVotes
+ */
   app.get('/api/contracts/:id/votes', isAuthenticated, async (req: any, res) => {
     try {
       const contractId = parseInt(req.params.id);
@@ -313,6 +452,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create contract
+ * @route POST /api/contracts/:id/votes
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getContractVotes
+ */
   app.post('/api/contracts/:id/votes', isAuthenticated, async (req: any, res) => {
     try {
       const contractId = parseInt(req.params.id);
@@ -344,6 +492,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contracts routes
+/**
+ * List contracts
+ * @route GET /api/contracts
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getContracts
+ */
   app.get('/api/contracts', isAuthenticated, async (req: any, res) => {
     try {
       const contracts = await storage.getContracts();
@@ -354,6 +509,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create contract
+ * @route POST /api/contracts
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createContract
+ */
   app.post('/api/contracts', isAuthenticated, upload.single('contractFile'), async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -389,6 +552,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Replace contract
+ * @route PUT /api/contracts/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateContract
+ */
   app.put('/api/contracts/:id', isAuthenticated, upload.single('contractFile'), async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -429,6 +601,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update contract
+ * @route PATCH /api/contracts/:id/status
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateContractStatus
+ */
   app.patch('/api/contracts/:id/status', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -441,6 +622,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Update vessel
+ * @route PATCH /api/vessels/:id/status
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateVesselStatus
+ */
   app.patch('/api/vessels/:id/status', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -454,6 +644,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Letters of Credit routes
+/**
+ * List letters-of-credit
+ * @route GET /api/letters-of-credit
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getLettersOfCredit
+ */
   app.get('/api/letters-of-credit', isAuthenticated, async (req: any, res) => {
     try {
       const lettersOfCredit = await storage.getLettersOfCredit();
@@ -477,6 +674,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create letters-of-credi
+ * @route POST /api/letters-of-credit
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createLetterOfCredit
+ */
   app.post('/api/letters-of-credit', isAuthenticated, upload.single('lcFile'), async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -517,6 +722,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Replace letters-of-credi
+ * @route PUT /api/letters-of-credit/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getUser
+ */
   app.put('/api/letters-of-credit/:id', isAuthenticated, upload.single('lcFile'), async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -587,6 +801,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete letters-of-credi
+ * @route DELETE /api/letters-of-credit/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteLetterOfCredit
+ */
   app.delete('/api/letters-of-credit/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -600,6 +822,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get vessels associated with a specific LC
+/**
+ * Get letters-of-credit by ID
+ * @route GET /api/letters-of-credit/:id/vessels
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getLCVessels
+ */
   app.get('/api/letters-of-credit/:id/vessels', isAuthenticated, async (req: any, res) => {
     try {
       const lcId = parseInt(req.params.id);
@@ -617,6 +847,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get allocated quantity for a specific LC
+/**
+ * Get letters-of-credit by ID
+ * @route GET /api/letters-of-credit/:id/allocated-quantity
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getAllocatedQuantityForLC
+ */
   app.get('/api/letters-of-credit/:id/allocated-quantity', isAuthenticated, async (req: any, res) => {
     try {
       const lcId = parseInt(req.params.id);
@@ -629,6 +867,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vessels routes
+/**
+ * List vessels
+ * @route GET /api/vessels
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getVessels
+ */
   app.get('/api/vessels', isAuthenticated, async (req: any, res) => {
     try {
       const vessels = await storage.getVessels();
@@ -639,6 +884,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create vessel
+ * @route POST /api/vessels
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createVessel
+ */
   app.post('/api/vessels', isAuthenticated, upload.single('instructionsFile'), async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -666,6 +919,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Replace vessel
+ * @route PUT /api/vessels/:id
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateVessel
+ */
   app.put('/api/vessels/:id', isAuthenticated, upload.fields([
     { name: 'instructionsFile', maxCount: 1 },
     { name: 'customsReleaseFile', maxCount: 1 }
@@ -722,6 +984,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete vessel
+ * @route DELETE /api/vessels/:id
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteVessel
+ */
   app.delete('/api/vessels/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -735,6 +1005,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vessel documents routes
+/**
+ * Get vessels by ID
+ * @route GET /api/vessels/:id/documents
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getVesselDocuments
+ */
   app.get('/api/vessels/:id/documents', isAuthenticated, async (req: any, res) => {
     try {
       const vesselId = parseInt(req.params.id);
@@ -746,6 +1024,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create vessel
+ * @route POST /api/vessels/:id/documents
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createVesselDocument
+ */
   app.post('/api/vessels/:id/documents', isAuthenticated, upload.single('document'), async (req: any, res) => {
     try {
       const vesselId = parseInt(req.params.id);
@@ -783,6 +1070,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete vessel
+ * @route DELETE /api/vessels/:vesselId/documents/:documentId
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteVesselDocument
+ */
   app.delete('/api/vessels/:vesselId/documents/:documentId', isAuthenticated, async (req: any, res) => {
     try {
       const documentId = parseInt(req.params.documentId);
@@ -795,6 +1090,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vessel Letters of Credit routes
+/**
+ * Get vessels by ID
+ * @route GET /api/vessels/:id/letters-of-credit
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getVesselLettersOfCredit
+ */
   app.get('/api/vessels/:id/letters-of-credit', isAuthenticated, async (req: any, res) => {
     try {
       const vesselId = parseInt(req.params.id);
@@ -806,6 +1109,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create vessel
+ * @route POST /api/vessels/:id/letters-of-credit
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createVesselLetterOfCredit
+ */
   app.post('/api/vessels/:id/letters-of-credit', isAuthenticated, async (req: any, res) => {
     try {
       const vesselId = parseInt(req.params.id);
@@ -827,6 +1139,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete vessel
+ * @route DELETE /api/vessels/:vesselId/letters-of-credit/:lcId
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteVesselLetterOfCredit
+ */
   app.delete('/api/vessels/:vesselId/letters-of-credit/:lcId', isAuthenticated, async (req: any, res) => {
     try {
       const lcId = parseInt(req.params.lcId);
@@ -839,6 +1159,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vessel Loading Ports routes
+/**
+ * Get vessels by ID
+ * @route GET /api/vessels/:id/loading-ports
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getVesselLoadingPorts
+ */
   app.get('/api/vessels/:id/loading-ports', isAuthenticated, async (req: any, res) => {
     try {
       const vesselId = parseInt(req.params.id);
@@ -850,6 +1178,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create vessel
+ * @route POST /api/vessels/:id/loading-ports
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createVesselLoadingPort
+ */
   app.post('/api/vessels/:id/loading-ports', isAuthenticated, async (req: any, res) => {
     try {
       const vesselId = parseInt(req.params.id);
@@ -871,6 +1208,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Replace vessel
+ * @route PUT /api/vessels/:vesselId/loading-ports/:portId
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.updateVesselLoadingPort
+ */
   app.put('/api/vessels/:vesselId/loading-ports/:portId', isAuthenticated, async (req: any, res) => {
     try {
       const portId = parseInt(req.params.portId);
@@ -891,6 +1237,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Delete vessel
+ * @route DELETE /api/vessels/:vesselId/loading-ports/:portId
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.deleteVesselLoadingPort
+ */
   app.delete('/api/vessels/:vesselId/loading-ports/:portId', isAuthenticated, async (req: any, res) => {
     try {
       const portId = parseInt(req.params.portId);
@@ -903,6 +1257,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Document voting routes
+/**
+ * Get document-votes by ID
+ * @route GET /api/document-votes/:entityType/:entityId
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getDocumentVotes
+ */
   app.get('/api/document-votes/:entityType/:entityId', isAuthenticated, async (req: any, res) => {
     try {
       const { entityType, entityId } = req.params;
@@ -915,6 +1277,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // General documents route for the documents page
+/**
+ * List documents
+ * @route GET /api/documents
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.getDocumentVotes
+ */
   app.get('/api/documents', isAuthenticated, async (req: any, res) => {
     try {
       // Get all document votes as our document list
@@ -926,6 +1295,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create upload-documen
+ * @route POST /api/upload-document
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createVesselDocument
+ */
   app.post('/api/upload-document', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -984,6 +1361,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+/**
+ * Create document-vote
+ * @route POST /api/document-votes/:id/vote
+ * @param req.params.id Resource identifier
+ * @param req.body Request payload
+ * @returns JSON data
+ * @access Authenticated
+ * @see storage.createDocumentVote
+ */
   app.post('/api/document-votes/:id/vote', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -1018,6 +1404,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File serving route
+/**
+ * Get files by ID
+ * @route GET /api/files/:filename
+ * @param req.params.id Resource identifier
+ * @returns JSON data
+ * @access Authenticated
+ */
   app.get('/api/files/:filename', isAuthenticated, (req, res) => {
     try {
       const filename = req.params.filename;

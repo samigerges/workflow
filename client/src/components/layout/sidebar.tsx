@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebar } from "@/contexts/SidebarContext";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -93,11 +93,8 @@ export default function Sidebar() {
   );
 
   const handleSignOut = async () => {
-    try {
-      const response = await fetch("/api/logout", {
-        method: "POST",
-        credentials: "same-origin"
-      });
+      try {
+        const response = await apiRequest("POST", "/api/logout");
       
       if (response.ok) {
         // Clear the authentication query cache

@@ -127,19 +127,14 @@ export default function Contracts() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await fetch(`/api/contracts/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `${response.status}: ${response.statusText}`);
-      }
-      
-      return response.json();
-    },
+      mutationFn: async (id: number) => {
+        const response = await apiRequest("DELETE", `/api/contracts/${id}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       toast({

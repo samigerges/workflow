@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { insertShipmentSchema } from "@shared/schema";
+import { insertShipmentSchema } from "@samy/shared";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,15 +84,11 @@ export default function ShipmentTrackingForm({ onSuccess, onCancel, vessels, shi
       const url = shipment ? `/api/shipments/${shipment.id}` : "/api/shipments";
       const method = shipment ? "PUT" : "POST";
       
-      const response = await fetch(url, {
-        method,
-        body: formData,
-        credentials: "include",
-      });
+        const response = await apiRequest(method, url, formData);
 
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
+        if (!response.ok) {
+          throw new Error(`${response.status}: ${response.statusText}`);
+        }
 
       return response.json();
     },
