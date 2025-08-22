@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { apiRequest as realApiRequest, getQueryFn as realGetQueryFn } from "./api";
 import { apiRequest as mockApiRequest, getQueryFn as mockGetQueryFn } from "./mockApi";
 
-const useMock = import.meta.env.VITE_DEMO_MODE === "true";
+const useMock = true;
 
 export const apiRequest = useMock ? mockApiRequest : realApiRequest;
 export const getQueryFn = useMock ? mockGetQueryFn : realGetQueryFn;
