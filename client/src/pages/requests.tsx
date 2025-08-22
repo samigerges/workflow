@@ -216,8 +216,10 @@ export default function Requests() {
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-gray-600 mb-2">
-                      Current status: <Badge className={getStatusColor(statusEditingRequest.status)}>
-                        {statusEditingRequest.status.charAt(0).toUpperCase() + statusEditingRequest.status.slice(1)}
+                      Current status: <Badge className={getStatusColor(statusEditingRequest?.status ?? "") }>
+                        {statusEditingRequest?.status
+                          ? statusEditingRequest.status.charAt(0).toUpperCase() + statusEditingRequest.status.slice(1)
+                          : "Unknown"}
                       </Badge>
                     </p>
                     <p className="text-sm font-medium">Request: {statusEditingRequest.title}</p>
@@ -324,14 +326,18 @@ export default function Requests() {
                           ${parseFloat(request.pricePerTon || request.estimatedValue).toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          <Badge className={getPriorityColor(request.priority)}>
-                            {request.priority.charAt(0).toUpperCase() + request.priority.slice(1)}
+                          <Badge className={getPriorityColor(request.priority ?? "") }>
+                            {request.priority
+                              ? request.priority.charAt(0).toUpperCase() + request.priority.slice(1)
+                              : "Unknown"}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col space-y-2">
-                            <Badge className={getStatusColor(request.status)}>
-                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            <Badge className={getStatusColor(request.status ?? "") }>
+                              {request.status
+                                ? request.status.charAt(0).toUpperCase() + request.status.slice(1)
+                                : "Unknown"}
                             </Badge>
                             {['admin', 'manager', 'procurement_officer'].includes((user as any)?.role || '') && (
                               <StatusChangeDropdown
