@@ -17,7 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Plus, Edit, Trash, Settings, Eye, Calendar, Package, TrendingUp } from "lucide-react";
 import { format, isValid } from "date-fns";
-import type { Need } from "@samy/shared";
+import type { Need } from "@/lib/schemas";
 
 export default function Needs() {
   const { toast } = useToast();
