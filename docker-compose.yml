@@ -1,0 +1,31 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:15
+    env_file: .env.docker
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./server
+    env_file: .env.docker
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      args:
+        VITE_API_URL: http://backend:5000
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  db-data:
