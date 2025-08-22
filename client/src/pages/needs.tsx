@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Plus, Edit, Trash, Settings, Eye, Calendar, Package, TrendingUp } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import type { Need } from "@samy/shared";
 
 export default function Needs() {
@@ -493,9 +493,27 @@ export default function Needs() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>{format(new Date(need.fulfillmentStartDate), 'MMM dd, yyyy')}</div>
+                          <div>
+                            {(() => {
+                              const start = need.fulfillmentStartDate
+                                ? new Date(need.fulfillmentStartDate)
+                                : null;
+                              return start && isValid(start)
+                                ? format(start, 'MMM dd, yyyy')
+                                : 'N/A';
+                            })()}
+                          </div>
                           <div className="text-muted-foreground">to</div>
-                          <div>{format(new Date(need.fulfillmentEndDate), 'MMM dd, yyyy')}</div>
+                          <div>
+                            {(() => {
+                              const end = need.fulfillmentEndDate
+                                ? new Date(need.fulfillmentEndDate)
+                                : null;
+                              return end && isValid(end)
+                                ? format(end, 'MMM dd, yyyy')
+                                : 'N/A';
+                            })()}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
