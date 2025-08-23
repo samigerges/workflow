@@ -3,5 +3,7 @@ version: "3.9"
 services:
   frontend:
     build: .
+    container_name: frontend-1
     ports:
-      - "8080:80"
+      - "8080:80"   # <-- host_port:container_port (change 8080 to any free host port)
+    restart: unless-stopped
