@@ -119,11 +119,11 @@ export default function Requests() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "approved": return "bg-green-100 text-green-800";
-      case "rejected": return "bg-red-100 text-red-800";
-      case "in_progress": return "bg-blue-100 text-blue-800";
-      case "completed": return "bg-purple-100 text-purple-800";
+      case "supply chain": return "bg-yellow-100 text-yellow-800";
+      case "Finance": return "bg-green-100 text-green-800";
+      case "Legel": return "bg-red-100 text-red-800";
+      case "colonel Wael": return "bg-blue-100 text-blue-800";
+      case "General hazem": return "bg-purple-100 text-purple-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
@@ -155,12 +155,11 @@ export default function Requests() {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="Supply_chain">Supply chain</SelectItem>
+                  <SelectItem value="Legel">Legel</SelectItem>
+                  <SelectItem value="Finance">Finance</SelectItem>
+                  <SelectItem value="Colnel_wael">Colnel wael</SelectItem>
+                  <SelectItem value="General_hazem">General hazem</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -238,11 +237,11 @@ export default function Requests() {
                         <SelectValue placeholder="Select new status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="Supply_chain">Supply chain</SelectItem>
+                        <SelectItem value="Legel">Legel</SelectItem>
+                        <SelectItem value="Finance">Finance</SelectItem>
+                        <SelectItem value="Colnel_wael">Colnel wael</SelectItem>
+                        <SelectItem value="General_hazem">General hazem</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -300,7 +299,7 @@ export default function Requests() {
                       <TableHead>Description</TableHead>
                       <TableHead>Supplier</TableHead>
                       <TableHead>Quantity</TableHead>
-                      <TableHead>Price per Ton (USD)</TableHead>
+                      <TableHead>Price per unit </TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>

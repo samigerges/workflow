@@ -10,23 +10,52 @@ interface RequestSummaryProps {
   onClose: () => void;
 }
 
+const PAYMENT_LABELS: Record<string, string> = {
+  lc: "Letter of Credit (LC)",
+  "lc_sight": "LC at Sight",
+  "lc_usance": "LC Usance",
+  tt: "Telegraphic Transfer (TT)",
+  cash: "Cash",
+  credit: "Credit",
+};
+
+const SHIPPING_LABELS: Record<string, string> = {
+  fob: "FOB",
+  cif: "CIF",
+  cnf: "CNF",
+  air: "Air Freight",
+  sea: "Sea Freight",
+  "door_to_door": "Door-to-door",
+  roro: "Roll-on / Roll-off",
+};
+
+// Map department keys to badge colors
+const DEPARTMENT_COLORS: Record<string, string> = {
+  supply_chain: "bg-yellow-100 text-yellow-800",
+  finance: "bg-green-100 text-green-800",
+  legal: "bg-red-100 text-red-800",
+  Colnel_Wael: "bg-blue-100 text-blue-800",
+  General_Hazem: "bg-purple-100 text-purple-800",
+  default: "bg-gray-100 text-gray-800",
+};
+
+function formatDate(value: any) {
+  if (!value) return "-";
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? String(value) : d.toLocaleDateString();
+}
+
+function formatNumber(value: any) {
+  if (value === undefined || value === null || value === "") return "-";
+  const n = Number(value);
+  return isNaN(n) ? String(value) : n.toLocaleString();
+}
+
 export default function RequestSummary({ request, isOpen, onClose }: RequestSummaryProps) {
   if (!request) return null;
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'in_progress': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
+  const getPriorityColor = (priority?: string) => {
+    switch (priority?.toLowerCase()) {
       case 'high': return 'bg-red-100 text-red-800';
       case 'medium': return 'bg-yellow-100 text-yellow-800';
       case 'low': return 'bg-green-100 text-green-800';
@@ -34,105 +63,191 @@ export default function RequestSummary({ request, isOpen, onClose }: RequestSumm
     }
   };
 
+  const pricePerTonNum = Number(request.pricePerTon) || 0;
+  const quantityNum = Number(request.quantity) || 0;
+  const estimatedValue = pricePerTonNum * quantityNum;
+
+  const paymentLabel = request.paymentMethod ? (PAYMENT_LABELS[request.paymentMethod] ?? request.paymentMethod) : null;
+  const shippingLabel = request.shippingMethod ? (SHIPPING_LABELS[request.shippingMethod] ?? request.shippingMethod) : null;
+
+  // Determine current department: look for common fields, else fall back to status
+  const deptKey = (request.currentDepartment || request.department || request.departmentKey || request.status || "").toString().toLowerCase();
+  const deptLabel = request.currentDepartment || request.department || request.status || 'Unknown';
+  const deptColor = DEPARTMENT_COLORS[deptKey] ?? DEPARTMENT_COLORS.default;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Package className="h-5 w-5" />
-            <span>Contract Request Summary - REQ-{request.id?.toString().padStart(3, '0')}</span>
+            <span>Contract Request Summary - REQ-{String(request.id ?? '').padStart(3, '0')}</span>
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Status and Priority */}
-          <div className="flex items-center space-x-4">
-            <Badge className={getStatusColor(request.status)}>
-              {request.status?.charAt(0).toUpperCase() + request.status?.slice(1)}
+          {/* Top row: Current Department, Priority, Created date, + Payment & Shipping */}
+          <div className="flex items-center flex-wrap gap-3">
+            <Badge className={deptColor}>
+              {deptLabel ? String(deptLabel).charAt(0).toUpperCase() + String(deptLabel).slice(1) : 'Unknown'}
             </Badge>
+
             <Badge className={getPriorityColor(request.priority)}>
-              {request.priority?.charAt(0).toUpperCase() + request.priority?.slice(1)} Priority
+              {request.priority ? request.priority.charAt(0).toUpperCase() + request.priority.slice(1) : 'N/A'} Priority
             </Badge>
+
             {request.createdAt && (
               <div className="flex items-center space-x-1 text-sm text-gray-600">
                 <Calendar className="h-4 w-4" />
-                <span>Created: {new Date(request.createdAt).toLocaleDateString()}</span>
+                <span>Created: {formatDate(request.createdAt)}</span>
+              </div>
+            )}
+
+            {/* NEW: Payment Method (compact) */}
+            {paymentLabel && (
+              <div className="flex items-center space-x-2 px-3 py-1 rounded-md border border-gray-200 bg-white">
+                <DollarSign className="h-4 w-4 text-gray-600" />
+                <div className="text-sm">
+                  <div className="text-xs text-gray-500">Payment</div>
+                  <div className="text-sm text-gray-900">{paymentLabel}</div>
+                </div>
+              </div>
+            )}
+
+            {/* NEW: Shipping Method (compact) */}
+            {shippingLabel && (
+              <div className="flex items-center space-x-2 px-3 py-1 rounded-md border border-gray-200 bg-white">
+                <Truck className="h-4 w-4 text-gray-600" />
+                <div className="text-sm">
+                  <div className="text-xs text-gray-500">Shipping</div>
+                  <div className="text-sm text-gray-900">{shippingLabel}</div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Basic Information */}
+          {/* Basic Information - now shows all fields from the form */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Request Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-semibold text-gray-900">Title</h4>
-                <p className="text-gray-700">{request.title}</p>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold text-gray-900">Description</h4>
-                <p className="text-gray-700">{request.description}</p>
-              </div>
 
+              {/* Grid of all form fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Package className="h-4 w-4 text-gray-500" />
+                {/* Cargo Type */}
+                <div className="flex items-start space-x-3">
+                  <Package className="h-5 w-5 text-gray-500 mt-1" />
                   <div>
-                    <span className="text-sm font-medium text-gray-500">Cargo Type:</span>
-                    <p className="text-gray-900">{request.cargoType}</p>
+                    <p className="text-sm text-gray-500">Cargo Type</p>
+                    <p className="text-gray-900">{request.cargoType ?? "-"}</p>
                   </div>
                 </div>
 
-                {request.supplierName && (
-                  <div className="flex items-center space-x-2">
-                    <Building className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Supplier:</span>
-                      <p className="text-gray-900">{request.supplierName}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="h-4 w-4 text-gray-500" />
+                {/* Supplier */}
+                <div className="flex items-start space-x-3">
+                  <Building className="h-5 w-5 text-gray-500 mt-1" />
                   <div>
-                    <span className="text-sm font-medium text-gray-500">Price per Ton:</span>
-                    <p className="text-gray-900">${request.pricePerTon} USD</p>
+                    <p className="text-sm text-gray-500">Supplier</p>
+                    <p className="text-gray-900">{request.supplierName ?? "-"}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Truck className="h-4 w-4 text-gray-500" />
+                {/* Country of Origin */}
+                <div className="flex items-start space-x-3">
+                  <MapPin className="h-5 w-5 text-gray-500 mt-1" />
                   <div>
-                    <span className="text-sm font-medium text-gray-500">Quantity:</span>
-                    <p className="text-gray-900">{request.quantity} {request.unitOfMeasure}</p>
+                    <p className="text-sm text-gray-500">Country of Origin</p>
+                    <p className="text-gray-900">{request.countryOfOrigin ?? "-"}</p>
                   </div>
                 </div>
 
-                {request.requiredDeliveryDate && (
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Required Delivery:</span>
-                      <p className="text-gray-900">{new Date(request.requiredDeliveryDate).toLocaleDateString()}</p>
-                    </div>
+                {/* Unit of Measure */}
+                <div className="flex items-start space-x-3">
+                  <Truck className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Unit of Measure</p>
+                    <p className="text-gray-900">{request.unitOfMeasure ?? "-"}</p>
                   </div>
-                )}
+                </div>
+
+                {/* Quantity */}
+                <div className="flex items-start space-x-3">
+                  <Truck className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Quantity</p>
+                    <p className="text-gray-900">{formatNumber(request.quantity)} {request.unitOfMeasure ? "" : ""}</p>
+                  </div>
+                </div>
+
+                {/* Price per unit */}
+                <div className="flex items-start space-x-3">
+                  <DollarSign className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Price per Unit (USD)</p>
+                    <p className="text-gray-900">{request.pricePerTon ? `$${formatNumber(request.pricePerTon)}` : "-"}</p>
+                  </div>
+                </div>
+
+                {/* Start Date */}
+                <div className="flex items-start space-x-3">
+                  <Calendar className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Start Date</p>
+                    <p className="text-gray-900">{formatDate(request.startDate)}</p>
+                  </div>
+                </div>
+
+                {/* End Date */}
+                <div className="flex items-start space-x-3">
+                  <Calendar className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">End Date</p>
+                    <p className="text-gray-900">{formatDate(request.endDate)}</p>
+                  </div>
+                </div>
+
+                {/* Payment Method */}
+                <div className="flex items-start space-x-3">
+                  <DollarSign className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Payment Method</p>
+                    <p className="text-gray-900">{paymentLabel ?? "-"}</p>
+                  </div>
+                </div>
+
+                {/* Shipping Method */}
+                <div className="flex items-start space-x-3">
+                  <Truck className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Shipping Method</p>
+                    <p className="text-gray-900">{shippingLabel ?? "-"}</p>
+                  </div>
+                </div>
+
+
+                {/* Document Status */}
+                <div className="flex items-start space-x-3">
+                  <FileText className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Document Status</p>
+                    <p className="text-gray-900">{request.documentStatus ?? "-"}</p>
+                  </div>
+                </div>
+
+                {/* Any other common fields (fallback display) */}
+                <div className="flex items-start space-x-3">
+                  <Building className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Reference / Other</p>
+                    <p className="text-gray-900">{request.referenceNumber ?? request.externalRef ?? "-"}</p>
+                  </div>
+                </div>
               </div>
-
-              {request.departmentCode && (
-                <div>
-                  <h4 className="font-semibold text-gray-900">Department/Project Code</h4>
-                  <p className="text-gray-700">{request.departmentCode}</p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
-          {/* Document Information */}
+          {/* Document Information (kept for visual separation) */}
           {request.uploadedFile && (
             <Card>
               <CardHeader>
@@ -157,6 +272,7 @@ export default function RequestSummary({ request, isOpen, onClose }: RequestSumm
                       const link = document.createElement('a');
                       link.href = `/uploads/${request.uploadedFile}`;
                       link.target = '_blank';
+                      link.rel = 'noopener noreferrer';
                       link.click();
                     }}
                     className="bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200"
@@ -178,17 +294,17 @@ export default function RequestSummary({ request, isOpen, onClose }: RequestSumm
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm font-medium text-blue-600">Price per Ton</p>
-                  <p className="text-2xl font-bold text-blue-900">${request.pricePerTon}</p>
+                  <p className="text-2xl font-bold text-blue-900">${pricePerTonNum.toLocaleString()}</p>
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-lg">
                   <p className="text-sm font-medium text-green-600">Total Quantity</p>
-                  <p className="text-2xl font-bold text-green-900">{request.quantity}</p>
-                  <p className="text-sm text-green-700">{request.unitOfMeasure}</p>
+                  <p className="text-2xl font-bold text-green-900">{quantityNum}</p>
+                  <p className="text-sm text-green-700">{request.unitOfMeasure || ''}</p>
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-lg">
                   <p className="text-sm font-medium text-purple-600">Estimated Value</p>
                   <p className="text-2xl font-bold text-purple-900">
-                    ${(parseFloat(request.pricePerTon) * parseInt(request.quantity)).toLocaleString()}
+                    ${estimatedValue.toLocaleString()}
                   </p>
                   <p className="text-sm text-purple-700">USD</p>
                 </div>
@@ -216,7 +332,7 @@ export default function RequestSummary({ request, isOpen, onClose }: RequestSumm
                     </p>
                     <p className="text-sm text-gray-600">{request.createdByUser.email}</p>
                     <p className="text-sm text-gray-500">
-                      Submitted on {new Date(request.createdAt).toLocaleDateString()}
+                      Submitted on {formatDate(request.createdAt)}
                     </p>
                   </div>
                 </div>
