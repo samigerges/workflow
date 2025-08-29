@@ -207,9 +207,70 @@ export default function Needs() {
     );
   }
 
+  // Calculate category summaries
+  const categoryStats = needs.reduce((acc, need) => {
+    const category = need.category || 'Other';
+    if (!acc[category]) {
+      acc[category] = {
+        totalNeeded: 0,
+        totalReceived: 0,
+        unitOfMeasure: need.unitOfMeasure || 'units'
+      };
+    }
+    acc[category].totalNeeded += need.requiredQuantity || 0;
+    acc[category].totalReceived += parseFloat((need as any).actualQuantityReceived || '0') || 0;
+    return acc;
+  }, {} as Record<string, { totalNeeded: number; totalReceived: number; unitOfMeasure: string }>);
+
   return (
     <MainLayout title="Needs Management" subtitle="Capture and track requirements that drive import requests">
       <div className="p-6 space-y-6">
+        {/* Category Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Object.entries(categoryStats).map(([category, stats]) => {
+            const completionPercentage = stats.totalNeeded > 0 ? (stats.totalReceived / stats.totalNeeded) * 100 : 0;
+            return (
+              <Card key={category} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center justify-between">
+                    <span className="capitalize">{category}</span>
+                    <Package className="h-5 w-5 text-gray-500" />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Needed:</span>
+                      <span className="font-semibold">{stats.totalNeeded.toLocaleString()} {stats.unitOfMeasure}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Received:</span>
+                      <span className="font-semibold text-green-600">{stats.totalReceived.toLocaleString()} {stats.unitOfMeasure}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Remaining:</span>
+                      <span className="font-semibold text-orange-600">{Math.max(0, stats.totalNeeded - stats.totalReceived).toLocaleString()} {stats.unitOfMeasure}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Progress</span>
+                      <span>{completionPercentage.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={Math.min(completionPercentage, 100)} className="h-2" />
+                  </div>
+                  <Badge 
+                    variant={completionPercentage >= 100 ? "default" : completionPercentage >= 50 ? "secondary" : "destructive"}
+                    className="w-full justify-center"
+                  >
+                    {completionPercentage >= 100 ? "Complete" : completionPercentage >= 50 ? "In Progress" : "Pending"}
+                  </Badge>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -275,7 +336,6 @@ export default function Needs() {
                     <TableHead>Category</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Progress</TableHead>
-                    <TableHead>Priority</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Fulfillment Period</TableHead>
                     <TableHead>Actions</TableHead>
@@ -298,11 +358,6 @@ export default function Needs() {
                             {need.actualQuantityReceived}/{need.requiredQuantity}
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getPriorityBadgeVariant(need.priority)}>
-                          {need.priority}
-                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(need.status)}>

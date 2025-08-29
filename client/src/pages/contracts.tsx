@@ -286,8 +286,6 @@ export default function Contracts() {
                       <TableHead>Start Date</TableHead>
                       <TableHead>End Date</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Recommend on Doc</TableHead>
-                      <TableHead>Contract opinions</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -317,45 +315,6 @@ export default function Contracts() {
                               entityId={contract.id}
                               currentStatus={contract.status}
                             />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {!hasVessels(contract.id) ? (
-                            <ContractVoteButton 
-                              contractId={contract.id}
-                              currentUserId={(user as any)?.id}
-                            />
-                          ) : (
-                            <span className="text-gray-500 text-sm">Hidden (vessels added)</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            {!hasVessels(contract.id) ? (
-                              <>
-                                {/* View Opinions Button - Shows summary and all votes */}
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="flex items-center space-x-2 bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200">
-                                      <MessageSquare size={14} />
-                                      <span>View Opinions</span>
-                                    </Button>
-                                  </DialogTrigger>
-                                  
-                                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                                    <DialogHeader>
-                                      <DialogTitle>Contract Opinions</DialogTitle>
-                                    </DialogHeader>
-                                    <ContractVotingContent 
-                                      contractId={contract.id}
-                                      currentUserId={(user as any)?.id}
-                                    />
-                                  </DialogContent>
-                                </Dialog>
-                              </>
-                            ) : (
-                              <span className="text-gray-500 text-sm">Hidden (vessels added)</span>
-                            )}
                           </div>
                         </TableCell>
                         <TableCell>
