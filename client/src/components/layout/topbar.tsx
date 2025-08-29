@@ -1,16 +1,11 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Bell, Globe, Menu } from "lucide-react";
+import LanguageSwitcher from "@/components/ui/language-switcher";
+import { Bell, Menu } from "lucide-react";
 
 interface TopbarProps {
   title: string;
@@ -19,6 +14,7 @@ interface TopbarProps {
 
 export default function Topbar({ title, subtitle }: TopbarProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { setIsCollapsed } = useSidebar();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -45,25 +41,7 @@ export default function Topbar({ title, subtitle }: TopbarProps) {
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          <Select defaultValue="en">
-            <SelectTrigger className="w-24 border-secondary-200 rounded-xl bg-white/80 backdrop-blur-sm shadow-soft">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="en">
-                <div className="flex items-center space-x-2">
-                  <Globe size={16} />
-                  <span>EN</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="ar">
-                <div className="flex items-center space-x-2">
-                  <Globe size={16} />
-                  <span>AR</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <LanguageSwitcher />
           
           <Button variant="ghost" size="sm" className="relative p-3 hover:bg-white/80 rounded-xl transition-all duration-200 card-hover">
             <Bell size={20} className="text-secondary-600" />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -24,57 +25,66 @@ import {
 } from "lucide-react";
 import logoPath from "@assets/Picture1_1751117114784.jpg";
 
-const navigation = [
+const getNavigation = (t: any) => [
   {
-    name: "Dashboard",
+    nameKey: "navigation.dashboard",
+    name: t("navigation.dashboard"),
     href: "/",
     icon: Home,
     roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
   },
   {
-    name: "Needs",
+    nameKey: "navigation.needs",
+    name: t("navigation.needs"),
     href: "/needs",
     icon: Target,
     roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
   },
   {
-    name: "Contract Requests",
+    nameKey: "navigation.contractRequests",
+    name: t("navigation.contractRequests"),
     href: "/requests",
     icon: FileText,
     roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
   },
   {
-    name: "Contracts",
+    nameKey: "navigation.contracts",
+    name: t("navigation.contracts"),
     href: "/contracts",
     icon: File,
     roles: ["admin", "procurement_officer"]
   },
   {
-    name: "Letters of Credit",
+    nameKey: "navigation.lettersOfCredit",
+    name: t("navigation.lettersOfCredit"),
     href: "/letters-credit",
     icon: CreditCard,
     roles: ["admin", "finance_officer"]
   },
   {
-    name: "Vessels",
+    nameKey: "navigation.vessels",
+    name: t("navigation.vessels"),
     href: "/vessels",
     icon: Ship,
     roles: ["admin", "shipping_officer"]
   },
   {
-    name: "Documents",
+    nameKey: "navigation.documents",
+    name: t("navigation.documents"),
     href: "/documents",
     icon: FolderOpen,
     roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
   },
   {
-    name: "Vessel Tracking",
+    nameKey: "navigation.vesselTracking",
+    name: t("navigation.vesselTracking"),
     href: "/vessel-tracking",
     icon: MapPin,
     roles: ["admin", "shipping_officer"]
   },
   {
-    name: "Reports",
+    nameKey: "navigation.reports",
+    name: t("navigation.reports"),
     href: "/reports",
     icon: BarChart3,
     roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
@@ -84,9 +94,11 @@ const navigation = [
 export default function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { isCollapsed, setIsCollapsed } = useSidebar();
   const [isMobile, setIsMobile] = useState(false);
 
+  const navigation = getNavigation(t);
   const filteredNavigation = navigation.filter(item => 
     // Show all navigation items for testing purposes
     true
