@@ -22,7 +22,6 @@ export default function Requests() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingRequest, setEditingRequest] = useState<any>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -49,7 +48,7 @@ export default function Requests() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: requests, isLoading: requestsLoading } = useQuery({
-    queryKey: ["/api/requests", statusFilter !== "all" ? { status: statusFilter } : {}],
+    queryKey: ["/api/requests"],
     retry: false,
   });
 
@@ -141,20 +140,6 @@ export default function Requests() {
     <MainLayout title="Contract Requests" subtitle="Manage statements of needs and contract requests">
           {/* Header Actions */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Supply_chain">Supply chain</SelectItem>
-                  <SelectItem value="Legel">Legel</SelectItem>
-                  <SelectItem value="Finance">Finance</SelectItem>
-                  <SelectItem value="Colnel_wael">Colnel wael</SelectItem>
-                  <SelectItem value="General_hazem">General hazem</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
@@ -287,26 +272,21 @@ export default function Requests() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Description</TableHead>
                       <TableHead>Supplier</TableHead>
                       <TableHead>Quantity</TableHead>
-                      <TableHead>Price per unit </TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Cargo</TableHead>
+                      <TableHead>Price per Unit</TableHead>
+                      <TableHead>Payment Method</TableHead>
+                      <TableHead>Shipping Method</TableHead>
+                      <TableHead>Country of Origin</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Recommend on Doc</TableHead>
-                      <TableHead>Request opinions</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {Array.isArray(requests) && requests.map((request: any) => (
                       <TableRow key={request.id}>
-                        <TableCell className="font-medium">{request.title}</TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {request.description}
-                        </TableCell>
                         <TableCell>
                           {request.supplierName || '-'}
                         </TableCell>
@@ -314,30 +294,19 @@ export default function Requests() {
                           {request.quantity} {request.unitOfMeasure}
                         </TableCell>
                         <TableCell>
-                          ${parseFloat(request.pricePerTon || request.estimatedValue).toLocaleString()}
+                          {request.cargoType || '-'}
                         </TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(request.status ?? "") }>
-                            {request.status
-                              ? request.status.replace('_', ' ').charAt(0).toUpperCase() + request.status.replace('_', ' ').slice(1)
-                              : "Unknown"}
-                          </Badge>
+                          ${parseFloat(request.pricePerTon || request.estimatedValue || 0).toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-col space-y-2">
-                            <Badge className={getStatusColor(request.status ?? "") }>
-                              {request.status
-                                ? request.status.charAt(0).toUpperCase() + request.status.slice(1)
-                                : "Unknown"}
-                            </Badge>
-                            {['admin', 'manager', 'procurement_officer'].includes((user as any)?.role || '') && (
-                              <StatusChangeDropdown
-                                entityType="request"
-                                entityId={request.id}
-                                currentStatus={request.status}
-                              />
-                            )}
-                          </div>
+                          {request.paymentMethod || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {request.shippingMethod || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {request.countryOfOrigin || '-'}
                         </TableCell>
                         <TableCell>
                           {new Date(request.createdAt).toLocaleDateString()}
@@ -351,35 +320,6 @@ export default function Requests() {
                           ) : (
                             <span className="text-gray-500 text-sm">Hidden (status: applied)</span>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            {request.status !== 'applied' ? (
-                              <>
-                                {/* View Opinions Button - Shows summary and all votes */}
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="flex items-center space-x-2 bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200">
-                                      <MessageSquare size={14} />
-                                      <span>View Opinions</span>
-                                    </Button>
-                                  </DialogTrigger>
-                                  
-                                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                                    <DialogHeader>
-                                      <DialogTitle>Import Request Opinions</DialogTitle>
-                                    </DialogHeader>
-                                    <RequestVotingContent 
-                                      requestId={request.id}
-                                      currentUserId={(user as any)?.id}
-                                    />
-                                  </DialogContent>
-                                </Dialog>
-                              </>
-                            ) : (
-                              <span className="text-gray-500 text-sm">Hidden (status: applied)</span>
-                            )}
-                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
@@ -442,9 +382,7 @@ export default function Requests() {
                   <FileText className="mx-auto h-12 w-12 text-secondary-400" />
                   <h3 className="mt-4 text-lg font-semibold text-secondary-900">No requests found</h3>
                   <p className="mt-2 text-secondary-600">
-                    {statusFilter === "all" 
-                      ? "Get started by creating your first contract request." 
-                      : `No requests with status "${statusFilter}" found.`}
+                    Get started by creating your first contract request.
                   </p>
                   <Button 
                     className="mt-4 bg-primary-500 hover:bg-primary-600 text-black"

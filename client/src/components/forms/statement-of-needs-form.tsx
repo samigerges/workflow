@@ -39,6 +39,7 @@ const requestFormSchema = insertRequestSchema
     countryOfOrigin: z.string().optional(),
     paymentMethod: z.string().optional(),
     shippingMethod: z.string().optional(),
+    letterOfGuarantee: z.string().optional(),
   })
   .omit({ createdBy: true, uploadedFile: true });
 
@@ -85,11 +86,13 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
       uploadedFile: request?.uploadedFile ?? "",
       paymentMethod: request?.paymentMethod ?? undefined,
       shippingMethod: request?.shippingMethod ?? undefined,
+      letterOfGuarantee: request?.letterOfGuarantee ?? "",
     } : {
       priority: "medium",
       status: "pending",
       uploadedFile: "",
-      title: ""
+      title: "",
+      letterOfGuarantee: ""
     }
   });
 
@@ -466,6 +469,21 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
                 <p className="text-sm text-red-500 mt-1">{errors.shippingMethod.message}</p>
               )}
             </div>
+          </div>
+
+          {/* Letter of Guarantee */}
+          <div>
+            <Label htmlFor="letterOfGuarantee">Letter of Guarantee</Label>
+            <Textarea
+              id="letterOfGuarantee"
+              {...register("letterOfGuarantee")}
+              rows={3}
+              placeholder="Enter letter of guarantee details or requirements"
+              className={errors.letterOfGuarantee ? "border-red-500" : ""}
+            />
+            {errors.letterOfGuarantee && (
+              <p className="text-sm text-red-500 mt-1">{errors.letterOfGuarantee.message}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

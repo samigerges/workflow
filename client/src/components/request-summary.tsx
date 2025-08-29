@@ -1,13 +1,28 @@
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, Package, Truck, User, FileText, MapPin, ExternalLink, Building } from "lucide-react";
+import { Calendar, DollarSign, Package, Truck, User, FileText, MapPin, ExternalLink, Building, MessageSquare, CheckCircle, XCircle } from "lucide-react";
 
 interface RequestSummaryProps {
   request: any;
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface RequestVote {
+  id: number;
+  requestId: number;
+  userId: string;
+  vote: 'yes' | 'no';
+  comment?: string;
+  createdAt: string;
+  user?: {
+    firstName: string;
+    lastName: string;
+  };
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -53,6 +68,19 @@ function formatNumber(value: any) {
 
 export default function RequestSummary({ request, isOpen, onClose }: RequestSummaryProps) {
   if (!request) return null;
+
+  // Fetch votes for this request
+  const { data: votesData } = useQuery({
+    queryKey: [`/api/requests/${request.id}/votes`],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/requests/${request.id}/votes`);
+      return response.json();
+    },
+    enabled: isOpen && !!request.id, // Only fetch when dialog is open and request has an ID
+    staleTime: 0,
+  });
+
+  const votes: RequestVote[] = votesData || [];
 
   const getPriorityColor = (priority?: string) => {
     switch (priority?.toLowerCase()) {
@@ -335,6 +363,62 @@ export default function RequestSummary({ request, isOpen, onClose }: RequestSumm
                       Submitted on {formatDate(request.createdAt)}
                     </p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Opinions Section */}
+          {votes.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center space-x-2">
+                  <MessageSquare className="h-5 w-5" />
+                  <span>Request Opinions</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Opinion Statistics */}
+                <div className="flex items-center space-x-6 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="font-medium">Approved: {votes.filter((vote: RequestVote) => vote.vote === 'yes').length}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <XCircle className="h-5 w-5 text-red-600" />
+                    <span className="font-medium">Rejected: {votes.filter((vote: RequestVote) => vote.vote === 'no').length}</span>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-600">Total Opinions: {votes.length}</span>
+                  </div>
+                </div>
+
+                {/* All Opinions */}
+                <div className="space-y-4">
+                  <h4 className="font-medium">All Opinions:</h4>
+                  {votes.map((vote: RequestVote) => (
+                    <div key={vote.id} className="border-l-4 border-gray-200 pl-4 py-2">
+                      <div className="flex items-center space-x-2 mb-1">
+                        {vote.vote === 'yes' ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-600" />
+                        )}
+                        <span className="font-medium">
+                          {vote.user?.firstName} {vote.user?.lastName}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {vote.vote === 'yes' ? 'approved' : 'rejected'}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(vote.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {vote.comment && (
+                        <p className="text-gray-700 text-sm ml-6">{vote.comment}</p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
