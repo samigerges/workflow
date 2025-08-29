@@ -14,7 +14,7 @@ import Contracts from "@/pages/contracts";
 import LettersCredit from "@/pages/letters-credit";
 import Vessels from "@/pages/vessels";
 import Documents from "@/pages/documents";
-import Reports from "@/pages/operations"; // Renamed operations to reports
+import Reports from "@/pages/reports";
 import VesselTracking from "@/pages/vessel-tracking";
 
 
