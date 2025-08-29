@@ -1,12 +1,215 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import MainLayout from "@/components/layout/main-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MapPin, Ship, Navigation, Clock, Anchor, Globe, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MapPin, Ship, Navigation, Clock, Anchor, Globe, Eye, Upload, Edit, FileText, TrendingDown, TrendingUp, CheckCircle } from "lucide-react";
+
+// Schema for discharge quantity updates
+const dischargeUpdateSchema = z.object({
+  vesselId: z.number(),
+  date: z.string(),
+  quantityDischarged: z.number().positive("Quantity must be positive"),
+  cumulativeQuantity: z.number().optional(),
+  notes: z.string().optional(),
+});
+
+type DischargeUpdateData = z.infer<typeof dischargeUpdateSchema>;
+
+// Discharge quantity update dialog component
+function DischargeUpdateDialog({ vessel, isOpen, onClose }: { vessel: any; isOpen: boolean; onClose: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    watch
+  } = useForm<DischargeUpdateData>({
+    resolver: zodResolver(dischargeUpdateSchema),
+    defaultValues: {
+      vesselId: vessel?.id || 0,
+      date: new Date().toISOString().split('T')[0],
+      quantityDischarged: 0,
+      notes: ""
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: DischargeUpdateData) => {
+      const formData = new FormData();
+      formData.append('vesselId', data.vesselId.toString());
+      formData.append('date', data.date);
+      formData.append('quantityDischarged', data.quantityDischarged.toString());
+      if (data.notes) formData.append('notes', data.notes);
+      if (uploadedFile) formData.append('proofDocument', uploadedFile);
+
+      const response = await apiRequest('POST', '/api/vessels/discharge-updates', formData);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update discharge quantity');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vessels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vessels/discharge-updates"] });
+      toast({
+        title: "Success",
+        description: "Discharge quantity updated successfully",
+      });
+      reset();
+      setUploadedFile(null);
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update discharge quantity",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: DischargeUpdateData) => {
+    updateMutation.mutate(data);
+  };
+
+  const watchedQuantity = watch('quantityDischarged');
+  const currentDischarged = vessel?.discharged_quantity || 0;
+  const newCumulative = currentDischarged + (watchedQuantity || 0);
+  const contractualQuantity = vessel?.quantity || 0;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Update Discharge Quantity - {vessel?.vesselName}</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Current Status Summary */}
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-sm font-medium text-blue-700">Contractual Quantity</p>
+                  <p className="text-lg font-bold text-blue-900">{contractualQuantity.toLocaleString()} tons</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-blue-700">Currently Discharged</p>
+                  <p className="text-lg font-bold text-blue-900">{currentDischarged.toLocaleString()} tons</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-blue-700">Remaining</p>
+                  <p className="text-lg font-bold text-blue-900">{Math.max(0, contractualQuantity - currentDischarged).toLocaleString()} tons</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="date">Discharge Date</Label>
+              <Input
+                id="date"
+                type="date"
+                {...register("date")}
+                className={errors.date ? "border-red-500" : ""}
+              />
+              {errors.date && <p className="text-sm text-red-500 mt-1">{errors.date.message}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="quantityDischarged">Daily Quantity Discharged (tons)</Label>
+              <Input
+                id="quantityDischarged"
+                type="number"
+                step="0.01"
+                {...register("quantityDischarged", { valueAsNumber: true })}
+                placeholder="Enter today's discharged quantity"
+                className={errors.quantityDischarged ? "border-red-500" : ""}
+              />
+              {errors.quantityDischarged && <p className="text-sm text-red-500 mt-1">{errors.quantityDischarged.message}</p>}
+            </div>
+          </div>
+
+          {/* New Cumulative Preview */}
+          {watchedQuantity && (
+            <Card className={newCumulative <= contractualQuantity ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">New Total Discharged</p>
+                    <p className="text-xl font-bold">{newCumulative.toLocaleString()} tons</p>
+                  </div>
+                  <div className="text-right">
+                    {newCumulative <= contractualQuantity ? (
+                      <div className="flex items-center text-green-700">
+                        <CheckCircle className="h-5 w-5 mr-1" />
+                        <span className="text-sm">Within contract</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-red-700">
+                        <TrendingUp className="h-5 w-5 mr-1" />
+                        <span className="text-sm">Over contract by {(newCumulative - contractualQuantity).toLocaleString()} tons</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <div>
+            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Input
+              id="notes"
+              {...register("notes")}
+              placeholder="Additional notes about today's discharge"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="proofDocument">Upload Proof Document</Label>
+            <Input
+              id="proofDocument"
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              onChange={(e) => setUploadedFile(e.target.files?.[0] || null)}
+            />
+            {uploadedFile && (
+              <p className="text-sm text-green-600 mt-1">Selected: {uploadedFile.name}</p>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "Updating..." : "Update Discharge"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // Simple map component without external dependencies for now
 const SimpleMap = ({ vessels, selectedVessel }: { vessels: any[], selectedVessel: any }) => {
@@ -119,6 +322,8 @@ const SimpleMap = ({ vessels, selectedVessel }: { vessels: any[], selectedVessel
 export default function VesselTracking() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedVessel, setSelectedVessel] = useState<any>(null);
+  const [updateVessel, setUpdateVessel] = useState<any>(null);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
   // Fetch vessels
   const { data: vessels, isLoading } = useQuery({
@@ -269,10 +474,10 @@ export default function VesselTracking() {
           </div>
         </div>
 
-        {/* Vessel Table */}
+        {/* Enhanced Vessel Discharge Tracking Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Active Vessels</CardTitle>
+            <CardTitle>Vessel Discharge Tracking</CardTitle>
           </CardHeader>
           <CardContent>
             {filteredVessels.length === 0 ? (
@@ -285,63 +490,118 @@ export default function VesselTracking() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Vessel</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Cargo</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Destination</TableHead>
-                      <TableHead>ETA</TableHead>
-                      <TableHead>Trade Terms</TableHead>
+                      <TableHead>ETA Date</TableHead>
+                      <TableHead>ATA Date</TableHead>
+                      <TableHead>Contractual Quantity</TableHead>
+                      <TableHead>Start of Discharge</TableHead>
+                      <TableHead>Quantity Discharged</TableHead>
+                      <TableHead>Progress</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredVessels.map((vessel: any) => (
-                      <TableRow 
-                        key={vessel.id} 
-                        className={selectedVessel?.id === vessel.id ? 'bg-primary-50' : ''}
-                      >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center space-x-2">
-                            {getStatusIcon(vessel.status)}
-                            <span>{vessel.vesselName}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(vessel.status)}>
-                            {vessel.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{vessel.cargoType}</TableCell>
-                        <TableCell>{vessel.quantity?.toLocaleString()} tons</TableCell>
-                        <TableCell>{vessel.portOfDischarge}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{getETA(vessel)}</span>
-                            {vessel.eta && (
-                              <span className="text-xs text-secondary-600">
-                                {new Date(vessel.eta).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{vessel.tradeTerms}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedVessel(
-                              selectedVessel?.id === vessel.id ? null : vessel
-                            )}
-                            className="flex items-center space-x-1"
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span>View</span>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredVessels.map((vessel: any) => {
+                      const contractualQty = vessel.quantity || 0;
+                      const dischargedQty = vessel.discharged_quantity || 0;
+                      const progressPercent = contractualQty > 0 ? (dischargedQty / contractualQty) * 100 : 0;
+                      
+                      return (
+                        <TableRow 
+                          key={vessel.id} 
+                          className={selectedVessel?.id === vessel.id ? 'bg-primary-50' : ''}
+                        >
+                          <TableCell className="font-medium">
+                            <div className="flex items-center space-x-2">
+                              {getStatusIcon(vessel.status)}
+                              <div>
+                                <div>{vessel.vesselName}</div>
+                                <div className="text-xs text-gray-500">{vessel.cargoType}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {vessel.eta ? new Date(vessel.eta).toLocaleDateString() : 'TBD'}
+                              {vessel.eta && (
+                                <div className="text-xs text-gray-500">
+                                  {getETA(vessel)}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {vessel.arrivalDate ? new Date(vessel.arrivalDate).toLocaleDateString() : '-'}
+                              {vessel.arrivalDate && (
+                                <div className="text-xs text-gray-500">
+                                  {new Date(vessel.arrivalDate).toLocaleTimeString()}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{contractualQty.toLocaleString()} tons</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {vessel.dischargeStartDate ? new Date(vessel.dischargeStartDate).toLocaleDateString() : '-'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="font-medium">{dischargedQty.toLocaleString()} tons</div>
+                              {contractualQty > 0 && (
+                                <div className="text-xs text-gray-500">
+                                  {(dischargedQty / contractualQty * 100).toFixed(1)}% complete
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className={`h-2 rounded-full transition-all ${
+                                    progressPercent >= 100 ? 'bg-green-500' : 
+                                    progressPercent >= 50 ? 'bg-blue-500' : 'bg-yellow-500'
+                                  }`}
+                                  style={{ width: `${Math.min(progressPercent, 100)}%` }}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-center">
+                                {progressPercent.toFixed(0)}%
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedVessel(
+                                  selectedVessel?.id === vessel.id ? null : vessel
+                                )}
+                                className="flex items-center space-x-1"
+                              >
+                                <Eye className="h-4 w-4" />
+                                <span>View</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setUpdateVessel(vessel);
+                                  setShowUpdateDialog(true);
+                                }}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Update
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -453,6 +713,16 @@ export default function VesselTracking() {
             </CardContent>
           </Card>
         )}
+
+        {/* Discharge Update Dialog */}
+        <DischargeUpdateDialog
+          vessel={updateVessel}
+          isOpen={showUpdateDialog}
+          onClose={() => {
+            setShowUpdateDialog(false);
+            setUpdateVessel(null);
+          }}
+        />
       </div>
     </MainLayout>
   );
