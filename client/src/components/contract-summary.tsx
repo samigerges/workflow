@@ -77,21 +77,27 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-
                 <div className="flex items-center space-x-2">
                   <Package className="h-4 w-4 text-gray-500" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Cargo Type:</span>
-                    <p className="text-gray-900">{contract.cargoType}</p>
+                    <p className="text-gray-900">{contract.cargoType || '-'}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-2">
                   <Truck className="h-4 w-4 text-gray-500" />
                   <div>
-                    <span className="text-sm font-medium text-gray-500">Quantity:</span>
-                    <p className="text-gray-900">{contract.quantity} tons</p>
+                    <span className="text-sm font-medium text-gray-500">Total Quantity:</span>
+                    <p className="text-gray-900">{contract.quantity ? `${contract.quantity.toLocaleString()} tons` : '-'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <DollarSign className="h-4 w-4 text-gray-500" />
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Price per Ton:</span>
+                    <p className="text-gray-900">{contract.pricePerTon ? `$${Number(contract.pricePerTon).toLocaleString()}` : '-'}</p>
                   </div>
                 </div>
 
@@ -99,7 +105,41 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
                   <Package className="h-4 w-4 text-gray-500" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Incoterms:</span>
-                    <p className="text-gray-900">{contract.incoterms}</p>
+                    <p className="text-gray-900">{contract.incoterms || '-'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Truck className="h-4 w-4 text-gray-500" />
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Shipping Method:</span>
+                    <p className="text-gray-900">{contract.shippingMethod || '-'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <DollarSign className="h-4 w-4 text-gray-500" />
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Payment Method:</span>
+                    <p className="text-gray-900">{contract.paymentMethod || '-'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Ship className="h-4 w-4 text-blue-500" />
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Allocated Quantity:</span>
+                    <p className="text-blue-600 font-medium">{totalVesselQuantity.toLocaleString()} tons</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Package className={`h-4 w-4 ${remainingQuantity > 0 ? 'text-orange-500' : 'text-green-500'}`} />
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Remaining Quantity:</span>
+                    <p className={`font-medium ${remainingQuantity > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                      {remainingQuantity.toLocaleString()} tons
+                    </p>
                   </div>
                 </div>
               </div>

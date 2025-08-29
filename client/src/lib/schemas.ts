@@ -88,7 +88,7 @@ export const insertFinalSettlementSchema = z.object({
   status: z.string().optional(),
 });
 
-// Schema for creating contracts (extending requests)
+// Schema for creating contracts (extending requests with additional fields)
 export const insertContractSchema = z.object({
   requestId: z.number().optional(),
   title: z.string().optional(),
@@ -101,9 +101,12 @@ export const insertContractSchema = z.object({
   countryOfOrigin: z.string().optional(),
   paymentMethod: z.string().optional(),
   shippingMethod: z.string().optional(),
+  incoterms: z.string().optional(),
+  contractTerms: z.string().optional(),
   letterOfGuarantee: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  reviewNotes: z.string().optional(),
   status: z.string().optional(),
   uploadedFile: z.string().optional(),
   createdBy: z.string().optional(),

@@ -15,13 +15,27 @@ import { Card, CardContent } from "@/components/ui/card";
 import FileUpload from "@/components/ui/file-upload";
 import { CARGO_TYPES, COUNTRIES } from "@/lib/constants";
 
-// Create a more flexible schema for drafts
+const PAYMENT_METHODS = [
+  { value: "lc", label: "Letter of Credit (LC)" },
+  { value: "At sight", label: "At sight" }
+];
+
+const SHIPPING_METHODS = [
+  { value: "fob", label: "FOB" },
+  { value: "cif", label: "CIF" },
+  { value: "c&f", label: "C&F" },
+];
+
+// Create a more flexible schema for drafts - consistent with request form
 const contractFormSchema = z.object({
   requestId: z.coerce.number().min(1, "Please select a request"),
   supplierName: z.string().min(1, "Supplier name is required"),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1").optional().or(z.literal("")),
   cargoType: z.string().min(1, "Cargo type is required"),
   countryOfOrigin: z.string().optional(),
+  pricePerTon: z.coerce.number().positive("Price per ton must be positive").optional(),
+  paymentMethod: z.string().optional(),
+  shippingMethod: z.string().optional(),
   incoterms: z.string().min(1, "Incoterms is required"),
   contractTerms: z.string().optional(),
   startDate: z.string().optional(),
@@ -307,7 +321,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="quantity">Quantity *</Label>
               <Input
@@ -320,6 +334,61 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
               />
               {errors.quantity && (
                 <p className="text-sm text-red-500 mt-1">{errors.quantity.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="pricePerTon">Price per Ton (USD)</Label>
+              <Input
+                id="pricePerTon"
+                type="number"
+                step="0.01"
+                {...register("pricePerTon", { valueAsNumber: true })}
+                placeholder="e.g. 500.00"
+                className={errors.pricePerTon ? "border-red-500" : ""}
+              />
+              {errors.pricePerTon && (
+                <p className="text-sm text-red-500 mt-1">{errors.pricePerTon.message}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="paymentMethod">Payment Method</Label>
+              <Select 
+                onValueChange={(value) => setValue("paymentMethod", value)}
+                defaultValue={contract?.paymentMethod}
+              >
+                <SelectTrigger className={errors.paymentMethod ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((method) => (
+                    <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.paymentMethod && (
+                <p className="text-sm text-red-500 mt-1">{errors.paymentMethod.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="shippingMethod">Shipping Method</Label>
+              <Select 
+                onValueChange={(value) => setValue("shippingMethod", value)}
+                defaultValue={contract?.shippingMethod}
+              >
+                <SelectTrigger className={errors.shippingMethod ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select shipping method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SHIPPING_METHODS.map((method) => (
+                    <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.shippingMethod && (
+                <p className="text-sm text-red-500 mt-1">{errors.shippingMethod.message}</p>
               )}
             </div>
           </div>
