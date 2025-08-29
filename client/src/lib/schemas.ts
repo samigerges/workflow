@@ -87,3 +87,89 @@ export const insertFinalSettlementSchema = z.object({
   settlementNotes: z.string().optional(),
   status: z.string().optional(),
 });
+
+// Schema for creating contracts (extending requests)
+export const insertContractSchema = z.object({
+  requestId: z.number().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  quantity: z.number().optional(),
+  unitOfMeasure: z.string().optional(),
+  cargoType: z.string().optional(),
+  pricePerTon: z.number().optional(),
+  supplierName: z.string().optional(),
+  countryOfOrigin: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  shippingMethod: z.string().optional(),
+  letterOfGuarantee: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  status: z.string().optional(),
+  uploadedFile: z.string().optional(),
+  createdBy: z.string().optional(),
+});
+
+// Complete type definitions with database fields
+export type Request = z.infer<typeof insertRequestSchema> & {
+  id: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type Contract = z.infer<typeof insertContractSchema> & {
+  id: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type Vessel = z.infer<typeof insertVesselSchema> & {
+  id: number;
+  dischargedQuantity?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type Shipment = z.infer<typeof insertShipmentSchema> & {
+  id: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type FinalSettlement = z.infer<typeof insertFinalSettlementSchema> & {
+  id: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+// Reports specific types
+export interface DateRange {
+  from: string;
+  to: string;
+}
+
+export interface SupplierData {
+  supplier: string;
+  vessels: number;
+  quantity: number;
+  contracts: number;
+}
+
+export interface QuantityMetrics {
+  totalContracted: number;
+  arrivedQuantity: number;
+  remainingQuantity: number;
+}
+
+export interface DisplayTotals {
+  totalSuppliers: number;
+  totalVessels: number;
+  totalContracts: number;
+  totalContracted: number;
+  arrivedQuantity: number;
+  remainingQuantity: number;
+}
+
+export interface VesselWithContract extends Vessel {
+  supplierName: string;
+  contractQuantity: number;
+}
