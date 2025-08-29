@@ -41,7 +41,6 @@ export default function NeedsForm({ defaultValues, onSubmit, isLoading }: NeedsF
       fulfillmentEndDate: defaultValues?.fulfillmentEndDate 
         ? new Date(defaultValues.fulfillmentEndDate).toISOString().split('T')[0] 
         : "",
-      priority: defaultValues?.priority || "medium",
       departmentCode: defaultValues?.departmentCode ? defaultValues.departmentCode.toString() : "",
       notes: defaultValues?.notes ? defaultValues.notes.toString() : "",
     },
@@ -196,48 +195,22 @@ export default function NeedsForm({ defaultValues, onSubmit, isLoading }: NeedsF
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Priority *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="departmentCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Department Code</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="e.g., PROC-001"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="departmentCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Department Code</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g., PROC-001"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

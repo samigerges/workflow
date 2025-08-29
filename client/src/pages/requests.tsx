@@ -128,14 +128,6 @@ export default function Requests() {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high": return "bg-red-100 text-red-800";
-      case "medium": return "bg-yellow-100 text-yellow-800";
-      case "low": return "bg-green-100 text-green-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -300,7 +292,7 @@ export default function Requests() {
                       <TableHead>Supplier</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Price per unit </TableHead>
-                      <TableHead>Priority</TableHead>
+                      <TableHead>Department</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Recommend on Doc</TableHead>
@@ -325,9 +317,9 @@ export default function Requests() {
                           ${parseFloat(request.pricePerTon || request.estimatedValue).toLocaleString()}
                         </TableCell>
                         <TableCell>
-                          <Badge className={getPriorityColor(request.priority ?? "") }>
-                            {request.priority
-                              ? request.priority.charAt(0).toUpperCase() + request.priority.slice(1)
+                          <Badge className={getStatusColor(request.status ?? "") }>
+                            {request.status
+                              ? request.status.replace('_', ' ').charAt(0).toUpperCase() + request.status.replace('_', ' ').slice(1)
                               : "Unknown"}
                           </Badge>
                         </TableCell>

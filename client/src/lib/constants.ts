@@ -134,11 +134,6 @@ export const SETTLEMENT_STATUSES = {
   completed: { label: 'Completed', color: 'bg-green-100 text-green-800' }
 };
 
-export const PRIORITY_LEVELS = {
-  high: { label: 'High', color: 'bg-red-100 text-red-800' },
-  medium: { label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
-  low: { label: 'Low', color: 'bg-green-100 text-green-800' }
-};
 
 export const UNITS_OF_MEASURE = [
   'Tons',

@@ -188,15 +188,6 @@ export default function Needs() {
     }
   };
 
-  const getPriorityBadgeVariant = (priority: string) => {
-    switch (priority) {
-      case "critical": return "destructive";
-      case "high": return "destructive";
-      case "medium": return "secondary";
-      case "low": return "outline";
-      default: return "default";
-    }
-  };
 
   if (isLoading || needsLoading) {
     return (

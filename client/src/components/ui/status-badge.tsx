@@ -6,9 +6,8 @@ import {
   VESSEL_STATUSES,
   SHIPMENT_STATUSES,
   SETTLEMENT_STATUSES,
-  PRIORITY_LEVELS,
-  type StatusBadgeProps
 } from "@/lib/constants";
+import { StatusBadgeProps } from "@/lib/types";
 
 export default function StatusBadge({ status, type = 'request' }: StatusBadgeProps) {
   let statusConfig;
@@ -44,13 +43,3 @@ export default function StatusBadge({ status, type = 'request' }: StatusBadgePro
   );
 }
 
-export function PriorityBadge({ priority }: { priority: string }) {
-  const priorityConfig = PRIORITY_LEVELS[priority as keyof typeof PRIORITY_LEVELS] || 
-    { label: priority, color: 'bg-gray-100 text-gray-800' };
-
-  return (
-    <Badge className={priorityConfig.color}>
-      {priorityConfig.label}
-    </Badge>
-  );
-}
