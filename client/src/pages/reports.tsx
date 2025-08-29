@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { 
   BarChart, 
@@ -37,12 +38,16 @@ import {
   BarChart3,
   PieChart as PieChartIcon
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, addMonths, isBefore, isAfter } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, addMonths, isBefore, isAfter, getMonth, getYear } from "date-fns";
 
 export default function Reports() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [selectedTimeframe, setSelectedTimeframe] = useState("6months");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // Current month (1-12)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedSupplierFilter, setSelectedSupplierFilter] = useState("");
+  const [selectedPortFilter, setSelectedPortFilter] = useState("");
+  const [selectedLCFilter, setSelectedLCFilter] = useState("");
+  const [selectedDuration, setSelectedDuration] = useState("all");
 
   // Fetch all required data
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery({
@@ -125,6 +130,99 @@ export default function Reports() {
       };
     });
   }, [contracts, vessels]);
+
+  // Calculate Supplier Analytics
+  const supplierAnalytics = useMemo(() => {
+    const supplierData: Record<string, { contracted: number; received: number; cargoTypes: Set<string> }> = {};
+
+    // Aggregate contracted quantities from contracts
+    (contracts as any[]).forEach(contract => {
+      const supplier = contract.supplierName || 'Unknown Supplier';
+      if (!supplierData[supplier]) {
+        supplierData[supplier] = { contracted: 0, received: 0, cargoTypes: new Set() };
+      }
+      supplierData[supplier].contracted += contract.quantity || 0;
+      if (contract.cargoType) {
+        supplierData[supplier].cargoTypes.add(contract.cargoType);
+      }
+    });
+
+    // Aggregate received quantities from vessels linked to contracts
+    (vessels as any[]).forEach(vessel => {
+      if (vessel.contractId) {
+        const contract = (contracts as any[]).find(c => c.id === vessel.contractId);
+        if (contract && contract.supplierName) {
+          const supplier = contract.supplierName;
+          if (supplierData[supplier]) {
+            const receivedQuantity = parseFloat(vessel.quantityUnloaded || '0') || 0;
+            supplierData[supplier].received += receivedQuantity;
+          }
+        }
+      }
+    });
+
+    return Object.entries(supplierData).map(([supplier, data]) => ({
+      supplier,
+      contracted: data.contracted,
+      received: data.received,
+      remaining: Math.max(0, data.contracted - data.received),
+      fulfillmentRate: data.contracted > 0 ? (data.received / data.contracted) * 100 : 0,
+      cargoTypes: Array.from(data.cargoTypes).join(', ') || 'N/A'
+    }));
+  }, [contracts, vessels]);
+
+  // Get unique suppliers, ports, and LCs for filter dropdowns
+  const uniqueSuppliers = useMemo(() => {
+    const suppliers = new Set((contracts as any[]).map(c => c.supplierName).filter(Boolean));
+    return Array.from(suppliers).sort();
+  }, [contracts]);
+
+  const uniquePorts = useMemo(() => {
+    const ports = new Set((vessels as any[]).map(v => v.portOfDischarge).filter(Boolean));
+    return Array.from(ports).sort();
+  }, [vessels]);
+
+  const uniqueLCs = useMemo(() => {
+    const lcs = (lettersOfCredit as any[]).map(lc => ({ id: lc.id, number: lc.lcNumber || `LC-${lc.id}` }));
+    return lcs;
+  }, [lettersOfCredit]);
+
+  // Filter data based on selected filters
+  const filteredSupplierAnalytics = useMemo(() => {
+    let filtered = supplierAnalytics;
+    
+    if (selectedSupplierFilter) {
+      filtered = filtered.filter(item => item.supplier === selectedSupplierFilter);
+    }
+    
+    return filtered;
+  }, [supplierAnalytics, selectedSupplierFilter]);
+
+  // Generate month options for the last 12 months and next 3 months
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const currentDate = new Date();
+    
+    // Add last 12 months
+    for (let i = 11; i >= 0; i--) {
+      const date = addMonths(currentDate, -i);
+      options.push({
+        value: { month: getMonth(date) + 1, year: getYear(date) },
+        label: format(date, 'MMM yyyy')
+      });
+    }
+    
+    // Add next 3 months
+    for (let i = 1; i <= 3; i++) {
+      const date = addMonths(currentDate, i);
+      options.push({
+        value: { month: getMonth(date) + 1, year: getYear(date) },
+        label: format(date, 'MMM yyyy')
+      });
+    }
+    
+    return options;
+  }, []);
 
   // Calculate Port Analytics
   const portAnalytics = useMemo(() => {
@@ -255,23 +353,119 @@ export default function Reports() {
     <MainLayout title="Reports & Analytics" subtitle="Comprehensive import workflow analytics and forecasting">
       <div className="p-6 space-y-8">
         {/* Page Header with Filters */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <BarChart3 className="h-6 w-6 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900">Import Analytics Dashboard</h1>
+        <div className="space-y-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <BarChart3 className="h-6 w-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-gray-900">Import Analytics Dashboard</h1>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Select timeframe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="3months">Last 3 Months</SelectItem>
-                <SelectItem value="6months">Last 6 Months</SelectItem>
-                <SelectItem value="12months">Last 12 Months</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          
+          {/* Filter Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                {/* Month Filter */}
+                <div className="space-y-2">
+                  <Label htmlFor="month-filter">Select Month</Label>
+                  <Select 
+                    value={`${selectedMonth}-${selectedYear}`} 
+                    onValueChange={(value) => {
+                      const [month, year] = value.split('-');
+                      setSelectedMonth(parseInt(month));
+                      setSelectedYear(parseInt(year));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {monthOptions.map((option, index) => (
+                        <SelectItem key={index} value={`${option.value.month}-${option.value.year}`}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Supplier Filter */}
+                <div className="space-y-2">
+                  <Label htmlFor="supplier-filter">Supplier</Label>
+                  <Select value={selectedSupplierFilter} onValueChange={setSelectedSupplierFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All suppliers" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Suppliers</SelectItem>
+                      {uniqueSuppliers.map(supplier => (
+                        <SelectItem key={supplier} value={supplier}>
+                          {supplier}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Duration Filter */}
+                <div className="space-y-2">
+                  <Label htmlFor="duration-filter">Duration</Label>
+                  <Select value={selectedDuration} onValueChange={setSelectedDuration}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="7days">Last 7 Days</SelectItem>
+                      <SelectItem value="30days">Last 30 Days</SelectItem>
+                      <SelectItem value="90days">Last 90 Days</SelectItem>
+                      <SelectItem value="6months">Last 6 Months</SelectItem>
+                      <SelectItem value="12months">Last 12 Months</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Port Filter */}
+                <div className="space-y-2">
+                  <Label htmlFor="port-filter">Port</Label>
+                  <Select value={selectedPortFilter} onValueChange={setSelectedPortFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All ports" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Ports</SelectItem>
+                      {uniquePorts.map(port => (
+                        <SelectItem key={port} value={port}>
+                          {port}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* LC Filter */}
+                <div className="space-y-2">
+                  <Label htmlFor="lc-filter">Letter of Credit</Label>
+                  <Select value={selectedLCFilter} onValueChange={setSelectedLCFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All LCs" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All LCs</SelectItem>
+                      {uniqueLCs.map(lc => (
+                        <SelectItem key={lc.id} value={lc.id.toString()}>
+                          {lc.number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Summary Cards */}
@@ -330,6 +524,73 @@ export default function Reports() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Supplier Analytics Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Package className="h-5 w-5" />
+              <span>Supplier Performance Analysis</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isDataLoading ? (
+              <div className="text-center py-8">Loading supplier data...</div>
+            ) : filteredSupplierAnalytics.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Supplier</TableHead>
+                      <TableHead>Cargo Types</TableHead>
+                      <TableHead>Total Contracted</TableHead>
+                      <TableHead>Total Received</TableHead>
+                      <TableHead>Remaining</TableHead>
+                      <TableHead>Fulfillment Rate</TableHead>
+                      <TableHead>Progress</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSupplierAnalytics.map((supplier) => (
+                      <TableRow key={supplier.supplier}>
+                        <TableCell className="font-medium">{supplier.supplier}</TableCell>
+                        <TableCell>
+                          <div className="max-w-40">
+                            {supplier.cargoTypes.split(', ').map((type, index) => (
+                              <Badge key={index} variant="outline" className="mr-1 mb-1">
+                                {type}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-blue-600 font-semibold">{supplier.contracted.toLocaleString()} tons</TableCell>
+                        <TableCell className="text-green-600 font-semibold">{supplier.received.toLocaleString()} tons</TableCell>
+                        <TableCell className="text-orange-600">{supplier.remaining.toLocaleString()} tons</TableCell>
+                        <TableCell>
+                          <Badge variant={supplier.fulfillmentRate >= 100 ? 'default' : supplier.fulfillmentRate >= 75 ? 'secondary' : 'destructive'}>
+                            {supplier.fulfillmentRate.toFixed(1)}%
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Progress value={Math.min(supplier.fulfillmentRate, 100)} className="w-20" />
+                            <span className="text-sm text-muted-foreground">
+                              {supplier.fulfillmentRate >= 100 ? 'Complete' : supplier.fulfillmentRate >= 50 ? 'In Progress' : 'Behind'}
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                {selectedSupplierFilter ? `No data found for supplier: ${selectedSupplierFilter}` : 'No supplier data available'}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* LC Analytics Section */}
         <Card>
