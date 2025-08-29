@@ -23,7 +23,7 @@ export default function Needs() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingNeed, setEditingNeed] = useState<any>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -171,10 +171,10 @@ export default function Needs() {
     },
   });
 
-  // Filter needs based on status
+  // Filter needs based on category
   const filteredNeeds = needs.filter((need: Need) => {
-    if (statusFilter === "all") return true;
-    return need.status === statusFilter;
+    if (categoryFilter === "all") return true;
+    return need.category === categoryFilter;
   });
 
   const getStatusBadgeVariant = (status: string) => {
@@ -240,181 +240,6 @@ export default function Needs() {
           </Dialog>
         </div>
 
-        {/* Enhanced Stats Cards with Cargo Quantities */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Total Required Quantity Card */}
-          <Card className="relative overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Required</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {needs.reduce((sum, need) => sum + (need.requiredQuantity || 0), 0).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Across {needs.length} needs
-              </p>
-              <div className="mt-2 text-xs text-muted-foreground">
-                Units: {Array.from(new Set(needs.map(n => n.unitOfMeasure).filter(Boolean))).join(', ') || 'Various'}
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Active Quantities Card */}
-          <Card className="relative overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Cargo</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {needs
-                  .filter((need: Need) => need.status === 'active')
-                  .reduce((sum, need) => sum + (need.requiredQuantity || 0), 0)
-                  .toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {needs.filter((need: Need) => need.status === 'active').length} active needs
-              </p>
-              <div className="mt-2">
-                <div className="w-full bg-green-100 dark:bg-green-900/20 rounded-full h-1.5">
-                  <div 
-                    className="bg-green-600 h-1.5 rounded-full transition-all" 
-                    style={{ 
-                      width: `${needs.length > 0 ? (needs.filter(n => n.status === 'active').length / needs.length) * 100 : 0}%` 
-                    }}
-                  ></div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* In Progress Quantities Card */}
-          <Card className="relative overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {needs
-                  .filter((need: Need) => need.status === 'in_progress')
-                  .reduce((sum, need) => sum + (need.requiredQuantity || 0), 0)
-                  .toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {needs.filter((need: Need) => need.status === 'in_progress').length} in progress
-              </p>
-              <div className="mt-2">
-                <div className="w-full bg-blue-100 dark:bg-blue-900/20 rounded-full h-1.5">
-                  <div 
-                    className="bg-blue-600 h-1.5 rounded-full transition-all" 
-                    style={{ 
-                      width: `${needs.length > 0 ? (needs.filter(n => n.status === 'in_progress').length / needs.length) * 100 : 0}%` 
-                    }}
-                  ></div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Fulfilled vs Required Progress Card */}
-          <Card className="relative overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Fulfillment Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
-                {needs.reduce((sum, need) => sum + (need.actualQuantityReceived || 0), 0).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                of {needs.reduce((sum, need) => sum + (need.requiredQuantity || 0), 0).toLocaleString()} required
-              </p>
-              <div className="mt-2">
-                <div className="w-full bg-purple-100 dark:bg-purple-900/20 rounded-full h-1.5">
-                  <div 
-                    className="bg-purple-600 h-1.5 rounded-full transition-all" 
-                    style={{ 
-                      width: `${(() => {
-                        const totalRequired = needs.reduce((sum, need) => sum + (need.requiredQuantity || 0), 0);
-                        const totalReceived = needs.reduce((sum, need) => sum + (need.actualQuantityReceived || 0), 0);
-                        return totalRequired > 0 ? (totalReceived / totalRequired) * 100 : 0;
-                      })()}%` 
-                    }}
-                  ></div>
-                </div>
-                <p className="text-xs text-purple-600 mt-1">
-                  {(() => {
-                    const totalRequired = needs.reduce((sum, need) => sum + (need.requiredQuantity || 0), 0);
-                    const totalReceived = needs.reduce((sum, need) => sum + (need.actualQuantityReceived || 0), 0);
-                    return totalRequired > 0 ? Math.round((totalReceived / totalRequired) * 100) : 0;
-                  })()}% completed
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Cargo Categories Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Cargo Categories Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(
-                needs.reduce((acc: Record<string, { count: number; quantity: number; unit: string; received: number }>, need) => {
-                  const category = need.category || 'Uncategorized';
-                  const unit = need.unitOfMeasure || '';
-                  if (!acc[category]) {
-                    acc[category] = { count: 0, quantity: 0, unit: unit, received: 0 };
-                  }
-                  acc[category].count++;
-                  acc[category].quantity += need.requiredQuantity || 0;
-                  acc[category].received += need.actualQuantityReceived || 0;
-                  return acc;
-                }, {})
-              ).map(([category, data]) => (
-                <div key={category} className="p-4 border rounded-lg bg-card">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium capitalize">{category}</h3>
-                    <Badge variant="outline">{data.count} needs</Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Required:</span>
-                      <span className="font-medium">
-                        {data.quantity.toLocaleString()} {data.unit}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Received:</span>
-                      <span className="font-medium text-green-600">
-                        {data.received.toLocaleString()} {data.unit}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div 
-                        className="bg-green-600 h-2 rounded-full transition-all" 
-                        style={{ 
-                          width: `${data.quantity > 0 ? (data.received / data.quantity) * 100 : 0}%` 
-                        }}
-                      ></div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {data.quantity > 0 ? Math.round((data.received / data.quantity) * 100) : 0}% fulfilled
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Filters */}
         <Card>
@@ -424,18 +249,20 @@ export default function Needs() {
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <Label htmlFor="status-filter">Filter by Status</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Label htmlFor="category-filter">Filter by Category</Label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Filter by status" />
+                    <SelectValue placeholder="Filter by category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                    <SelectItem value="expired">Expired</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {Array.from(new Set(needs.map(need => need.category).filter(Boolean)))
+                      .sort()
+                      .map(category => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
