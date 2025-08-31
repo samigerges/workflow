@@ -301,42 +301,30 @@ export default function Reports() {
     });
   }, [needs, shipments, vessels]);
 
-  // Calculate Forecasting Data
+  // Calculate Forecasting Data - 3 Month Forecast
   const forecastData = useMemo(() => {
     const futureMonths = eachMonthOfInterval({ 
       start: addMonths(new Date(), 1), 
-      end: addMonths(new Date(), 6) 
+      end: addMonths(new Date(), 3) 
     });
 
     return futureMonths.map(month => {
       const monthLabel = format(month, 'MMM yyyy');
       
-      // Calculate expected deliveries based on active contracts
-      const expectedDeliveries = (contracts as any[]).filter(contract => {
+      // Calculate expected deliveries based on contract end dates
+      const expectedContractQuantity = (contracts as any[]).filter(contract => {
         const endDate = contract.endDate ? parseISO(contract.endDate) : null;
         return endDate && 
                endDate >= startOfMonth(month) && 
-               endDate <= endOfMonth(month) &&
-               contract.status === 'approved';
+               endDate <= endOfMonth(month);
       }).reduce((sum, contract) => sum + (contract.quantity || 0), 0);
-
-      // Calculate expected arrivals based on vessel ETAs
-      const expectedArrivals = (vessels as any[]).filter(vessel => {
-        const eta = vessel.eta ? parseISO(vessel.eta) : null;
-        return eta && 
-               eta >= startOfMonth(month) && 
-               eta <= endOfMonth(month) &&
-               ['loading', 'in_transit', 'arrived'].includes(vessel.status);
-      }).reduce((sum, vessel) => sum + (vessel.quantity || 0), 0);
 
       return {
         month: monthLabel,
-        expectedFromContracts: expectedDeliveries,
-        expectedFromVessels: expectedArrivals,
-        totalExpected: expectedDeliveries + expectedArrivals
+        expectedContractQuantity
       };
     });
-  }, [contracts, vessels]);
+  }, [contracts]);
 
   // Colors for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
@@ -498,29 +486,37 @@ export default function Reports() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Vessels</CardTitle>
+              <CardTitle className="text-sm font-medium">Discharged Quantity</CardTitle>
               <Ship className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{(vessels as any[]).length}</div>
+              <div className="text-2xl font-bold">
+                {(vessels as any[]).reduce((total, vessel) => {
+                  const discharged = parseFloat(vessel.quantityUnloaded || '0') || 0;
+                  return total + discharged;
+                }, 0).toLocaleString()} tons
+              </div>
               <p className="text-xs text-muted-foreground">
-                {portAnalytics.length} ports involved
+                From {(vessels as any[]).filter(v => parseFloat(v.quantityUnloaded || '0') > 0).length} discharged vessels
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+              <CardTitle className="text-sm font-medium">Contract Completion Rate</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {portAnalytics.length > 0 
-                  ? Math.round(portAnalytics.reduce((sum, port) => sum + port.completionRate, 0) / portAnalytics.length)
+                {contractAnalytics.length > 0 
+                  ? Math.round(contractAnalytics.reduce((sum, contract) => {
+                      const completionRate = contract.totalAmount > 0 ? (contract.allocatedAmount / contract.totalAmount) * 100 : 0;
+                      return sum + Math.min(completionRate, 100);
+                    }, 0) / contractAnalytics.length)
                   : 0}%
               </div>
-              <p className="text-xs text-muted-foreground">Average across all ports</p>
+              <p className="text-xs text-muted-foreground">Average across all contracts</p>
             </CardContent>
           </Card>
         </div>
@@ -614,7 +610,6 @@ export default function Reports() {
                       <TableHead>Allocated Amount</TableHead>
                       <TableHead>Remaining Amount</TableHead>
                       <TableHead>Utilization</TableHead>
-                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -632,11 +627,6 @@ export default function Reports() {
                               <Progress value={utilizationRate} className="w-16" />
                               <span className="text-sm">{utilizationRate.toFixed(1)}%</span>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={lc.status === 'issued' ? 'default' : 'secondary'}>
-                              {lc.status}
-                            </Badge>
                           </TableCell>
                         </TableRow>
                       );
@@ -870,7 +860,7 @@ export default function Reports() {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <TrendingUp className="h-5 w-5" />
-              <span>6-Month Forecast</span>
+              <span>3-Month Forecast</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -889,25 +879,10 @@ export default function Reports() {
                       <Legend />
                       <Line 
                         type="monotone" 
-                        dataKey="expectedFromContracts" 
+                        dataKey="expectedContractQuantity" 
                         stroke="#8884d8" 
                         strokeWidth={2}
-                        name="Expected from Contracts"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="expectedFromVessels" 
-                        stroke="#82ca9d" 
-                        strokeWidth={2}
-                        name="Expected from Vessels"
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="totalExpected" 
-                        stroke="#ff7300" 
-                        strokeWidth={3}
-                        strokeDasharray="5 5"
-                        name="Total Expected"
+                        name="Expected Contract Quantity"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -919,24 +894,14 @@ export default function Reports() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Month</TableHead>
-                        <TableHead>Expected from Contracts</TableHead>
-                        <TableHead>Expected from Vessels</TableHead>
-                        <TableHead>Total Expected</TableHead>
-                        <TableHead>Confidence</TableHead>
+                        <TableHead>Expected Contract Quantity (tons)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {forecastData.map((forecast) => (
                         <TableRow key={forecast.month}>
                           <TableCell className="font-medium">{forecast.month}</TableCell>
-                          <TableCell className="text-blue-600">{forecast.expectedFromContracts.toLocaleString()} tons</TableCell>
-                          <TableCell className="text-green-600">{forecast.expectedFromVessels.toLocaleString()} tons</TableCell>
-                          <TableCell className="font-semibold">{forecast.totalExpected.toLocaleString()} tons</TableCell>
-                          <TableCell>
-                            <Badge variant={forecast.expectedFromVessels > 0 ? 'default' : 'secondary'}>
-                              {forecast.expectedFromVessels > 0 ? 'High' : 'Medium'}
-                            </Badge>
-                          </TableCell>
+                          <TableCell className="text-blue-600 font-semibold">{forecast.expectedContractQuantity.toLocaleString()} tons</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
