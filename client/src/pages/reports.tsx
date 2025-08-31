@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import MainLayout from "@/components/layout/main-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, addMon
 
 export default function Reports() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [selectedSupplierFilter, setSelectedSupplierFilter] = useState("");
   const [selectedPortFilter, setSelectedPortFilter] = useState("");
   const [selectedLCFilter, setSelectedLCFilter] = useState("");
@@ -573,8 +575,12 @@ export default function Reports() {
                     {lcAnalytics.map((lc) => {
                       const utilizationRate = lc.totalAmount > 0 ? (lc.allocatedAmount / lc.totalAmount) * 100 : 0;
                       return (
-                        <TableRow key={lc.id}>
-                          <TableCell className="font-medium">{lc.lcNumber}</TableCell>
+                        <TableRow 
+                          key={lc.id}
+                          className="cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => setLocation(`/lc/${lc.id}`)}
+                        >
+                          <TableCell className="font-medium text-blue-600">{lc.lcNumber}</TableCell>
                           <TableCell>{lc.issuingBank || 'N/A'}</TableCell>
                           <TableCell>{lc.totalAmount.toLocaleString()} {lc.currency}</TableCell>
                           <TableCell className="text-blue-600">{lc.allocatedAmount.toLocaleString()} {lc.currency}</TableCell>
@@ -627,8 +633,12 @@ export default function Reports() {
                     {contractAnalytics.map((contract) => {
                       const progressRate = contract.totalAmount > 0 ? (contract.allocatedAmount / contract.totalAmount) * 100 : 0;
                       return (
-                        <TableRow key={contract.id}>
-                          <TableCell className="font-medium">CON-{contract.id.toString().padStart(3, '0')}</TableCell>
+                        <TableRow 
+                          key={contract.id}
+                          className="cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => setLocation(`/contract/${contract.id}`)}
+                        >
+                          <TableCell className="font-medium text-blue-600">CON-{contract.id.toString().padStart(3, '0')}</TableCell>
                           <TableCell>{contract.supplierName}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{contract.cargoType}</Badge>
