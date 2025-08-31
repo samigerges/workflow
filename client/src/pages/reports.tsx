@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { 
   BarChart, 
@@ -42,12 +43,11 @@ import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, addMon
 
 export default function Reports() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // Current month (1-12)
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedSupplierFilter, setSelectedSupplierFilter] = useState("");
   const [selectedPortFilter, setSelectedPortFilter] = useState("");
   const [selectedLCFilter, setSelectedLCFilter] = useState("");
-  const [selectedDuration, setSelectedDuration] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   // Fetch all required data
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery({
@@ -198,31 +198,6 @@ export default function Reports() {
     return filtered;
   }, [supplierAnalytics, selectedSupplierFilter]);
 
-  // Generate month options for the last 12 months and next 3 months
-  const monthOptions = useMemo(() => {
-    const options = [];
-    const currentDate = new Date();
-    
-    // Add last 12 months
-    for (let i = 11; i >= 0; i--) {
-      const date = addMonths(currentDate, -i);
-      options.push({
-        value: { month: getMonth(date) + 1, year: getYear(date) },
-        label: format(date, 'MMM yyyy')
-      });
-    }
-    
-    // Add next 3 months
-    for (let i = 1; i <= 3; i++) {
-      const date = addMonths(currentDate, i);
-      options.push({
-        value: { month: getMonth(date) + 1, year: getYear(date) },
-        label: format(date, 'MMM yyyy')
-      });
-    }
-    
-    return options;
-  }, []);
 
   // Calculate Port Analytics
   const portAnalytics = useMemo(() => {
@@ -356,29 +331,6 @@ export default function Reports() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                {/* Month Filter */}
-                <div className="space-y-2">
-                  <Label htmlFor="month-filter">Select Month</Label>
-                  <Select 
-                    value={`${selectedMonth}-${selectedYear}`} 
-                    onValueChange={(value) => {
-                      const [month, year] = value.split('-');
-                      setSelectedMonth(parseInt(month));
-                      setSelectedYear(parseInt(year));
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select month" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {monthOptions.map((option, index) => (
-                        <SelectItem key={index} value={`${option.value.month}-${option.value.year}`}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 {/* Supplier Filter */}
                 <div className="space-y-2">
@@ -398,22 +350,27 @@ export default function Reports() {
                   </Select>
                 </div>
 
-                {/* Duration Filter */}
+                {/* Date Range Filter */}
                 <div className="space-y-2">
-                  <Label htmlFor="duration-filter">Duration</Label>
-                  <Select value={selectedDuration} onValueChange={setSelectedDuration}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Time</SelectItem>
-                      <SelectItem value="7days">Last 7 Days</SelectItem>
-                      <SelectItem value="30days">Last 30 Days</SelectItem>
-                      <SelectItem value="90days">Last 90 Days</SelectItem>
-                      <SelectItem value="6months">Last 6 Months</SelectItem>
-                      <SelectItem value="12months">Last 12 Months</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="from-date">From Date</Label>
+                  <Input
+                    id="from-date"
+                    type="date"
+                    value={fromDate}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFromDate(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="to-date">To Date</Label>
+                  <Input
+                    id="to-date"
+                    type="date"
+                    value={toDate}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setToDate(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
 
                 {/* Port Filter */}
