@@ -49,10 +49,18 @@ export default function Contracts() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: contracts, isLoading: contractsLoading } = useQuery({
-    queryKey: ["/api/contracts", statusFilter !== "all" ? { status: statusFilter } : {}],
+  const { data: allContracts, isLoading: contractsLoading } = useQuery({
+    queryKey: ["/api/contracts"],
     retry: false,
   });
+
+  // Filter contracts based on calculated status
+  const contracts = allContracts && statusFilter !== "all" 
+    ? (allContracts as any[]).filter(contract => {
+        const dynamicStatus = calculateContractStatus(contract, (vessels as any[]) || []);
+        return dynamicStatus === statusFilter;
+      })
+    : allContracts;
 
   const { data: requests } = useQuery({
     queryKey: ["/api/requests"],
@@ -164,11 +172,25 @@ export default function Contracts() {
 
   const getContractStatusColor = (status: string) => {
     switch (status) {
-      case "draft": return "bg-gray-100 text-gray-800";
-      case "under_review": return "bg-yellow-100 text-yellow-800";
-      case "approved": return "bg-green-100 text-green-800";
-      case "rejected": return "bg-red-100 text-red-800";
+      case "started": return "bg-blue-100 text-blue-800";
+      case "in progress": return "bg-yellow-100 text-yellow-800";
+      case "completed": return "bg-green-100 text-green-800";
       default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const calculateContractStatus = (contract: any, vessels: any[]) => {
+    if (!vessels) return "started";
+    
+    const contractVessels = vessels.filter(vessel => vessel.contractId === contract.id);
+    const allocatedQuantity = contractVessels.reduce((sum, vessel) => sum + (vessel.quantity || 0), 0);
+    
+    if (contractVessels.length === 0) {
+      return "started";
+    } else if (allocatedQuantity >= contract.quantity) {
+      return "completed";
+    } else {
+      return "in progress";
     }
   };
 
@@ -199,10 +221,9 @@ export default function Contracts() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="under_review">Under Review</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="started">Started</SelectItem>
+                  <SelectItem value="in progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -299,6 +320,7 @@ export default function Contracts() {
                       const contractVessels = vessels ? (vessels as any[]).filter(vessel => vessel.contractId === contract.id) : [];
                       const allocatedQuantity = contractVessels.reduce((sum, vessel) => sum + (vessel.quantity || 0), 0);
                       const remainingQuantity = (contract.quantity || 0) - allocatedQuantity;
+                      const dynamicStatus = calculateContractStatus(contract, (vessels as any[]) || []);
                       
                       return (
                         <TableRow key={contract.id}>
@@ -327,14 +349,9 @@ export default function Contracts() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col space-y-2">
-                              <Badge className={getContractStatusColor(contract.status)}>
-                                {contract.status?.charAt(0).toUpperCase() + contract.status?.slice(1).replace('_', ' ')}
+                              <Badge className={getContractStatusColor(dynamicStatus)}>
+                                {dynamicStatus.charAt(0).toUpperCase() + dynamicStatus.slice(1)}
                               </Badge>
-                              <StatusChangeDropdown
-                                entityType="contract"
-                                entityId={contract.id}
-                                currentStatus={contract.status}
-                              />
                             </div>
                           </TableCell>
                         <TableCell>

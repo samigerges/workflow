@@ -36,12 +36,10 @@ const contractFormSchema = z.object({
   pricePerTon: z.coerce.number().positive("Price per ton must be positive").optional(),
   paymentMethod: z.string().optional(),
   shippingMethod: z.string().optional(),
-  incoterms: z.string().min(1, "Incoterms is required"),
   contractTerms: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   reviewNotes: z.string().optional(),
-  status: z.string().default("draft"),
   createdBy: z.string().optional(),
 })
 .refine(
@@ -83,9 +81,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
       quantity: contract.quantity ? parseInt(contract.quantity) : 0,
       startDate: contract.startDate ? new Date(contract.startDate).toISOString().split('T')[0] : '',
       endDate: contract.endDate ? new Date(contract.endDate).toISOString().split('T')[0] : '',
-    } : {
-      status: "draft"
-    }
+    } : {}
   });
 
   const createMutation = useMutation({
@@ -224,23 +220,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 <p className="text-sm text-red-500 mt-1">{errors.requestId.message}</p>
               )}
             </div>
-            <div>
-              <Label htmlFor="status">Contract Status</Label>
-              <Select 
-                onValueChange={(value) => setValue("status", value)}
-                defaultValue={contract?.status || "draft"}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="under_review">Under Review</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -296,30 +275,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="incoterms">Incoterms *</Label>
-              <Select 
-                onValueChange={(value) => setValue("incoterms", value)}
-                defaultValue={contract?.incoterms}
-              >
-                <SelectTrigger className={errors.incoterms ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select incoterms" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CIF">CIF - Cost, Insurance & Freight</SelectItem>
-                  <SelectItem value="FOB">FOB - Free on Board</SelectItem>
-                  <SelectItem value="DDP">DDP - Delivered Duty Paid</SelectItem>
-                  <SelectItem value="DAP">DAP - Delivered at Place</SelectItem>
-                  <SelectItem value="EXW">EXW - Ex Works</SelectItem>
-                  <SelectItem value="FCA">FCA - Free Carrier</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.incoterms && (
-                <p className="text-sm text-red-500 mt-1">{errors.incoterms.message}</p>
-              )}
-            </div>
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -472,7 +427,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 onClick={() => {
                   console.log("Save Draft clicked");
                   console.log("Form errors:", errors);
-                  setValue("status", "draft");
                   handleSubmit(onSubmit)();
                 }}
                 disabled={createMutation.isPending}
