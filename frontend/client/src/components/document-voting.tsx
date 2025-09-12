@@ -123,7 +123,7 @@ export default function DocumentVoting({ entityType, entityId, allowVoting = tru
   };
 
   const getUserVote = (votes: any[]) => {
-    return votes?.find(v => v.userId === (user as any)?.id);
+    return votes?.find(v => v.userId === user?.id);
   };
 
   const hasUserVoted = (votes: any[]) => {

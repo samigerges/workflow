@@ -412,9 +412,9 @@ export default function Vessels() {
                             >
                               <Edit size={14} />
                             </Button>
-                            {vessel.status !== 'draft' && ['admin', 'shipping_officer'].includes((user as any)?.role || '') && (
-                              <Button 
-                                size="sm" 
+                            {vessel.status !== 'draft' && ['admin', 'shipping_officer'].includes(user?.role ?? '') && (
+                              <Button
+                                size="sm"
                                 className="bg-orange-500 hover:bg-orange-600 text-white"
                                 onClick={() => {
                                   setTrackingVessel(vessel);
@@ -460,8 +460,8 @@ export default function Vessels() {
                       ? "Get started by nominating your first vessel." 
                       : `No vessels with status "${statusFilter}" found.`}
                   </p>
-                  {['admin', 'shipping_officer'].includes((user as any)?.role || '') && (
-                    <Button 
+                  {['admin', 'shipping_officer'].includes(user?.role ?? '') && (
+                    <Button
                       className="mt-4 bg-primary-500 hover:bg-primary-600 text-white"
                       onClick={() => setShowCreateDialog(true)}
                     >

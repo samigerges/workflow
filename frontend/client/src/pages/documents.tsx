@@ -508,7 +508,7 @@ export default function Documents() {
                 <DocumentVoting 
                   entityType={selectedDocument.entityType}
                   entityId={selectedDocument.entityId}
-                  allowVoting={(user as any)?.role === 'admin' || (user as any)?.role === 'manager'}
+                  allowVoting={user?.role === 'admin' || user?.role === 'manager'}
                 />
               )}
             </DialogContent>

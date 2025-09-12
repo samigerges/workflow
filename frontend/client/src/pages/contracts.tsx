@@ -383,10 +383,10 @@ export default function Contracts() {
                               <Edit size={14} />
                             </Button>
 
-                            {(user as any)?.role === 'admin' && contract.status === 'under_review' && (
+                            {user?.role === 'admin' && contract.status === 'under_review' && (
                               <>
-                                <Button 
-                                  size="sm" 
+                                <Button
+                                  size="sm"
                                   className="bg-green-500 hover:bg-green-600 text-white"
                                   onClick={() => approveMutation.mutate(contract.id)}
                                   disabled={approveMutation.isPending}
@@ -473,7 +473,7 @@ export default function Contracts() {
               {contractForVoting && (
                 <ContractVotingContent 
                   contractId={contractForVoting.id}
-                  currentUserId={(user as any)?.id}
+                  currentUserId={user?.id}
                 />
               )}
             </DialogContent>

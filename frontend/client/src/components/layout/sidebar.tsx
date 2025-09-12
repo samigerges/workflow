@@ -213,18 +213,23 @@ export default function Sidebar() {
       <div className={`mt-auto ${isCollapsed ? 'p-2' : 'p-4'} border-t border-secondary-200/50 bg-white/30 backdrop-blur-sm`}>
         <div className={`flex items-center ${isCollapsed ? 'justify-center mb-2' : 'space-x-3 mb-4'}`}>
           <Avatar className="w-10 h-10 flex-shrink-0 ring-2 ring-primary-100 ring-offset-2">
-            <AvatarImage src={(user as any)?.profileImageUrl} alt={(user as any)?.firstName || "User"} />
+            <AvatarImage src={user?.profileImageUrl} alt={user?.name || "User"} />
             <AvatarFallback className="bg-gradient-to-br from-primary-500 to-primary-600 text-white font-semibold">
-              {(user as any)?.firstName?.charAt(0)}{(user as any)?.lastName?.charAt(0)}
+              {user?.name
+                ? user.name
+                    .split(" ")
+                    .map((n) => n.charAt(0))
+                    .join("")
+                : ""}
             </AvatarFallback>
           </Avatar>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-secondary-900 truncate">
-                {(user as any)?.firstName} {(user as any)?.lastName}
+                {user?.name}
               </p>
               <p className="text-xs text-secondary-600 capitalize truncate bg-secondary-100/50 px-2 py-1 rounded-full">
-                {(user as any)?.role?.replace('_', ' ')}
+                {user?.role?.replace('_', ' ')}
               </p>
             </div>
           )}
