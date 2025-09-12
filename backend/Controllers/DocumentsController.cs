@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
@@ -15,11 +16,30 @@ namespace WorkflowBackend.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<DocumentsController> _logger;
 
-        public DocumentsController(AppDbContext db, IWebHostEnvironment env)
+        private static readonly long MaxFileSize = 10 * 1024 * 1024; // 10 MB
+        private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"
+        };
+
+        private static readonly HashSet<string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "image/png",
+            "image/jpeg"
+        };
+
+        public DocumentsController(AppDbContext db, IWebHostEnvironment env, ILogger<DocumentsController> logger)
         {
             _db = db;
             _env = env;
+            _logger = logger;
         }
 
         private Guid? CurrentUserId()
@@ -70,6 +90,21 @@ namespace WorkflowBackend.Api.Controllers
 
             var rel = Path.Combine("uploads", "global-documents", safe).Replace("\\", "/");
             return (rel, Path.GetFileName(file.FileName));
+        }
+
+        private string? ValidateFile(IFormFile file)
+        {
+            if (file.Length > MaxFileSize)
+                return $"File exceeds maximum size of {MaxFileSize / 1024 / 1024} MB.";
+
+            var ext = Path.GetExtension(file.FileName);
+            if (!AllowedExtensions.Contains(ext))
+                return $"File type {ext} is not permitted.";
+
+            if (!AllowedMimeTypes.Contains(file.ContentType))
+                return $"MIME type {file.ContentType} is not permitted.";
+
+            return null;
         }
 
         // ---------- LIST ----------
@@ -164,6 +199,13 @@ namespace WorkflowBackend.Api.Controllers
 
             if (file is not null)
             {
+                var error = ValidateFile(file);
+                if (error is not null)
+                {
+                    _logger.LogWarning("Invalid file upload: {Error}", error);
+                    return BadRequest(new { message = error });
+                }
+
                 var (rel, original) = await SaveFileAsync(file);
                 d.FilePath = rel;
                 d.FileName = original;
@@ -201,6 +243,13 @@ namespace WorkflowBackend.Api.Controllers
             var d = await _db.Documents.FindAsync(id);
             if (d is null) return NotFound();
             if (file is null || file.Length == 0) return BadRequest(new { message = "File is required." });
+
+            var error = ValidateFile(file);
+            if (error is not null)
+            {
+                _logger.LogWarning("Invalid file upload: {Error}", error);
+                return BadRequest(new { message = error });
+            }
 
             var (rel, original) = await SaveFileAsync(file);
             d.FilePath = rel;
