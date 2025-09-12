@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.Security;
-using WorkflowBackend.Api.Models;
-using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,6 +57,8 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddHostedService<AdminSeeder>();
+
 var app = builder.Build();
 
 // Ensure web root + upload folders exist
@@ -76,27 +76,6 @@ Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipments"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipment-documents"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "global-documents"));
 
-// Auto-create database on first run (dev convenience) + seed admin user
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
-    // Seed default admin user if none exists
-    if (!db.Users.Any())
-    {
-        var admin = new User
-        {
-            Email = "samy@gmail.com",
-            FirstName = "Samy",
-            LastName = "Gerges",
-            Role = Roles.Admin
-        };
-        var hasher = new PasswordHasher<User>();
-        admin.PasswordHash = hasher.HashPassword(admin, "admin123");
-        db.Users.Add(admin);
-        db.SaveChanges();
-    }
-}
 
 if (app.Environment.IsDevelopment())
 {
