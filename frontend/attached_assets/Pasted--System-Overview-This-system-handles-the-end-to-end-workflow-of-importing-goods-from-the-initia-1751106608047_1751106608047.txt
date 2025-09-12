@@ -1,0 +1,115 @@
+🌐 System Overview:
+This system handles the end-to-end workflow of importing goods — from the initial needs statement to the final financial settlement — as shown in the flowchart.
+
+🔁 Flowchart Logic (System Workflow):
+Start
+
+Statement of Needs — A user creates a request with description, quantity, and justification.
+
+Contract Request — Admin reviews and either accepts/rejects the request.
+
+Contract Drafting — Admin drafts and uploads a contract document (PDF/Word).
+
+Opening the Letter of Credit (LC) — Finance department opens an LC and enters details (amount, bank, expiration date, LC number).
+
+Vessel Nomination — Shipping officer nominates a vessel with:
+
+Ship name
+
+Estimated arrival
+
+Country of origin
+
+Port name
+Substeps:
+
+Nominate Inspection Company
+
+Nominate Agent
+
+Shipping Instructions — Admin/shipping enters shipping instructions (in text or file upload).
+
+Ship Loading — System records loading confirmation (loading date, bill of lading).
+
+Issue NOR (Notice of Readiness) — NOR document and arrival time are entered.
+
+Discharge — Log the discharge process (start date, end date, quantity unloaded).
+
+Final Settlement — Finance enters final costs and closes the remaining payment.
+
+👤 User Roles:
+Admin: Full access
+
+Procurement Officer: Handles initial request and contract stages
+
+Finance Officer: Manages LC and final payment
+
+Shipping Officer: Handles vessel, shipment, NOR, and discharge
+
+🗃️ Required Features:
+Authentication system with role-based access
+
+Step-by-step workflow tracking
+
+Status tracking for each request
+
+Timestamp logs at each step
+
+File uploads for contract, LC, shipping docs, NOR
+
+Multi-language support (English + Arabic)
+
+Responsive web interface
+
+Admin dashboard with filters, KPIs, and notifications
+
+Ability to generate reports (daily, weekly, by request status)
+
+🧱 Database Tables Suggestion:
+users: id, name, email, role, password
+
+requests: id, created_by, description, quantity, status, created_at
+
+contracts: id, request_id, uploaded_file, notes, created_by, created_at
+
+letters_of_credit: id, request_id, lc_number, amount, issuing_bank, expiry_date
+
+vessels: id, request_id, vessel_name, eta, country_origin, port_name
+
+agents: id, vessel_id, agent_name, contact_info
+
+inspection_companies: id, vessel_id, company_name, contact_info
+
+shipping_instructions: id, vessel_id, instructions_text, uploaded_file
+
+shipments: id, vessel_id, loading_date, bill_of_lading_file
+
+nors: id, vessel_id, nor_file, arrival_time
+
+discharges: id, vessel_id, discharge_start, discharge_end, quantity_unloaded
+
+final_settlements: id, request_id, total_paid, balance_remaining, settlement_notes
+
+💻 Stack Preference (optional — if you want to include it):
+Frontend: React.js or Flutter Web
+
+Backend: Node.js with Express or Django
+
+Database: PostgreSQL or MySQL
+
+Authentication: JWT-based with role permissions
+
+File Storage: Local or cloud (e.g., AWS S3)
+
+🔧 What I Want:
+The full backend (models, routes, controllers)
+
+Admin and user frontend pages with forms for each step
+
+Status flow logic based on the diagram
+
+Proper validation and error handling
+
+Sample data for testing
+
+Please structure the code into modules. Use comments and clear naming. I want this to simulate a real production system.

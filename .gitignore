@@ -1,0 +1,44 @@
+﻿# General
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+
+# Node / Frontend
+node_modules/
+.dist/
+dist/
+.vite/
+.cache/
+*.local
+.env
+.env.*.local
+
+# .NET / Backend
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.ide
+*.swp
+
+# Docker
+*.pid
+*.tar
+.docker/
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# Replit/other
+.replit
+
+# Generated
+# Frontend uploads (if any)
+frontend/uploads/
+# Backend uploads (persisted in container volume)
+backend/wwwroot/uploads/

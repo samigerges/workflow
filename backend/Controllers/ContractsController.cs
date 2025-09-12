@@ -1,0 +1,383 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using WorkflowBackend.Api.Data;
+using WorkflowBackend.Api.DTOs;
+using WorkflowBackend.Api.Models;
+
+namespace WorkflowBackend.Api.Controllers
+{
+    [ApiController]
+    [Route("api/contracts")]
+    [Authorize]
+    public class ContractsController : ControllerBase
+    {
+        private readonly AppDbContext _db;
+        private readonly IWebHostEnvironment _env;
+
+        private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
+        { "Draft", "Active", "Completed", "Cancelled", "Archived" };
+
+        private static readonly Dictionary<string, string[]> AllowedTransitions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Draft"]     = new[] { "Active", "Cancelled", "Archived" },
+            ["Active"]    = new[] { "Completed", "Cancelled", "Archived" },
+            ["Completed"] = new[] { "Archived" },
+            ["Cancelled"] = new[] { "Archived" },
+            ["Archived"]  = Array.Empty<string>()
+        };
+
+        public ContractsController(AppDbContext db, IWebHostEnvironment env)
+        {
+            _db = db;
+            _env = env;
+        }
+
+        private Guid? CurrentUserId()
+        {
+            var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Guid.TryParse(idStr, out var id) ? id : null;
+        }
+
+        private ContractResponse ToResponse(Contract c, Guid? currentUserId)
+        {
+            var myVote = currentUserId is null
+                ? (int?)null
+                : c.Votes.Where(v => v.UserId == currentUserId.Value).Select(v => (int?)v.Value).FirstOrDefault();
+
+            var score = c.Votes.Select(v => (int?)v.Value).Sum() ?? 0;
+
+            string? url = null;
+            if (!string.IsNullOrWhiteSpace(c.FilePath))
+            {
+                var req = HttpContext.Request;
+                url = $"{req.Scheme}://{req.Host}/{c.FilePath.Replace("\\", "/")}";
+            }
+
+            return new ContractResponse(
+                c.Id, c.Title, c.Description, c.Status, c.RequestId, c.CreatedByUserId,
+                c.CreatedAt, c.UpdatedAt, score, myVote, url, c.FileName,
+                c.SupplierName, c.Quantity, c.CargoType, c.CountryOfOrigin, c.PricePerTon,
+                c.PaymentMethod, c.ShippingMethod, c.ContractTerms, c.StartDate, c.EndDate, c.ReviewNotes
+            );
+        }
+
+        private async Task<(string? relPath, string? originalName)> SaveContractFileAsync(IFormFile? file)
+        {
+            if (file is null || file.Length == 0) return (null, null);
+
+            var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var dir = Path.Combine(webRoot, "uploads", "contracts");
+            Directory.CreateDirectory(dir);
+
+            var ext = Path.GetExtension(file.FileName);
+            var safeName = $"{Guid.NewGuid():N}{ext}";
+            var fullPath = Path.Combine(dir, safeName);
+
+            using (var stream = System.IO.File.Create(fullPath))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var rel = Path.Combine("uploads", "contracts", safeName).Replace("\\", "/");
+            return (rel, Path.GetFileName(file.FileName));
+        }
+
+        // -------- LIST & GET --------
+
+        // GET /api/contracts
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<ContractResponse>>> GetAll([FromQuery] string? status, [FromQuery] Guid? requestId)
+        {
+            var uid = CurrentUserId();
+
+            var q = _db.Contracts
+                .Include(c => c.Votes)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(status))
+                q = q.Where(c => c.Status == status);
+
+            if (requestId is not null)
+                q = q.Where(c => c.RequestId == requestId);
+
+            var items = await q.OrderByDescending(c => c.CreatedAt).ToListAsync();
+            return items.Select(c => ToResponse(c, uid)).ToList();
+        }
+
+        // GET /api/contracts/{id}
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<ContractResponse>> GetOne(Guid id)
+        {
+            var uid = CurrentUserId();
+
+            var c = await _db.Contracts
+                .Include(x => x.Votes)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (c is null) return NotFound();
+            return ToResponse(c, uid);
+        }
+
+        // -------- CREATE --------
+
+        // POST /api/contracts  (JSON)
+        [HttpPost]
+        [Consumes("application/json")]
+        public async Task<ActionResult<ContractResponse>> CreateJson([FromBody] ContractCreateRequest req)
+        {
+            var c = new Contract
+            {
+                Title = req.Title.Trim(),
+                Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim(),
+                RequestId = req.RequestId,
+                Status = "Draft",
+                CreatedByUserId = CurrentUserId(),
+                SupplierName = string.IsNullOrWhiteSpace(req.SupplierName) ? null : req.SupplierName.Trim(),
+                Quantity = req.Quantity,
+                CargoType = string.IsNullOrWhiteSpace(req.CargoType) ? null : req.CargoType.Trim(),
+                CountryOfOrigin = string.IsNullOrWhiteSpace(req.CountryOfOrigin) ? null : req.CountryOfOrigin.Trim(),
+                PricePerTon = req.PricePerTon,
+                PaymentMethod = string.IsNullOrWhiteSpace(req.PaymentMethod) ? null : req.PaymentMethod.Trim(),
+                ShippingMethod = string.IsNullOrWhiteSpace(req.ShippingMethod) ? null : req.ShippingMethod.Trim(),
+                ContractTerms = string.IsNullOrWhiteSpace(req.ContractTerms) ? null : req.ContractTerms.Trim(),
+                StartDate = req.StartDate,
+                EndDate = req.EndDate,
+                ReviewNotes = string.IsNullOrWhiteSpace(req.ReviewNotes) ? null : req.ReviewNotes.Trim()
+            };
+
+            _db.Contracts.Add(c);
+            await _db.SaveChangesAsync();
+            await _db.Entry(c).Collection(x => x.Votes).LoadAsync();
+
+            return CreatedAtAction(nameof(GetOne), new { id = c.Id }, ToResponse(c, CurrentUserId()));
+        }
+
+        // POST /api/contracts  (multipart/form-data with optional file "contractFile")
+        [HttpPost]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<ContractResponse>> CreateForm(
+            [FromForm] string title,
+            [FromForm] string? description,
+            [FromForm] string? requestId,
+            [FromForm] string? supplierName,
+            [FromForm] decimal? quantity,
+            [FromForm] string? cargoType,
+            [FromForm] string? countryOfOrigin,
+            [FromForm] decimal? pricePerTon,
+            [FromForm] string? paymentMethod,
+            [FromForm] string? shippingMethod,
+            [FromForm] string? contractTerms,
+            [FromForm] DateTime? startDate,
+            [FromForm] DateTime? endDate,
+            [FromForm] string? reviewNotes,
+            [FromForm(Name = "contractFile")] IFormFile? file)
+        {
+            var c = new Contract
+            {
+                Title = title.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+                RequestId = Guid.TryParse(requestId, out var rid) ? rid : null,
+                Status = "Draft",
+                CreatedByUserId = CurrentUserId(),
+                SupplierName = string.IsNullOrWhiteSpace(supplierName) ? null : supplierName.Trim(),
+                Quantity = quantity,
+                CargoType = string.IsNullOrWhiteSpace(cargoType) ? null : cargoType.Trim(),
+                CountryOfOrigin = string.IsNullOrWhiteSpace(countryOfOrigin) ? null : countryOfOrigin.Trim(),
+                PricePerTon = pricePerTon,
+                PaymentMethod = string.IsNullOrWhiteSpace(paymentMethod) ? null : paymentMethod.Trim(),
+                ShippingMethod = string.IsNullOrWhiteSpace(shippingMethod) ? null : shippingMethod.Trim(),
+                ContractTerms = string.IsNullOrWhiteSpace(contractTerms) ? null : contractTerms.Trim(),
+                StartDate = startDate,
+                EndDate = endDate,
+                ReviewNotes = string.IsNullOrWhiteSpace(reviewNotes) ? null : reviewNotes.Trim()
+            };
+
+            if (file is not null)
+            {
+                var (rel, original) = await SaveContractFileAsync(file);
+                c.FilePath = rel;
+                c.FileName = original;
+            }
+
+            _db.Contracts.Add(c);
+            await _db.SaveChangesAsync();
+            await _db.Entry(c).Collection(x => x.Votes).LoadAsync();
+
+            return CreatedAtAction(nameof(GetOne), new { id = c.Id }, ToResponse(c, CurrentUserId()));
+        }
+
+        // -------- UPDATE --------
+
+        // PUT /api/contracts/{id} (JSON)
+        [HttpPut("{id:guid}")]
+        [Consumes("application/json")]
+        public async Task<ActionResult<ContractResponse>> UpdateJson(Guid id, [FromBody] ContractUpdateRequest req)
+        {
+            var c = await _db.Contracts.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
+            if (c is null) return NotFound();
+
+            c.Title = req.Title.Trim();
+            c.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
+            c.RequestId = req.RequestId;
+            c.SupplierName = string.IsNullOrWhiteSpace(req.SupplierName) ? null : req.SupplierName.Trim();
+            c.Quantity = req.Quantity;
+            c.CargoType = string.IsNullOrWhiteSpace(req.CargoType) ? null : req.CargoType.Trim();
+            c.CountryOfOrigin = string.IsNullOrWhiteSpace(req.CountryOfOrigin) ? null : req.CountryOfOrigin.Trim();
+            c.PricePerTon = req.PricePerTon;
+            c.PaymentMethod = string.IsNullOrWhiteSpace(req.PaymentMethod) ? null : req.PaymentMethod.Trim();
+            c.ShippingMethod = string.IsNullOrWhiteSpace(req.ShippingMethod) ? null : req.ShippingMethod.Trim();
+            c.ContractTerms = string.IsNullOrWhiteSpace(req.ContractTerms) ? null : req.ContractTerms.Trim();
+            c.StartDate = req.StartDate;
+            c.EndDate = req.EndDate;
+            c.ReviewNotes = string.IsNullOrWhiteSpace(req.ReviewNotes) ? null : req.ReviewNotes.Trim();
+            c.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return ToResponse(c, CurrentUserId());
+        }
+
+        // PUT /api/contracts/{id}/upload (multipart/form-data)
+        [HttpPut("{id:guid}/upload")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<ContractResponse>> UpdateForm(
+            Guid id,
+            [FromForm] string title,
+            [FromForm] string? description,
+            [FromForm] string? requestId,
+            [FromForm] string? supplierName,
+            [FromForm] decimal? quantity,
+            [FromForm] string? cargoType,
+            [FromForm] string? countryOfOrigin,
+            [FromForm] decimal? pricePerTon,
+            [FromForm] string? paymentMethod,
+            [FromForm] string? shippingMethod,
+            [FromForm] string? contractTerms,
+            [FromForm] DateTime? startDate,
+            [FromForm] DateTime? endDate,
+            [FromForm] string? reviewNotes,
+            [FromForm(Name = "contractFile")] IFormFile? file)
+        {
+            var c = await _db.Contracts.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
+            if (c is null) return NotFound();
+
+            c.Title = title.Trim();
+            c.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+            c.RequestId = Guid.TryParse(requestId, out var rid) ? rid : c.RequestId;
+            c.SupplierName = string.IsNullOrWhiteSpace(supplierName) ? c.SupplierName : supplierName.Trim();
+            c.Quantity = quantity ?? c.Quantity;
+            c.CargoType = string.IsNullOrWhiteSpace(cargoType) ? c.CargoType : cargoType.Trim();
+            c.CountryOfOrigin = string.IsNullOrWhiteSpace(countryOfOrigin) ? c.CountryOfOrigin : countryOfOrigin.Trim();
+            c.PricePerTon = pricePerTon ?? c.PricePerTon;
+            c.PaymentMethod = string.IsNullOrWhiteSpace(paymentMethod) ? c.PaymentMethod : paymentMethod.Trim();
+            c.ShippingMethod = string.IsNullOrWhiteSpace(shippingMethod) ? c.ShippingMethod : shippingMethod.Trim();
+            c.ContractTerms = string.IsNullOrWhiteSpace(contractTerms) ? c.ContractTerms : contractTerms.Trim();
+            c.StartDate = startDate ?? c.StartDate;
+            c.EndDate = endDate ?? c.EndDate;
+            c.ReviewNotes = string.IsNullOrWhiteSpace(reviewNotes) ? c.ReviewNotes : reviewNotes.Trim();
+
+            if (file is not null)
+            {
+                var (rel, original) = await SaveContractFileAsync(file);
+                c.FilePath = rel;
+                c.FileName = original;
+            }
+
+            c.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return ToResponse(c, CurrentUserId());
+        }
+
+        // -------- DELETE --------
+
+        // DELETE /api/contracts/{id}
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var c = await _db.Contracts.FindAsync(id);
+            if (c is null) return NotFound();
+
+            _db.Contracts.Remove(c);
+            await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // -------- STATUS --------
+
+        // POST /api/contracts/{id}/status  { status: "Active" }
+        [HttpPost("{id:guid}/status")]
+        public async Task<ActionResult<ContractResponse>> ChangeStatus(Guid id, [FromBody] ContractStatusChangeRequest body)
+        {
+            if (string.IsNullOrWhiteSpace(body.Status) || !AllowedStatuses.Contains(body.Status))
+                return BadRequest(new { message = "Invalid status." });
+
+            var c = await _db.Contracts.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
+            if (c is null) return NotFound();
+
+            var current = c.Status;
+            var nexts = AllowedTransitions.TryGetValue(current, out var allowed) ? allowed : Array.Empty<string>();
+            if (!nexts.Contains(body.Status, StringComparer.OrdinalIgnoreCase))
+                return BadRequest(new { message = $"Transition from '{current}' to '{body.Status}' is not allowed." });
+
+            c.Status = body.Status;
+            c.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return ToResponse(c, CurrentUserId());
+        }
+
+        // -------- VOTES --------
+
+        // POST /api/contracts/{id}/votes  { approve: true } OR { value: 1/-1 }
+        [HttpPost("{id:guid}/votes")]
+        public async Task<ActionResult<ContractResponse>> Vote(Guid id, [FromBody] ContractVoteRequest body)
+        {
+            var uid = CurrentUserId();
+            if (uid is null) return Unauthorized();
+
+            var c = await _db.Contracts.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
+            if (c is null) return NotFound();
+
+            int? value = body.Value;
+            if (value is null && body.Approve is not null)
+                value = body.Approve.Value ? 1 : -1;
+
+            if (value is null || (value != -1 && value != 1))
+                return BadRequest(new { message = "Vote 'value' must be -1 or 1 (or use approve: true/false)." });
+
+            var existing = c.Votes.FirstOrDefault(v => v.UserId == uid.Value);
+
+            if (existing is null)
+            {
+                c.Votes.Add(new ContractVote
+                {
+                    ContractId = c.Id,
+                    UserId = uid.Value,
+                    Value = value.Value,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                if (existing.Value == value.Value)
+                {
+                    _db.ContractVotes.Remove(existing); // toggle off
+                }
+                else
+                {
+                    existing.Value = value.Value;
+                    existing.CreatedAt = DateTime.UtcNow;
+                }
+            }
+
+            c.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            await _db.Entry(c).Collection(x => x.Votes).LoadAsync();
+
+            return ToResponse(c, uid);
+        }
+    }
+}
