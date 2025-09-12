@@ -2,15 +2,13 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.Security;
-using WorkflowBackend.Api.Models;
-using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection") ??
-        "Host=localhost;Port=5432;Database=workflow;Username=workflow;Password=workflow"));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.")));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -76,26 +74,12 @@ Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipments"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipment-documents"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "global-documents"));
 
-// Auto-create database on first run (dev convenience) + seed admin user
-using (var scope = app.Services.CreateScope())
+// Auto-create database on first run (dev convenience)
+if (app.Environment.IsDevelopment())
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
-    // Seed default admin user if none exists
-    if (!db.Users.Any())
-    {
-        var admin = new User
-        {
-            Email = "samy@gmail.com",
-            FirstName = "Samy",
-            LastName = "Gerges",
-            Role = Roles.Admin
-        };
-        var hasher = new PasswordHasher<User>();
-        admin.PasswordHash = hasher.HashPassword(admin, "admin123");
-        db.Users.Add(admin);
-        db.SaveChanges();
-    }
+    DevDataSeeder.SeedAdminUser(db);
 }
 
 if (app.Environment.IsDevelopment())
