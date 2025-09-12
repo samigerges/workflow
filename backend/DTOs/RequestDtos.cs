@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using WorkflowBackend.Api.Models;
 
 namespace WorkflowBackend.Api.DTOs
 {
@@ -15,7 +16,7 @@ namespace WorkflowBackend.Api.DTOs
     );
 
     public record RequestStatusChangeRequest(
-        [param:Required, MaxLength(50)] string Status
+        [param:Required] RequestStatus Status
     );
 
     /// <summary>
@@ -28,7 +29,7 @@ namespace WorkflowBackend.Api.DTOs
         Guid Id,
         string Title,
         string? Description,
-        string Status,
+        RequestStatus Status,
         Guid? NeedId,
         Guid? CreatedByUserId,
         DateTime CreatedAt,

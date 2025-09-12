@@ -42,7 +42,10 @@ namespace WorkflowBackend.Api.Data
 
             // Request
             modelBuilder.Entity<Request>().Property(r => r.Title).HasMaxLength(200).IsRequired();
-            modelBuilder.Entity<Request>().Property(r => r.Status).HasMaxLength(50).HasDefaultValue("Draft");
+            modelBuilder.Entity<Request>().Property(r => r.Status)
+                .HasConversion<string>()
+                .HasMaxLength(50)
+                .HasDefaultValue(RequestStatus.Draft);
             modelBuilder.Entity<Request>()
                 .HasOne(r => r.CreatedBy).WithMany()
                 .HasForeignKey(r => r.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
