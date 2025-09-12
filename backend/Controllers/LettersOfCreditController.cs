@@ -62,6 +62,9 @@ namespace WorkflowBackend.Api.Controllers
         {
             if (file is null || file.Length == 0) return (null, null);
 
+            if (!FileUploadValidator.IsValid(file, out var error))
+                throw new InvalidOperationException(error);
+
             var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             var dir = Path.Combine(webRoot, "uploads", "letters-of-credit");
             Directory.CreateDirectory(dir);
@@ -166,9 +169,16 @@ namespace WorkflowBackend.Api.Controllers
 
             if (file is not null)
             {
-                var (rel, original) = await SaveLcFileAsync(file);
-                lc.FilePath = rel;
-                lc.FileName = original;
+                try
+                {
+                    var (rel, original) = await SaveLcFileAsync(file);
+                    lc.FilePath = rel;
+                    lc.FileName = original;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
             }
 
             _db.LettersOfCredit.Add(lc);
@@ -233,9 +243,16 @@ namespace WorkflowBackend.Api.Controllers
 
             if (file is not null)
             {
-                var (rel, original) = await SaveLcFileAsync(file);
-                lc.FilePath = rel;
-                lc.FileName = original;
+                try
+                {
+                    var (rel, original) = await SaveLcFileAsync(file);
+                    lc.FilePath = rel;
+                    lc.FileName = original;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
             }
 
             lc.UpdatedAt = DateTime.UtcNow;

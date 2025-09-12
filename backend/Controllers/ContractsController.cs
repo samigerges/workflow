@@ -67,6 +67,9 @@ namespace WorkflowBackend.Api.Controllers
         {
             if (file is null || file.Length == 0) return (null, null);
 
+            if (!FileUploadValidator.IsValid(file, out var error))
+                throw new InvalidOperationException(error);
+
             var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             var dir = Path.Combine(webRoot, "uploads", "contracts");
             Directory.CreateDirectory(dir);
@@ -196,9 +199,16 @@ namespace WorkflowBackend.Api.Controllers
 
             if (file is not null)
             {
-                var (rel, original) = await SaveContractFileAsync(file);
-                c.FilePath = rel;
-                c.FileName = original;
+                try
+                {
+                    var (rel, original) = await SaveContractFileAsync(file);
+                    c.FilePath = rel;
+                    c.FileName = original;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
             }
 
             _db.Contracts.Add(c);
@@ -279,9 +289,16 @@ namespace WorkflowBackend.Api.Controllers
 
             if (file is not null)
             {
-                var (rel, original) = await SaveContractFileAsync(file);
-                c.FilePath = rel;
-                c.FileName = original;
+                try
+                {
+                    var (rel, original) = await SaveContractFileAsync(file);
+                    c.FilePath = rel;
+                    c.FileName = original;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
             }
 
             c.UpdatedAt = DateTime.UtcNow;

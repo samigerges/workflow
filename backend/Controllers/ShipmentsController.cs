@@ -51,6 +51,9 @@ namespace WorkflowBackend.Api.Controllers
 
         private async Task<ShipmentDocumentResponse> SaveShipmentDocumentAsync(Guid shipmentId, IFormFile file, string? type)
         {
+            if (!FileUploadValidator.IsValid(file, out var error))
+                throw new InvalidOperationException(error);
+
             var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             var dir = Path.Combine(webRoot, "uploads", "shipment-documents");
             Directory.CreateDirectory(dir);
@@ -194,7 +197,16 @@ namespace WorkflowBackend.Api.Controllers
             await _db.SaveChangesAsync();
 
             if (file is not null)
-                await SaveShipmentDocumentAsync(s.Id, file, "Initial");
+            {
+                try
+                {
+                    await SaveShipmentDocumentAsync(s.Id, file, "Initial");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
+            }
 
             return CreatedAtAction(nameof(GetOne), new { id = s.Id }, ToResponse(s));
         }
@@ -297,7 +309,15 @@ namespace WorkflowBackend.Api.Controllers
             if (!exists) return NotFound();
             if (file is null || file.Length == 0) return BadRequest(new { message = "File required." });
 
-            var res = await SaveShipmentDocumentAsync(id, file, type);
+            ShipmentDocumentResponse res;
+            try
+            {
+                res = await SaveShipmentDocumentAsync(id, file, type);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             return CreatedAtAction(nameof(GetDocuments), new { id }, res);
         }
 

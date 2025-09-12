@@ -61,6 +61,10 @@ namespace WorkflowBackend.Api.Controllers
         private async Task<string?> SaveInstructionsAsync(IFormFile? file)
         {
             if (file is null || file.Length == 0) return null;
+
+            if (!FileUploadValidator.IsValid(file, out var error))
+                throw new InvalidOperationException(error);
+
             var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             var dir = Path.Combine(webRoot, "uploads", "vessels");
             Directory.CreateDirectory(dir);
@@ -74,6 +78,9 @@ namespace WorkflowBackend.Api.Controllers
 
         private async Task<VesselDocumentResponse> SaveVesselDocumentAsync(Guid vesselId, IFormFile file, string? type)
         {
+            if (!FileUploadValidator.IsValid(file, out var error))
+                throw new InvalidOperationException(error);
+
             var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             var dir = Path.Combine(webRoot, "uploads", "vessel-documents");
             Directory.CreateDirectory(dir);
@@ -189,8 +196,15 @@ namespace WorkflowBackend.Api.Controllers
 
             if (file is not null)
             {
-                v.InstructionsPath = await SaveInstructionsAsync(file);
-                v.InstructionsFileName = Path.GetFileName(file.FileName);
+                try
+                {
+                    v.InstructionsPath = await SaveInstructionsAsync(file);
+                    v.InstructionsFileName = Path.GetFileName(file.FileName);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
             }
 
             _db.Vessels.Add(v);
@@ -245,8 +259,15 @@ namespace WorkflowBackend.Api.Controllers
 
             if (file is not null)
             {
-                v.InstructionsPath = await SaveInstructionsAsync(file);
-                v.InstructionsFileName = Path.GetFileName(file.FileName);
+                try
+                {
+                    v.InstructionsPath = await SaveInstructionsAsync(file);
+                    v.InstructionsFileName = Path.GetFileName(file.FileName);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
             }
 
             v.UpdatedAt = DateTime.UtcNow;
@@ -321,7 +342,15 @@ namespace WorkflowBackend.Api.Controllers
             if (!exists) return NotFound();
             if (file is null || file.Length == 0) return BadRequest(new { message = "File required." });
 
-            var res = await SaveVesselDocumentAsync(id, file, type);
+            VesselDocumentResponse res;
+            try
+            {
+                res = await SaveVesselDocumentAsync(id, file, type);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             return CreatedAtAction(nameof(GetDocuments), new { id }, res);
         }
 
