@@ -16,4 +16,8 @@ namespace WorkflowBackend.Api.DTOs
     );
 
     public record UserResponse(Guid Id, string Email, string FirstName, string LastName, string Role);
+
+    public record ChangeRoleRequest(
+        [param:Required, MaxLength(50)] string Role
+    );
 }

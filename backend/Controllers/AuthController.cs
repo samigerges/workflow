@@ -17,6 +17,12 @@ namespace WorkflowBackend.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly PasswordHasher<User> _hasher = new();
+        private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
+        {
+            Security.Roles.Admin,
+            Security.Roles.Manager,
+            Security.Roles.User
+        };
 
         public AuthController(AppDbContext db) => _db = db;
 
@@ -31,7 +37,7 @@ namespace WorkflowBackend.Api.Controllers
                 Email = req.Email.Trim(),
                 FirstName = req.FirstName.Trim(),
                 LastName = req.LastName.Trim(),
-                Role = string.IsNullOrWhiteSpace(req.Role) ? "User" : req.Role!.Trim()
+                Role = Security.Roles.User
             };
             user.PasswordHash = _hasher.HashPassword(user, req.Password);
 
@@ -96,6 +102,22 @@ namespace WorkflowBackend.Api.Controllers
             if (user is null) return Unauthorized();
 
             return new UserResponse(user.Id, user.Email, user.FirstName, user.LastName, user.Role ?? Security.Roles.User);
+        }
+
+        [Authorize(Roles = Security.Roles.Admin)]
+        [HttpPut("auth/{id:guid}/role")]
+        public async Task<IActionResult> ChangeRole(Guid id, [FromBody] ChangeRoleRequest req)
+        {
+            var role = req.Role?.Trim();
+            if (string.IsNullOrWhiteSpace(role) || !ValidRoles.Contains(role))
+                return BadRequest(new { message = "Invalid role." });
+
+            var user = await _db.Users.FindAsync(id);
+            if (user is null) return NotFound();
+
+            user.Role = role;
+            await _db.SaveChangesAsync();
+            return NoContent();
         }
     }
 }
