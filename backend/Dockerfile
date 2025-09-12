@@ -10,7 +10,6 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 # App uploads live under /app/wwwroot/uploads
 ENV ASPNETCORE_URLS=http://+:8080
-ENV ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=workflow;Username=workflow;Password=workflow
 COPY --from=build /app/publish ./
 # Ensure uploads directory exists
 RUN mkdir -p /app/wwwroot/uploads
