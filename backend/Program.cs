@@ -77,24 +77,33 @@ Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipment-documents")
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "global-documents"));
 
 // Auto-create database on first run (dev convenience) + seed admin user
-using (var scope = app.Services.CreateScope())
+if (app.Environment.IsDevelopment())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
-    // Seed default admin user if none exists
-    if (!db.Users.Any())
+    using (var scope = app.Services.CreateScope())
     {
-        var admin = new User
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.EnsureCreated();
+
+        var adminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL");
+        var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD");
+
+        // Seed default admin user if none exists and credentials are provided
+        if (!db.Users.Any() &&
+            !string.IsNullOrWhiteSpace(adminEmail) &&
+            !string.IsNullOrWhiteSpace(adminPassword))
         {
-            Email = "samy@gmail.com",
-            FirstName = "Samy",
-            LastName = "Gerges",
-            Role = Roles.Admin
-        };
-        var hasher = new PasswordHasher<User>();
-        admin.PasswordHash = hasher.HashPassword(admin, "admin123");
-        db.Users.Add(admin);
-        db.SaveChanges();
+            var admin = new User
+            {
+                Email = adminEmail,
+                FirstName = "Admin",
+                LastName = "User",
+                Role = Roles.Admin
+            };
+            var hasher = new PasswordHasher<User>();
+            admin.PasswordHash = hasher.HashPassword(admin, adminPassword);
+            db.Users.Add(admin);
+            db.SaveChanges();
+        }
     }
 }
 
