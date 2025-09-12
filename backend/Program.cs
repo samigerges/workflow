@@ -80,7 +80,7 @@ Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "global-documents"));
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
     // Seed default admin user if none exists
     if (!db.Users.Any())
     {
