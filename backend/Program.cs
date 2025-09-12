@@ -4,6 +4,8 @@ using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.Security;
 using WorkflowBackend.Api.Models;
 using Microsoft.AspNetCore.Identity;
+using WorkflowBackend.Api.Middleware;
+using WorkflowBackend.Api.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,7 +39,10 @@ builder.Services.AddAuthorization(options =>
     // no policy needed for read-only; [Authorize] is enough
 });
 
-builder.Services.AddControllers().AddJsonOptions(o =>
+builder.Services.AddControllers(o =>
+{
+    o.Filters.Add<ExceptionLoggingFilter>();
+}).AddJsonOptions(o =>
 {
     o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 });
@@ -107,6 +112,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("frontend");
 app.UseStaticFiles();
 app.UseAuthentication();
+app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
