@@ -58,6 +58,21 @@ namespace WorkflowBackend.Api.Controllers
             );
         }
 
+        private string? MakeAbsolute(string? relPath)
+        {
+            if (string.IsNullOrWhiteSpace(relPath)) return null;
+            var req = HttpContext.Request;
+            return $"{req.Scheme}://{req.Host}/{relPath.Replace("\\", "/")}";
+        }
+
+        private VesselResponse ToVesselResponse(Vessel v)
+        {
+            return new VesselResponse(
+                v.Id, v.Name, v.Status, v.Eta, v.Etd, v.CreatedAt, v.UpdatedAt,
+                MakeAbsolute(v.InstructionsPath), v.InstructionsFileName
+            );
+        }
+
         private async Task<(string? relPath, string? originalName)> SaveLcFileAsync(IFormFile? file)
         {
             if (file is null || file.Length == 0) return (null, null);
@@ -282,16 +297,26 @@ namespace WorkflowBackend.Api.Controllers
             return ToResponse(lc);
         }
 
-        // -------- PLACEHOLDER: Vessels for LC (to be implemented with Vessels) --------
+        // -------- Vessels for LC --------
 
         // GET /api/letters-of-credit/{id}/vessels
         [HttpGet("{id:guid}/vessels")]
-        public async Task<ActionResult<IEnumerable<object>>> GetVesselsForLc(Guid id)
+        public async Task<ActionResult<IEnumerable<VesselResponse>>> GetVesselsForLc(Guid id)
         {
-            var exists = await _db.LettersOfCredit.AnyAsync(x => x.Id == id);
-            if (!exists) return NotFound();
-            // TODO: Replace with actual join once Vessel is implemented
-            return new List<object>();
+            var lc = await _db.LettersOfCredit
+                .Include(l => l.Vessels)
+                    .ThenInclude(link => link.Vessel)
+                .FirstOrDefaultAsync(l => l.Id == id);
+
+            if (lc is null) return NotFound();
+
+            var vessels = lc.Vessels
+                .Select(link => link.Vessel)
+                .Where(v => v is not null)
+                .Select(v => ToVesselResponse(v!))
+                .ToList();
+
+            return vessels;
         }
     }
 }

@@ -33,6 +33,8 @@ namespace WorkflowBackend.Api.Models
         public Guid? ContractId { get; set; }
         public Contract? Contract { get; set; }
 
+        public ICollection<VesselLetterOfCredit> Vessels { get; set; } = new List<VesselLetterOfCredit>();
+
         // Optional file metadata
         [MaxLength(500)]
         public string? FilePath { get; set; } // "uploads/letters-of-credit/xyz.pdf"

@@ -110,7 +110,7 @@ namespace WorkflowBackend.Api.Data
                 .HasOne(x => x.Vessel).WithMany(v => v.LettersOfCredit)
                 .HasForeignKey(x => x.VesselId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<VesselLetterOfCredit>()
-                .HasOne(x => x.LetterOfCredit).WithMany()
+                .HasOne(x => x.LetterOfCredit).WithMany(l => l.Vessels)
                 .HasForeignKey(x => x.LetterOfCreditId).OnDelete(DeleteBehavior.Cascade);
 
             // Shipment
