@@ -27,7 +27,8 @@ export async function apiRequest(
   }
   const res = await fetch(target, init);
 
-  // Let callers inspect response.ok and handle errors themselves
+  // Throw on non-OK responses so mutations don't resolve on failure
+  await throwIfResNotOk(res);
   return res;
 }
 
