@@ -15,14 +15,14 @@ export const insertNeedSchema = z.object({
 });
 
 export type Need = z.infer<typeof insertNeedSchema> & {
-  id: number;
+  id: string;
   createdAt?: string;
   updatedAt?: string;
 };
 
 // Schema for creating requests
 export const insertRequestSchema = z.object({
-  needId: z.number().optional(),
+  needId: z.string().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
   quantity: z.number().optional(),

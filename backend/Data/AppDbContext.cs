@@ -36,6 +36,13 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
 
             // Need
+            modelBuilder.Entity<Need>().Property(n => n.Title).HasMaxLength(200).IsRequired();
+            modelBuilder.Entity<Need>().Property(n => n.Description).HasMaxLength(2000);
+            modelBuilder.Entity<Need>().Property(n => n.Status).HasMaxLength(50).HasDefaultValue("Draft");
+            modelBuilder.Entity<Need>().Property(n => n.Category).HasMaxLength(100);
+            modelBuilder.Entity<Need>().Property(n => n.UnitOfMeasure).HasMaxLength(50);
+            modelBuilder.Entity<Need>().Property(n => n.DepartmentCode).HasMaxLength(50);
+            modelBuilder.Entity<Need>().Property(n => n.Notes).HasMaxLength(2000);
             modelBuilder.Entity<Need>()
                 .HasOne(n => n.CreatedBy).WithMany()
                 .HasForeignKey(n => n.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);

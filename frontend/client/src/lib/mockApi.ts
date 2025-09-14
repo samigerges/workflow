@@ -28,8 +28,8 @@ function formDataToObject(data: FormData) {
   return Object.fromEntries(Array.from(data.entries()));
 }
 
-function generateId(list: { id: number }[]) {
-  return list.length ? Math.max(...list.map((i) => i.id)) + 1 : 1;
+function generateId(list: { id: any }[]) {
+  return list.length ? Math.max(...list.map((i) => Number(i.id))) + 1 : 1;
 }
 
 export async function apiRequest(
@@ -82,14 +82,14 @@ export async function apiRequest(
     if (method === "GET") return jsonResponse(needs);
     if (method === "POST") {
       const payload = body instanceof FormData ? formDataToObject(body) : body || {};
-      const newNeed = { id: generateId(needs), ...payload } as any;
+      const newNeed = { id: String(generateId(needs)), ...payload } as any;
       needs.push(newNeed);
       return jsonResponse(newNeed, 201);
     }
   }
-  let match = url.match(/^\/api\/needs\/(\d+)$/);
+  let match = url.match(/^\/api\/needs\/([^\/]+)$/);
   if (match) {
-    const id = Number(match[1]);
+    const id = match[1];
     const idx = needs.findIndex((n) => n.id === id);
     if (idx !== -1) {
       if (method === "PUT") {

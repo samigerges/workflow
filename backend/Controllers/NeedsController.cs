@@ -28,7 +28,21 @@ namespace WorkflowBackend.Api.Controllers
         {
             var items = await _db.Needs
                 .OrderByDescending(n => n.CreatedAt)
-                .Select(n => new NeedResponse(n.Id, n.Title, n.Description, n.Status, n.CreatedByUserId, n.CreatedAt, n.UpdatedAt))
+                .Select(n => new NeedResponse(
+                    n.Id,
+                    n.Title,
+                    n.Description,
+                    n.Status,
+                    n.Category,
+                    n.RequiredQuantity,
+                    n.UnitOfMeasure,
+                    n.FulfillmentStartDate,
+                    n.FulfillmentEndDate,
+                    n.DepartmentCode,
+                    n.Notes,
+                    n.CreatedByUserId,
+                    n.CreatedAt,
+                    n.UpdatedAt))
                 .ToListAsync();
 
             return items;
@@ -39,7 +53,21 @@ namespace WorkflowBackend.Api.Controllers
         {
             var n = await _db.Needs.FindAsync(id);
             if (n is null) return NotFound();
-            return new NeedResponse(n.Id, n.Title, n.Description, n.Status, n.CreatedByUserId, n.CreatedAt, n.UpdatedAt);
+            return new NeedResponse(
+                n.Id,
+                n.Title,
+                n.Description,
+                n.Status,
+                n.Category,
+                n.RequiredQuantity,
+                n.UnitOfMeasure,
+                n.FulfillmentStartDate,
+                n.FulfillmentEndDate,
+                n.DepartmentCode,
+                n.Notes,
+                n.CreatedByUserId,
+                n.CreatedAt,
+                n.UpdatedAt);
         }
 
         [HttpPost]
@@ -50,13 +78,34 @@ namespace WorkflowBackend.Api.Controllers
                 Title = req.Title.Trim(),
                 Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim(),
                 Status = "Draft",
+                Category = req.Category.Trim(),
+                RequiredQuantity = req.RequiredQuantity,
+                UnitOfMeasure = req.UnitOfMeasure.Trim(),
+                FulfillmentStartDate = req.FulfillmentStartDate,
+                FulfillmentEndDate = req.FulfillmentEndDate,
+                DepartmentCode = string.IsNullOrWhiteSpace(req.DepartmentCode) ? null : req.DepartmentCode.Trim(),
+                Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes.Trim(),
                 CreatedByUserId = CurrentUserId()
             };
 
             _db.Needs.Add(n);
             await _db.SaveChangesAsync();
 
-            var res = new NeedResponse(n.Id, n.Title, n.Description, n.Status, n.CreatedByUserId, n.CreatedAt, n.UpdatedAt);
+            var res = new NeedResponse(
+                n.Id,
+                n.Title,
+                n.Description,
+                n.Status,
+                n.Category,
+                n.RequiredQuantity,
+                n.UnitOfMeasure,
+                n.FulfillmentStartDate,
+                n.FulfillmentEndDate,
+                n.DepartmentCode,
+                n.Notes,
+                n.CreatedByUserId,
+                n.CreatedAt,
+                n.UpdatedAt);
             return CreatedAtAction(nameof(GetOne), new { id = n.Id }, res);
         }
 
@@ -69,11 +118,32 @@ namespace WorkflowBackend.Api.Controllers
             n.Title = req.Title.Trim();
             n.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
             if (!string.IsNullOrWhiteSpace(req.Status)) n.Status = req.Status.Trim();
+            n.Category = req.Category.Trim();
+            n.RequiredQuantity = req.RequiredQuantity;
+            n.UnitOfMeasure = req.UnitOfMeasure.Trim();
+            n.FulfillmentStartDate = req.FulfillmentStartDate;
+            n.FulfillmentEndDate = req.FulfillmentEndDate;
+            n.DepartmentCode = string.IsNullOrWhiteSpace(req.DepartmentCode) ? null : req.DepartmentCode.Trim();
+            n.Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes.Trim();
             n.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
 
-            return new NeedResponse(n.Id, n.Title, n.Description, n.Status, n.CreatedByUserId, n.CreatedAt, n.UpdatedAt);
+            return new NeedResponse(
+                n.Id,
+                n.Title,
+                n.Description,
+                n.Status,
+                n.Category,
+                n.RequiredQuantity,
+                n.UnitOfMeasure,
+                n.FulfillmentStartDate,
+                n.FulfillmentEndDate,
+                n.DepartmentCode,
+                n.Notes,
+                n.CreatedByUserId,
+                n.CreatedAt,
+                n.UpdatedAt);
         }
 
         [HttpDelete("{id:guid}")]

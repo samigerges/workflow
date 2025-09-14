@@ -7,7 +7,7 @@ export const demoUser = {
 
 export const needs = [
   {
-    id: 1,
+    id: "1",
     title: "Demo Need",
     description: "Example need",
     status: "active",
@@ -17,9 +17,9 @@ export const needs = [
 ];
 
 export const requests = [
-  { 
-    id: 1, 
-    needId: 1, 
+  {
+    id: 1,
+    needId: "1",
     title: "Wheat Import Request", 
     description: "Bulk wheat import for Q1 2025",
     status: "approved",
@@ -33,9 +33,9 @@ export const requests = [
     shippingMethod: "FOB",
     createdAt: "2024-01-15T08:00:00.000Z"
   },
-  { 
-    id: 2, 
-    needId: 2, 
+  {
+    id: 2,
+    needId: "2",
     title: "Rice Import Request", 
     description: "Premium rice import",
     status: "contracted",
@@ -49,9 +49,9 @@ export const requests = [
     shippingMethod: "CIF",
     createdAt: "2024-02-10T10:30:00.000Z"
   },
-  { 
-    id: 3, 
-    needId: 3, 
+  {
+    id: 3,
+    needId: "3",
     title: "Steel Import Request", 
     description: "Industrial steel materials",
     status: "pending",
