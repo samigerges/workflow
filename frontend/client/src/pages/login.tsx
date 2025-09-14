@@ -29,11 +29,23 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
+    try {
+      // Quick check to see if the backend is reachable before attempting login
       try {
-        const response = await apiRequest("POST", "/api/login", {
-          email: loginEmail,
-          password: loginPassword,
+        await apiRequest("GET", "/api/auth/user");
+      } catch (error) {
+        toast({
+          title: "Connection Error",
+          description: "Unable to reach the server. Please try again later.",
+          variant: "destructive",
         });
+        return;
+      }
+
+      const response = await apiRequest("POST", "/api/login", {
+        email: loginEmail,
+        password: loginPassword,
+      });
 
       if (response.ok) {
         // Invalidate auth query to refetch user data
