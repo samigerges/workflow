@@ -408,8 +408,8 @@ export default function LettersCredit() {
                       ? "Get started by creating your first letter of credit." 
                       : `No LCs with status "${statusFilter}" found.`}
                   </p>
-                  {user && ['admin', 'finance_officer'].includes((user as any)?.role) ? (
-                    <Button 
+                  {user && ['admin', 'finance_officer'].includes(user.role) ? (
+                    <Button
                       className="mt-4 bg-primary-500 hover:bg-primary-600 text-white"
                       onClick={() => setShowCreateDialog(true)}
                     >

@@ -1,3 +1,18 @@
+export type UserRole =
+  | 'admin'
+  | 'manager'
+  | 'procurement_officer'
+  | 'finance_officer'
+  | 'shipping_officer';
+
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  role: UserRole;
+  profileImageUrl?: string;
+}
+
 export interface WorkflowStep {
   id: string;
   title: string;

@@ -248,7 +248,7 @@ export default function Requests() {
                 <DocumentVoting 
                   entityType="request"
                   entityId={votingRequest.id}
-                  allowVoting={(user as any)?.role === 'admin' || (user as any)?.role === 'manager'}
+                  allowVoting={user?.role === 'admin' || user?.role === 'manager'}
                 />
               )}
             </DialogContent>
@@ -315,7 +315,7 @@ export default function Requests() {
                           {request.status !== 'applied' ? (
                             <RequestVoteButton 
                               requestId={request.id}
-                              currentUserId={(user as any)?.id}
+                              currentUserId={user?.id}
                             />
                           ) : (
                             <span className="text-gray-500 text-sm">Hidden (status: applied)</span>
@@ -346,9 +346,9 @@ export default function Requests() {
                             >
                               <Edit size={14} />
                             </Button>
-                            {((user as any)?.role === 'admin' || (user as any)?.role === 'procurement_officer') && (
-                              <Button 
-                                size="sm" 
+                            {(user?.role === 'admin' || user?.role === 'procurement_officer') && (
+                              <Button
+                                size="sm"
                                 className="bg-green-500 hover:bg-green-600 text-white"
                                 onClick={() => {
                                   setStatusEditingRequest(request);
