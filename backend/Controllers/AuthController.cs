@@ -23,12 +23,13 @@ namespace WorkflowBackend.Api.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<UserResponse>> Register([FromBody] RegisterRequest req)
         {
-            var exists = await _db.Users.AnyAsync(u => u.Email == req.Email);
+            var email = req.Email.Trim().ToLowerInvariant();
+            var exists = await _db.Users.AnyAsync(u => u.Email == email);
             if (exists) return Conflict(new { message = "Email already registered." });
 
             var user = new User
             {
-                Email = req.Email.Trim(),
+                Email = email,
                 FirstName = req.FirstName.Trim(),
                 LastName = req.LastName.Trim(),
                 Role = string.IsNullOrWhiteSpace(req.Role) ? "User" : req.Role!.Trim()
@@ -44,7 +45,8 @@ namespace WorkflowBackend.Api.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<UserResponse>> Login([FromBody] LoginRequest req)
         {
-            var user = await _db.Users.SingleOrDefaultAsync(u => u.Email == req.Email);
+            var email = req.Email.Trim().ToLowerInvariant();
+            var user = await _db.Users.SingleOrDefaultAsync(u => u.Email == email);
             if (user is null) return Unauthorized(new { message = "Invalid credentials." });
 
             var verify = _hasher.VerifyHashedPassword(user, user.PasswordHash, req.Password);
