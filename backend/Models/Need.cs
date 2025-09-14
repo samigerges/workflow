@@ -15,6 +15,23 @@ namespace WorkflowBackend.Api.Models
         [MaxLength(50)]
         public string Status { get; set; } = "Draft";
 
+        [MaxLength(100)]
+        public string Category { get; set; } = string.Empty;
+
+        public int RequiredQuantity { get; set; }
+
+        [MaxLength(50)]
+        public string UnitOfMeasure { get; set; } = string.Empty;
+
+        public DateTime FulfillmentStartDate { get; set; }
+        public DateTime FulfillmentEndDate { get; set; }
+
+        [MaxLength(50)]
+        public string? DepartmentCode { get; set; }
+
+        [MaxLength(2000)]
+        public string? Notes { get; set; }
+
         public Guid? CreatedByUserId { get; set; }
         public User? CreatedBy { get; set; }
 

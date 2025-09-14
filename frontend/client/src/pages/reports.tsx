@@ -91,7 +91,7 @@ interface Vessel {
 }
 
 interface Need {
-  id: string | number;
+  id: string;
   category?: string;
   requiredQuantity?: number;
   createdAt?: string; // ISO

@@ -93,7 +93,7 @@ export default function Needs() {
 
   // Update need mutation
   const updateNeedMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest('PUT', `/api/needs/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: any }) => apiRequest('PUT', `/api/needs/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/needs'] });
       setShowEditDialog(false);
@@ -120,7 +120,7 @@ export default function Needs() {
 
   // Update need status mutation
   const updateNeedStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: string }) => 
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
       apiRequest('PATCH', `/api/needs/${id}/status`, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/needs'] });
@@ -148,7 +148,7 @@ export default function Needs() {
 
   // Delete need mutation
   const deleteNeedMutation = useMutation({
-    mutationFn: (id: number) => apiRequest('DELETE', `/api/needs/${id}`),
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/needs/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/needs'] });
       toast({
