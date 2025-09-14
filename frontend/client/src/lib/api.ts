@@ -27,7 +27,7 @@ export async function apiRequest(
   }
   const res = await fetch(target, init);
 
-  await throwIfResNotOk(res);
+  // Let callers inspect response.ok and handle errors themselves
   return res;
 }
 
