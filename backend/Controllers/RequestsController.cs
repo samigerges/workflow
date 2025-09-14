@@ -14,16 +14,15 @@ namespace WorkflowBackend.Api.Controllers
     public class RequestsController : ControllerBase
     {
         private readonly AppDbContext _db;
-        private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
-        { "Draft", "Submitted", "Approved", "Rejected", "Archived" };
+        private static readonly HashSet<RequestStatus> AllowedStatuses = Enum.GetValues<RequestStatus>().ToHashSet();
 
-        private static readonly Dictionary<string, string[]> AllowedTransitions = new(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<RequestStatus, RequestStatus[]> AllowedTransitions = new()
         {
-            ["Draft"]     = new[] { "Submitted", "Archived" },
-            ["Submitted"] = new[] { "Approved", "Rejected", "Archived" },
-            ["Approved"]  = new[] { "Archived" },
-            ["Rejected"]  = new[] { "Archived" },
-            ["Archived"]  = Array.Empty<string>()
+            [RequestStatus.Draft]     = new[] { RequestStatus.Submitted, RequestStatus.Archived },
+            [RequestStatus.Submitted] = new[] { RequestStatus.Approved, RequestStatus.Rejected, RequestStatus.Archived },
+            [RequestStatus.Approved]  = new[] { RequestStatus.Archived },
+            [RequestStatus.Rejected]  = new[] { RequestStatus.Archived },
+            [RequestStatus.Archived]  = Array.Empty<RequestStatus>()
         };
 
         public RequestsController(AppDbContext db) => _db = db;
@@ -50,7 +49,7 @@ namespace WorkflowBackend.Api.Controllers
 
         // GET /api/requests
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RequestResponse>>> GetAll([FromQuery] string? status, [FromQuery] Guid? needId)
+        public async Task<ActionResult<IEnumerable<RequestResponse>>> GetAll([FromQuery] RequestStatus? status, [FromQuery] Guid? needId)
         {
             var uid = CurrentUserId();
 
@@ -58,7 +57,7 @@ namespace WorkflowBackend.Api.Controllers
                 .Include(r => r.Votes)
                 .AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(status))
+            if (status is not null)
                 q = q.Where(r => r.Status == status);
 
             if (needId is not null)
@@ -94,7 +93,7 @@ namespace WorkflowBackend.Api.Controllers
                 Title = req.Title.Trim(),
                 Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim(),
                 NeedId = req.NeedId,
-                Status = "Draft",
+                Status = RequestStatus.Draft,
                 CreatedByUserId = CurrentUserId()
             };
 
@@ -139,15 +138,15 @@ namespace WorkflowBackend.Api.Controllers
         [HttpPost("{id:guid}/status")]
         public async Task<ActionResult<RequestResponse>> ChangeStatus(Guid id, [FromBody] RequestStatusChangeRequest body)
         {
-            if (string.IsNullOrWhiteSpace(body.Status) || !AllowedStatuses.Contains(body.Status))
+            if (!AllowedStatuses.Contains(body.Status))
                 return BadRequest(new { message = "Invalid status." });
 
             var r = await _db.Requests.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
             if (r is null) return NotFound();
 
             var current = r.Status;
-            var allowed = AllowedTransitions.TryGetValue(current, out var nexts) ? nexts : Array.Empty<string>();
-            if (!allowed.Contains(body.Status, StringComparer.OrdinalIgnoreCase))
+            var allowed = AllowedTransitions.TryGetValue(current, out var nexts) ? nexts : Array.Empty<RequestStatus>();
+            if (!allowed.Contains(body.Status))
                 return BadRequest(new { message = $"Transition from '{current}' to '{body.Status}' is not allowed." });
 
             r.Status = body.Status;
