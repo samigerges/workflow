@@ -76,26 +76,16 @@ Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipments"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipment-documents"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "global-documents"));
 
-// Auto-create database on first run (dev convenience) + seed admin user
-using (var scope = app.Services.CreateScope())
+// Apply migrations + seed dev data
+if (app.Environment.IsDevelopment())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
-    // Seed default admin user if none exists
-    if (!db.Users.Any())
+    using (var scope = app.Services.CreateScope())
     {
-        var admin = new User
-        {
-            Email = "samy@gmail.com",
-            FirstName = "Samy",
-            LastName = "Gerges",
-            Role = Roles.Admin
-        };
-        var hasher = new PasswordHasher<User>();
-        admin.PasswordHash = hasher.HashPassword(admin, "admin123");
-        db.Users.Add(admin);
-        db.SaveChanges();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.Migrate();
     }
+
+    await DevelopmentDataInitializer.SeedAdminUserAsync(app.Services, app.Configuration);
 }
 
 if (app.Environment.IsDevelopment())
