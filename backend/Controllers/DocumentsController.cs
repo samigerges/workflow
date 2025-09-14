@@ -58,6 +58,10 @@ namespace WorkflowBackend.Api.Controllers
         private async Task<(string? relPath, string? original)> SaveFileAsync(IFormFile? file)
         {
             if (file is null || file.Length == 0) return (null, null);
+
+            if (!FileUploadValidator.IsValid(file, out var error))
+                throw new InvalidOperationException(error);
+
             var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             var dir = Path.Combine(webRoot, "uploads", "global-documents");
             Directory.CreateDirectory(dir);
@@ -164,9 +168,16 @@ namespace WorkflowBackend.Api.Controllers
 
             if (file is not null)
             {
-                var (rel, original) = await SaveFileAsync(file);
-                d.FilePath = rel;
-                d.FileName = original;
+                try
+                {
+                    var (rel, original) = await SaveFileAsync(file);
+                    d.FilePath = rel;
+                    d.FileName = original;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
             }
 
             _db.Documents.Add(d);
@@ -202,10 +213,17 @@ namespace WorkflowBackend.Api.Controllers
             if (d is null) return NotFound();
             if (file is null || file.Length == 0) return BadRequest(new { message = "File is required." });
 
-            var (rel, original) = await SaveFileAsync(file);
-            d.FilePath = rel;
-            d.FileName = original;
-            d.UploadedAt = DateTime.UtcNow;
+            try
+            {
+                var (rel, original) = await SaveFileAsync(file);
+                d.FilePath = rel;
+                d.FileName = original;
+                d.UploadedAt = DateTime.UtcNow;
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
 
             await _db.SaveChangesAsync();
             return ToResponse(d);
