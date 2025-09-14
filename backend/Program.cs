@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.EntityFrameworkCore;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.Security;
@@ -42,6 +43,13 @@ builder.Services.AddControllers().AddJsonOptions(o =>
     o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 });
 
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "X-CSRF-COOKIE";
+    options.Cookie.SameSite = SameSiteMode.Lax;
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -60,6 +68,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+var antiforgery = app.Services.GetRequiredService<IAntiforgery>();
 
 // Ensure web root + upload folders exist
 var webRoot = app.Environment.WebRootPath;
@@ -96,6 +106,28 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("frontend");
 app.UseStaticFiles();
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsGet(context.Request.Method))
+    {
+        var tokens = antiforgery.GetAndStoreTokens(context);
+        context.Response.Cookies.Append("X-CSRF-TOKEN", tokens.RequestToken!, new CookieOptions
+        {
+            HttpOnly = false,
+            Secure = context.Request.IsHttps,
+            SameSite = SameSiteMode.Lax
+        });
+    }
+    else if (HttpMethods.IsPost(context.Request.Method) ||
+             HttpMethods.IsPut(context.Request.Method) ||
+             HttpMethods.IsDelete(context.Request.Method) ||
+             HttpMethods.IsPatch(context.Request.Method))
+    {
+        await antiforgery.ValidateRequestAsync(context);
+    }
+
+    await next();
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
