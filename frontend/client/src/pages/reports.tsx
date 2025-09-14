@@ -115,7 +115,7 @@ const asNumber = (v: unknown, fallback = 0): number => {
 };
 
 const fetcher = async <T,>(url: string): Promise<T> => {
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
   return res.json();
 };
