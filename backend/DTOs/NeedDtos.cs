@@ -11,7 +11,9 @@ namespace WorkflowBackend.Api.DTOs
         [param:Required] DateTime FulfillmentStartDate,
         [param:Required] DateTime FulfillmentEndDate,
         [param:MaxLength(50)] string? DepartmentCode,
-        [param:MaxLength(2000)] string? Notes
+        [param:MaxLength(2000)] string? Notes,
+        int? ActualQuantityReceived,
+        decimal? MaxPricePerUnit
     );
 
     public record NeedUpdateRequest(
@@ -24,7 +26,9 @@ namespace WorkflowBackend.Api.DTOs
         [param:Required] DateTime FulfillmentStartDate,
         [param:Required] DateTime FulfillmentEndDate,
         [param:MaxLength(50)] string? DepartmentCode,
-        [param:MaxLength(2000)] string? Notes
+        [param:MaxLength(2000)] string? Notes,
+        int? ActualQuantityReceived,
+        decimal? MaxPricePerUnit
     );
 
     public record NeedResponse(
@@ -41,6 +45,13 @@ namespace WorkflowBackend.Api.DTOs
         string? Notes,
         Guid? CreatedByUserId,
         DateTime CreatedAt,
-        DateTime UpdatedAt
+        DateTime UpdatedAt,
+        int ActualQuantityReceived,
+        decimal? MaxPricePerUnit,
+        double ProgressPercentage
+    );
+
+    public record NeedStatusUpdateRequest(
+        [param:Required, MaxLength(50)] string Status
     );
 }

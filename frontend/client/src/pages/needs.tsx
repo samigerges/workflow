@@ -177,6 +177,14 @@ export default function Needs() {
     return need.category === categoryFilter;
   });
 
+  const calculateProgress = (need: Need) => {
+    if (typeof need.progressPercentage === "number") return need.progressPercentage;
+    if (typeof need.actualQuantityReceived === "number" && need.requiredQuantity > 0) {
+      return (need.actualQuantityReceived / need.requiredQuantity) * 100;
+    }
+    return 0;
+  };
+
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "active": return "default";
@@ -218,7 +226,7 @@ export default function Needs() {
       };
     }
     acc[category].totalNeeded += need.requiredQuantity || 0;
-    acc[category].totalReceived += parseFloat((need as any).actualQuantityReceived || '0') || 0;
+    acc[category].totalReceived += need.actualQuantityReceived ?? 0;
     return acc;
   }, {} as Record<string, { totalNeeded: number; totalReceived: number; unitOfMeasure: string }>);
 
@@ -341,7 +349,9 @@ export default function Needs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredNeeds.map((need: Need) => (
+                  {filteredNeeds.map((need: Need) => {
+                    const progress = calculateProgress(need);
+                    return (
                     <TableRow key={need.id}>
                       <TableCell className="font-medium">{need.title}</TableCell>
                       <TableCell>
@@ -352,9 +362,9 @@ export default function Needs() {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <Progress value={parseFloat(need.progressPercentage)} className="w-16" />
+                          <Progress value={progress} className="w-16" />
                           <div className="text-xs text-muted-foreground">
-                            {need.actualQuantityReceived}/{need.requiredQuantity}
+                            {need.actualQuantityReceived ?? 0}/{need.requiredQuantity}
                           </div>
                         </div>
                       </TableCell>
@@ -404,9 +414,9 @@ export default function Needs() {
                                 <div><strong>Description:</strong> {need.description}</div>
                                 <div><strong>Category:</strong> {need.category}</div>
                                 <div><strong>Required Quantity:</strong> {need.requiredQuantity} {need.unitOfMeasure}</div>
-                                <div><strong>Max Price per Unit:</strong> ${need.maxPricePerUnit}</div>
+                                <div><strong>Max Price per Unit:</strong> {need.maxPricePerUnit !== undefined ? `$${need.maxPricePerUnit}` : "N/A"}</div>
                                 <div><strong>Department:</strong> {need.departmentCode}</div>
-                                <div><strong>Progress:</strong> {need.progressPercentage}%</div>
+                                <div><strong>Progress:</strong> {progress.toFixed(2)}%</div>
                                 {need.notes && <div><strong>Notes:</strong> {need.notes}</div>}
                               </div>
                             </DialogContent>
@@ -491,7 +501,7 @@ export default function Needs() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
             </div>
