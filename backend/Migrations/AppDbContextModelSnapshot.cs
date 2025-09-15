@@ -339,7 +339,7 @@ namespace WorkflowBackend.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Draft");
+                        .HasDefaultValue("draft");
 
                     b.Property<string>("Title")
                         .IsRequired()

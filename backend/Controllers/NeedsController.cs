@@ -15,7 +15,7 @@ namespace WorkflowBackend.Api.Controllers
     public class NeedsController : ControllerBase
     {
         private readonly AppDbContext _db;
-        private static readonly string[] ValidStatuses = new[] { "active", "in_progress", "fulfilled", "expired", "cancelled" };
+        private static readonly string[] ValidStatuses = new[] { "draft", "active", "in_progress", "fulfilled", "expired", "cancelled" };
 
         public NeedsController(AppDbContext db) => _db = db;
 
