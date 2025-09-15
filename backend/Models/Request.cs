@@ -15,10 +15,6 @@ namespace WorkflowBackend.Api.Models
         [MaxLength(50)]
         public string Status { get; set; } = "Draft"; // Draft, Submitted, Approved, Rejected, Archived
 
-        // Optional link to a Need
-        public Guid? NeedId { get; set; }
-        public Need? Need { get; set; }
-
         public Guid? CreatedByUserId { get; set; }
         public User? CreatedBy { get; set; }
 

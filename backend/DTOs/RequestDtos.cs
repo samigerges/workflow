@@ -4,14 +4,12 @@ namespace WorkflowBackend.Api.DTOs
 {
     public record RequestCreateRequest(
         [param:Required, MaxLength(200)] string Title,
-        [param:MaxLength(4000)] string? Description,
-        Guid? NeedId
+        [param:MaxLength(4000)] string? Description
     );
 
     public record RequestUpdateRequest(
         [param:Required, MaxLength(200)] string Title,
-        [param:MaxLength(4000)] string? Description,
-        Guid? NeedId
+        [param:MaxLength(4000)] string? Description
     );
 
     public record RequestStatusChangeRequest(
@@ -29,7 +27,6 @@ namespace WorkflowBackend.Api.DTOs
         string Title,
         string? Description,
         string Status,
-        Guid? NeedId,
         Guid? CreatedByUserId,
         DateTime CreatedAt,
         DateTime UpdatedAt,

@@ -19,8 +19,7 @@ export const needs = [
 export const requests = [
   {
     id: 1,
-    needId: "1",
-    title: "Wheat Import Request", 
+    title: "Wheat Import Request",
     description: "Bulk wheat import for Q1 2025",
     status: "approved",
     quantity: 5000,
@@ -35,8 +34,7 @@ export const requests = [
   },
   {
     id: 2,
-    needId: "2",
-    title: "Rice Import Request", 
+    title: "Rice Import Request",
     description: "Premium rice import",
     status: "contracted",
     quantity: 3000,
@@ -51,8 +49,7 @@ export const requests = [
   },
   {
     id: 3,
-    needId: "3",
-    title: "Steel Import Request", 
+    title: "Steel Import Request",
     description: "Industrial steel materials",
     status: "pending",
     quantity: 2000,

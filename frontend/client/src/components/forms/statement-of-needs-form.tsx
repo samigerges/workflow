@@ -32,7 +32,6 @@ const SHIPPING_METHODS = [
 const requestFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  needId: z.string().optional(), // Changed to string for Guid
 });
 
 // Only log schema in development
@@ -255,16 +254,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
             />
           </div>
 
-          <div>
-            <Label htmlFor="needId">Related Need</Label>
-            <Input
-              id="needId"
-              {...register("needId")}
-              placeholder="Need ID (optional)"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="cargoType">Cargo Type *</Label>
               <Controller

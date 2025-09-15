@@ -43,14 +43,14 @@ namespace WorkflowBackend.Api.Controllers
             var score = r.Votes.Select(v => (int?)v.Value).Sum() ?? 0;
 
             return new RequestResponse(
-                r.Id, r.Title, r.Description, r.Status, r.NeedId, r.CreatedByUserId,
+                r.Id, r.Title, r.Description, r.Status, r.CreatedByUserId,
                 r.CreatedAt, r.UpdatedAt, score, myVote
             );
         }
 
         // GET /api/requests
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RequestResponse>>> GetAll([FromQuery] string? status, [FromQuery] Guid? needId)
+        public async Task<ActionResult<IEnumerable<RequestResponse>>> GetAll([FromQuery] string? status)
         {
             var uid = CurrentUserId();
 
@@ -60,9 +60,6 @@ namespace WorkflowBackend.Api.Controllers
 
             if (!string.IsNullOrWhiteSpace(status))
                 q = q.Where(r => r.Status == status);
-
-            if (needId is not null)
-                q = q.Where(r => r.NeedId == needId);
 
             var items = await q
                 .OrderByDescending(r => r.CreatedAt)
@@ -93,7 +90,6 @@ namespace WorkflowBackend.Api.Controllers
             {
                 Title = req.Title.Trim(),
                 Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim(),
-                NeedId = req.NeedId,
                 Status = "Draft",
                 CreatedByUserId = CurrentUserId()
             };
@@ -116,7 +112,6 @@ namespace WorkflowBackend.Api.Controllers
 
             r.Title = req.Title.Trim();
             r.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
-            r.NeedId = req.NeedId;
             r.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();

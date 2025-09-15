@@ -27,7 +27,6 @@ export type Need = z.infer<typeof insertNeedSchema> & {
 
 // Schema for creating requests
 export const insertRequestSchema = z.object({
-  needId: z.string().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
   quantity: z.number().optional(),

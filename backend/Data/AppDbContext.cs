@@ -55,9 +55,6 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<Request>()
                 .HasOne(r => r.CreatedBy).WithMany()
                 .HasForeignKey(r => r.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<Request>()
-                .HasOne(r => r.Need).WithMany()
-                .HasForeignKey(r => r.NeedId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<RequestVote>()
                 .HasIndex(v => new { v.RequestId, v.UserId }).IsUnique();
             modelBuilder.Entity<RequestVote>()
