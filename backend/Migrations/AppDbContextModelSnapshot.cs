@@ -380,9 +380,6 @@ namespace WorkflowBackend.Api.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<Guid?>("NeedId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -401,8 +398,6 @@ namespace WorkflowBackend.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("NeedId");
 
                     b.ToTable("Requests");
                 });
@@ -743,14 +738,7 @@ namespace WorkflowBackend.Api.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("WorkflowBackend.Api.Models.Need", "Need")
-                        .WithMany()
-                        .HasForeignKey("NeedId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("CreatedBy");
-
-                    b.Navigation("Need");
                 });
 
             modelBuilder.Entity("WorkflowBackend.Api.Models.RequestVote", b =>
