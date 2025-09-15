@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WorkflowBackend.Api.Models
 {
@@ -13,7 +14,7 @@ namespace WorkflowBackend.Api.Models
         public string? Description { get; set; }
 
         [MaxLength(50)]
-        public string Status { get; set; } = "Draft";
+        public string Status { get; set; } = "active";
 
         [MaxLength(100)]
         public string Category { get; set; } = string.Empty;
@@ -22,6 +23,13 @@ namespace WorkflowBackend.Api.Models
 
         [MaxLength(50)]
         public string UnitOfMeasure { get; set; } = string.Empty;
+
+        public int ActualQuantityReceived { get; set; } = 0;
+
+        public decimal? MaxPricePerUnit { get; set; }
+
+        [NotMapped]
+        public double ProgressPercentage => RequiredQuantity == 0 ? 0 : (double)ActualQuantityReceived / RequiredQuantity * 100;
 
         public DateTime FulfillmentStartDate { get; set; }
         public DateTime FulfillmentEndDate { get; set; }

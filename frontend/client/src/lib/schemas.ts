@@ -12,10 +12,15 @@ export const insertNeedSchema = z.object({
   departmentCode: z.string().optional(),
   notes: z.string().optional(),
   createdBy: z.string().optional(),
+  // Optional fields that may be populated from the backend
+  actualQuantityReceived: z.number().optional(),
+  maxPricePerUnit: z.number().optional(),
 });
 
 export type Need = z.infer<typeof insertNeedSchema> & {
   id: string;
+  status: string;
+  progressPercentage?: number;
   createdAt?: string;
   updatedAt?: string;
 };

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Linq;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
 using WorkflowBackend.Api.Models;
@@ -14,6 +15,7 @@ namespace WorkflowBackend.Api.Controllers
     public class NeedsController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private static readonly string[] ValidStatuses = new[] { "active", "in_progress", "fulfilled", "expired", "cancelled" };
 
         public NeedsController(AppDbContext db) => _db = db;
 
@@ -42,7 +44,10 @@ namespace WorkflowBackend.Api.Controllers
                     n.Notes,
                     n.CreatedByUserId,
                     n.CreatedAt,
-                    n.UpdatedAt))
+                    n.UpdatedAt,
+                    n.ActualQuantityReceived,
+                    n.MaxPricePerUnit,
+                    n.ProgressPercentage))
                 .ToListAsync();
 
             return items;
@@ -67,7 +72,10 @@ namespace WorkflowBackend.Api.Controllers
                 n.Notes,
                 n.CreatedByUserId,
                 n.CreatedAt,
-                n.UpdatedAt);
+                n.UpdatedAt,
+                n.ActualQuantityReceived,
+                n.MaxPricePerUnit,
+                n.ProgressPercentage);
         }
 
         [HttpPost]
@@ -77,10 +85,11 @@ namespace WorkflowBackend.Api.Controllers
             {
                 Title = req.Title.Trim(),
                 Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim(),
-                Status = "Draft",
                 Category = req.Category.Trim(),
                 RequiredQuantity = req.RequiredQuantity,
                 UnitOfMeasure = req.UnitOfMeasure.Trim(),
+                ActualQuantityReceived = req.ActualQuantityReceived ?? 0,
+                MaxPricePerUnit = req.MaxPricePerUnit,
                 FulfillmentStartDate = req.FulfillmentStartDate,
                 FulfillmentEndDate = req.FulfillmentEndDate,
                 DepartmentCode = string.IsNullOrWhiteSpace(req.DepartmentCode) ? null : req.DepartmentCode.Trim(),
@@ -105,7 +114,10 @@ namespace WorkflowBackend.Api.Controllers
                 n.Notes,
                 n.CreatedByUserId,
                 n.CreatedAt,
-                n.UpdatedAt);
+                n.UpdatedAt,
+                n.ActualQuantityReceived,
+                n.MaxPricePerUnit,
+                n.ProgressPercentage);
             return CreatedAtAction(nameof(GetOne), new { id = n.Id }, res);
         }
 
@@ -117,10 +129,17 @@ namespace WorkflowBackend.Api.Controllers
 
             n.Title = req.Title.Trim();
             n.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
-            if (!string.IsNullOrWhiteSpace(req.Status)) n.Status = req.Status.Trim();
+            if (!string.IsNullOrWhiteSpace(req.Status))
+            {
+                var status = req.Status.Trim().ToLower();
+                if (!ValidStatuses.Contains(status)) return BadRequest("Invalid status");
+                n.Status = status;
+            }
             n.Category = req.Category.Trim();
             n.RequiredQuantity = req.RequiredQuantity;
             n.UnitOfMeasure = req.UnitOfMeasure.Trim();
+            if (req.ActualQuantityReceived.HasValue) n.ActualQuantityReceived = req.ActualQuantityReceived.Value;
+            if (req.MaxPricePerUnit.HasValue) n.MaxPricePerUnit = req.MaxPricePerUnit;
             n.FulfillmentStartDate = req.FulfillmentStartDate;
             n.FulfillmentEndDate = req.FulfillmentEndDate;
             n.DepartmentCode = string.IsNullOrWhiteSpace(req.DepartmentCode) ? null : req.DepartmentCode.Trim();
@@ -143,7 +162,40 @@ namespace WorkflowBackend.Api.Controllers
                 n.Notes,
                 n.CreatedByUserId,
                 n.CreatedAt,
-                n.UpdatedAt);
+                n.UpdatedAt,
+                n.ActualQuantityReceived,
+                n.MaxPricePerUnit,
+                n.ProgressPercentage);
+        }
+
+        [HttpPatch("{id:guid}/status")]
+        public async Task<ActionResult<NeedResponse>> UpdateStatus(Guid id, [FromBody] NeedStatusUpdateRequest req)
+        {
+            var status = req.Status.Trim().ToLower();
+            if (!ValidStatuses.Contains(status)) return BadRequest("Invalid status");
+            var n = await _db.Needs.FindAsync(id);
+            if (n is null) return NotFound();
+            n.Status = status;
+            n.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return new NeedResponse(
+                n.Id,
+                n.Title,
+                n.Description,
+                n.Status,
+                n.Category,
+                n.RequiredQuantity,
+                n.UnitOfMeasure,
+                n.FulfillmentStartDate,
+                n.FulfillmentEndDate,
+                n.DepartmentCode,
+                n.Notes,
+                n.CreatedByUserId,
+                n.CreatedAt,
+                n.UpdatedAt,
+                n.ActualQuantityReceived,
+                n.MaxPricePerUnit,
+                n.ProgressPercentage);
         }
 
         [HttpDelete("{id:guid}")]
