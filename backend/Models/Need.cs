@@ -14,7 +14,7 @@ namespace WorkflowBackend.Api.Models
         public string? Description { get; set; }
 
         [MaxLength(50)]
-        public string Status { get; set; } = "active";
+        public string Status { get; set; } = "draft";
 
         [MaxLength(100)]
         public string Category { get; set; } = string.Empty;

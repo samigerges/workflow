@@ -38,7 +38,7 @@ namespace WorkflowBackend.Api.Data
             // Need
             modelBuilder.Entity<Need>().Property(n => n.Title).HasMaxLength(200).IsRequired();
             modelBuilder.Entity<Need>().Property(n => n.Description).HasMaxLength(2000);
-            modelBuilder.Entity<Need>().Property(n => n.Status).HasMaxLength(50).HasDefaultValue("Draft");
+            modelBuilder.Entity<Need>().Property(n => n.Status).HasMaxLength(50).HasDefaultValue("draft");
             modelBuilder.Entity<Need>().Property(n => n.Category).HasMaxLength(100);
             modelBuilder.Entity<Need>().Property(n => n.UnitOfMeasure).HasMaxLength(50);
             modelBuilder.Entity<Need>().Property(n => n.ActualQuantityReceived).HasDefaultValue(0);
