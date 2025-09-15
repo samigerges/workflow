@@ -30,42 +30,21 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // Quick check to see if the backend is reachable before attempting login
-      try {
-        await apiRequest("GET", "/api/auth/user");
-      } catch (error) {
-        toast({
-          title: "Connection Error",
-          description: "Unable to reach the server. Please try again later.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const response = await apiRequest("POST", "/api/login", {
+      await apiRequest("POST", "/api/login", {
         email: loginEmail,
         password: loginPassword,
       });
 
-      if (response.ok) {
-        // Invalidate auth query to refetch user data
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-        
-        // Navigate to dashboard
-        setLocation("/");
-        
-        toast({
-          title: "Success",
-          description: "Logged in successfully",
-        });
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Error",
-          description: errorData.message || "Login failed",
-          variant: "destructive",
-        });
-      }
+      // Invalidate auth query to refetch user data
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+
+      // Navigate to dashboard
+      setLocation("/");
+
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
     } catch (error) {
       toast({
         title: "Error",
