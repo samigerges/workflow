@@ -307,8 +307,17 @@ namespace WorkflowBackend.Api.Controllers
         {
             var exists = await _db.LettersOfCredit.AnyAsync(x => x.Id == id);
             if (!exists) return NotFound();
-            // TODO: Replace with actual join once Vessel is implemented
-            return new List<object>();
+            var links = await _db.VesselLettersOfCredit
+                .Include(x => x.Vessel)
+                .Where(x => x.LetterOfCreditId == id)
+                .ToListAsync();
+
+            return links.Select(l => new
+            {
+                l.VesselId,
+                l.Vessel!.Name,
+                l.Vessel.Status
+            }).ToList();
         }
     }
 }
