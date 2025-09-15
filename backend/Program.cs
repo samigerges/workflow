@@ -76,20 +76,17 @@ Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipments"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipment-documents"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "global-documents"));
 
-// Apply migrations + seed dev data
-if (app.Environment.IsDevelopment())
+// Apply migrations
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.Database.Migrate();
-    }
-
-    await DevelopmentDataInitializer.SeedAdminUserAsync(app.Services, app.Configuration);
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
 }
 
+// Seed dev data + Swagger
 if (app.Environment.IsDevelopment())
 {
+    await DevelopmentDataInitializer.SeedAdminUserAsync(app.Services, app.Configuration);
     app.UseSwagger();
     app.UseSwaggerUI();
 }
