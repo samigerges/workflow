@@ -296,6 +296,9 @@ namespace WorkflowBackend.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("ActualQuantityReceived")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -320,6 +323,9 @@ namespace WorkflowBackend.Api.Migrations
 
                     b.Property<DateTime>("FulfillmentStartDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("MaxPricePerUnit")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
