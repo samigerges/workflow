@@ -8,8 +8,8 @@ namespace WorkflowBackend.Api.DTOs
         [param:Required, MaxLength(100)] string Category,
         [param:Required] int RequiredQuantity,
         [param:Required, MaxLength(50)] string UnitOfMeasure,
-        [param:Required] DateTime FulfillmentStartDate,
-        [param:Required] DateTime FulfillmentEndDate,
+        [param:Required] DateTime FulfillmentStartDate, // Expected in UTC
+        [param:Required] DateTime FulfillmentEndDate,   // Expected in UTC
         [param:MaxLength(50)] string? DepartmentCode,
         [param:MaxLength(2000)] string? Notes,
         int? ActualQuantityReceived,
@@ -23,8 +23,8 @@ namespace WorkflowBackend.Api.DTOs
         [param:Required, MaxLength(100)] string Category,
         [param:Required] int RequiredQuantity,
         [param:Required, MaxLength(50)] string UnitOfMeasure,
-        [param:Required] DateTime FulfillmentStartDate,
-        [param:Required] DateTime FulfillmentEndDate,
+        [param:Required] DateTime FulfillmentStartDate, // Expected in UTC
+        [param:Required] DateTime FulfillmentEndDate,   // Expected in UTC
         [param:MaxLength(50)] string? DepartmentCode,
         [param:MaxLength(2000)] string? Notes,
         int? ActualQuantityReceived,

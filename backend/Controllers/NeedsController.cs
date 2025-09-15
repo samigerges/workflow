@@ -90,8 +90,9 @@ namespace WorkflowBackend.Api.Controllers
                 UnitOfMeasure = req.UnitOfMeasure.Trim(),
                 ActualQuantityReceived = req.ActualQuantityReceived ?? 0,
                 MaxPricePerUnit = req.MaxPricePerUnit,
-                FulfillmentStartDate = req.FulfillmentStartDate,
-                FulfillmentEndDate = req.FulfillmentEndDate,
+                // Ensure incoming dates are treated as UTC to avoid PostgreSQL errors
+                FulfillmentStartDate = DateTime.SpecifyKind(req.FulfillmentStartDate, DateTimeKind.Utc),
+                FulfillmentEndDate = DateTime.SpecifyKind(req.FulfillmentEndDate, DateTimeKind.Utc),
                 DepartmentCode = string.IsNullOrWhiteSpace(req.DepartmentCode) ? null : req.DepartmentCode.Trim(),
                 Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes.Trim(),
                 CreatedByUserId = CurrentUserId()
@@ -140,8 +141,9 @@ namespace WorkflowBackend.Api.Controllers
             n.UnitOfMeasure = req.UnitOfMeasure.Trim();
             if (req.ActualQuantityReceived.HasValue) n.ActualQuantityReceived = req.ActualQuantityReceived.Value;
             if (req.MaxPricePerUnit.HasValue) n.MaxPricePerUnit = req.MaxPricePerUnit;
-            n.FulfillmentStartDate = req.FulfillmentStartDate;
-            n.FulfillmentEndDate = req.FulfillmentEndDate;
+            // Normalize to UTC before persisting
+            n.FulfillmentStartDate = DateTime.SpecifyKind(req.FulfillmentStartDate, DateTimeKind.Utc);
+            n.FulfillmentEndDate = DateTime.SpecifyKind(req.FulfillmentEndDate, DateTimeKind.Utc);
             n.DepartmentCode = string.IsNullOrWhiteSpace(req.DepartmentCode) ? null : req.DepartmentCode.Trim();
             n.Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes.Trim();
             n.UpdatedAt = DateTime.UtcNow;
