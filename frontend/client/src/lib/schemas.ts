@@ -27,22 +27,34 @@ export type Need = z.infer<typeof insertNeedSchema> & {
 
 // Schema for creating requests
 export const insertRequestSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(200, "Title must be 200 characters or less"),
+  description: z.string().max(4000).optional(),
   quantity: z.number().optional(),
-  unitOfMeasure: z.string().optional(),
-  cargoType: z.string().optional(),
+  unitOfMeasure: z.string().max(50).optional(),
+  cargoType: z.string().max(100).optional(),
   pricePerTon: z.number().optional(),
-  supplierName: z.string().optional(),
-  countryOfOrigin: z.string().optional(),
-  paymentMethod: z.string().optional(),
-  shippingMethod: z.string().optional(),
-  letterOfGuarantee: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  status: z.string().optional(),
-  uploadedFile: z.string().optional(),
-  createdBy: z.string().optional(),
+  supplierName: z.string().max(200).optional(),
+  countryOfOrigin: z.string().max(100).optional(),
+  paymentMethod: z.string().max(100).optional(),
+  shippingMethod: z.string().max(100).optional(),
+  letterOfGuarantee: z.string().max(4000).optional(),
+  startDate: z
+    .string()
+    .optional()
+    .refine((val) => !val || !isNaN(Date.parse(val)), {
+      message: "Invalid date",
+    }),
+  endDate: z
+    .string()
+    .optional()
+    .refine((val) => !val || !isNaN(Date.parse(val)), {
+      message: "Invalid date",
+    }),
+  status: z.string().max(50).optional(),
+  uploadedFile: z.string().max(255).optional(),
 });
 
 // Schema for creating vessels

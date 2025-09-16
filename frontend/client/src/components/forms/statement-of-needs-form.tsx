@@ -102,12 +102,19 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
       // Build submit data
       const submitData: any = {
         ...payload,
-        startDate: payload.startDate || null,
-        endDate: payload.endDate || null,
-        status: saveAsDraft ? "draft" : (request ? request.status : "pending"),
+        startDate: payload.startDate
+          ? new Date(payload.startDate).toISOString()
+          : null,
+        endDate: payload.endDate
+          ? new Date(payload.endDate).toISOString()
+          : null,
+        status: saveAsDraft ? "draft" : request ? request.status : "pending",
         pricePerTon: payload.pricePerTon,
-        quantity: typeof payload.quantity === "string" ? parseInt(payload.quantity, 10) : payload.quantity,
-        uploadedFile: request?.uploadedFile || ""
+        quantity:
+          typeof payload.quantity === "string"
+            ? parseInt(payload.quantity, 10)
+            : payload.quantity,
+        uploadedFile: request?.uploadedFile || "",
       };
 
       // Clean undefined fields (optional)
