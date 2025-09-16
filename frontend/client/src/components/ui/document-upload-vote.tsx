@@ -72,7 +72,7 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
       formData.append("entityId", entityId.toString());
       formData.append("description", `${entityType} document`);
 
-        const response = await apiRequest("POST", "/api/upload-document", formData);
+        const response = await apiRequest("POST", "/api/documents/upload", formData);
 
         if (!response.ok) {
           throw new Error("Failed to upload document");

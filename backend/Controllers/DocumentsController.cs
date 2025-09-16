@@ -186,6 +186,18 @@ namespace WorkflowBackend.Api.Controllers
             return CreatedAtAction(nameof(GetOne), new { id = d.Id }, ToResponse(d));
         }
 
+        // Legacy endpoint support: POST /api/upload-document
+        [HttpPost("/api/upload-document")]
+        [Consumes("multipart/form-data")]
+        public Task<ActionResult<DocumentResponse>> UploadDocumentAlias(
+            [FromForm] string title,
+            [FromForm] string entityType,
+            [FromForm] Guid entityId,
+            [FromForm] string? type,
+            [FromForm] string[]? tags,
+            [FromForm(Name = "file")] IFormFile? file)
+            => CreateForm(title, entityType, entityId, type, tags, file);
+
         // ---------- UPDATE (JSON) ----------
         [HttpPut("{id:guid}")]
         [Consumes("application/json")]

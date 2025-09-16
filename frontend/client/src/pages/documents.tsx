@@ -132,7 +132,7 @@ export default function Documents() {
 
   const uploadMutation = useMutation({
       mutationFn: async (formData: FormData) => {
-        const response = await apiRequest('POST', '/api/upload-document', formData);
+        const response = await apiRequest('POST', '/api/documents/upload', formData);
         if (!response.ok) {
           throw new Error('Upload failed');
         }

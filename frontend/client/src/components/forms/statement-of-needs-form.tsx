@@ -133,7 +133,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
         formData.append("entityType", "request");
         formData.append("entityId", String(requestId));
 
-        const uploadResponse = await apiRequest("POST", "/api/upload-document", formData);
+        const uploadResponse = await apiRequest("POST", "/api/documents/upload", formData);
         const uploadResult = await uploadResponse.json();
 
         const fileName = uploadResult?.fileName || selectedFile.name;
