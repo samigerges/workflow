@@ -312,7 +312,7 @@ export async function apiRequest(
   }
 
   // Upload document
-  if (method === "POST" && url === "/api/upload-document") {
+  if (method === "POST" && url === "/api/documents/upload") {
     let fileName = "uploaded-file";
     let entityType = "general";
     let entityId = 0;
