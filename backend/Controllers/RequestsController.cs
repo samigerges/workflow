@@ -15,15 +15,17 @@ namespace WorkflowBackend.Api.Controllers
     {
         private readonly AppDbContext _db;
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
-        { "Draft", "Submitted", "Approved", "Rejected", "Archived" };
-
-        private static readonly Dictionary<string, string[]> AllowedTransitions = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["Draft"]     = new[] { "Submitted", "Archived" },
-            ["Submitted"] = new[] { "Approved", "Rejected", "Archived" },
-            ["Approved"]  = new[] { "Archived" },
-            ["Rejected"]  = new[] { "Archived" },
-            ["Archived"]  = Array.Empty<string>()
+            "draft",
+            "pending",
+            "approved",
+            "rejected",
+            "contracted",
+            "applied",
+            "in_progress",
+            "completed",
+            "submitted",
+            "archived"
         };
 
         public RequestsController(AppDbContext db) => _db = db;
@@ -34,6 +36,29 @@ namespace WorkflowBackend.Api.Controllers
             return Guid.TryParse(idStr, out var id) ? id : null;
         }
 
+        private static string? NormalizeString(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private static string NormalizeStatusOrDefault(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status)) return "pending";
+
+            var normalized = status.Trim().ToLowerInvariant();
+            return AllowedStatuses.Contains(normalized) ? normalized : "pending";
+        }
+
+        private static bool TryNormalizeStatus(string? status, out string normalized)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+            {
+                normalized = string.Empty;
+                return false;
+            }
+
+            normalized = status.Trim().ToLowerInvariant();
+            return AllowedStatuses.Contains(normalized);
+        }
+
         private static RequestResponse ToResponse(Request r, Guid? currentUserId)
         {
             var myVote = currentUserId is null
@@ -42,9 +67,30 @@ namespace WorkflowBackend.Api.Controllers
 
             var score = r.Votes.Select(v => (int?)v.Value).Sum() ?? 0;
 
+            var status = NormalizeStatusOrDefault(r.Status);
+
             return new RequestResponse(
-                r.Id, r.Title, r.Description, r.Status, r.CreatedByUserId,
-                r.CreatedAt, r.UpdatedAt, score, myVote
+                r.Id,
+                r.Title,
+                r.Description,
+                status,
+                r.CreatedByUserId,
+                r.CreatedAt,
+                r.UpdatedAt,
+                score,
+                myVote,
+                r.Quantity,
+                r.UnitOfMeasure,
+                r.CargoType,
+                r.PricePerTon,
+                r.SupplierName,
+                r.CountryOfOrigin,
+                r.PaymentMethod,
+                r.ShippingMethod,
+                r.LetterOfGuarantee,
+                r.StartDate,
+                r.EndDate,
+                r.UploadedFile
             );
         }
 
@@ -86,11 +132,27 @@ namespace WorkflowBackend.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<RequestResponse>> Create([FromBody] RequestCreateRequest req)
         {
+            var title = req.Title?.Trim();
+            if (string.IsNullOrWhiteSpace(title))
+                return BadRequest(new { message = "Title is required." });
+
             var r = new Request
             {
-                Title = req.Title.Trim(),
-                Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim(),
-                Status = "Draft",
+                Title = title,
+                Description = NormalizeString(req.Description),
+                Status = NormalizeStatusOrDefault(req.Status),
+                Quantity = req.Quantity,
+                UnitOfMeasure = NormalizeString(req.UnitOfMeasure),
+                CargoType = NormalizeString(req.CargoType),
+                PricePerTon = req.PricePerTon,
+                SupplierName = NormalizeString(req.SupplierName),
+                CountryOfOrigin = NormalizeString(req.CountryOfOrigin),
+                PaymentMethod = NormalizeString(req.PaymentMethod),
+                ShippingMethod = NormalizeString(req.ShippingMethod),
+                LetterOfGuarantee = NormalizeString(req.LetterOfGuarantee),
+                StartDate = req.StartDate?.Date,
+                EndDate = req.EndDate?.Date,
+                UploadedFile = NormalizeString(req.UploadedFile),
                 CreatedByUserId = CurrentUserId()
             };
 
@@ -110,8 +172,62 @@ namespace WorkflowBackend.Api.Controllers
             var r = await _db.Requests.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
             if (r is null) return NotFound();
 
-            r.Title = req.Title.Trim();
-            r.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
+            if (req.Title is not null)
+            {
+                var title = req.Title.Trim();
+                if (string.IsNullOrWhiteSpace(title))
+                    return BadRequest(new { message = "Title is required." });
+
+                r.Title = title;
+            }
+
+            if (req.Description is not null)
+                r.Description = NormalizeString(req.Description);
+
+            if (req.Quantity.HasValue)
+                r.Quantity = req.Quantity;
+
+            if (req.UnitOfMeasure is not null)
+                r.UnitOfMeasure = NormalizeString(req.UnitOfMeasure);
+
+            if (req.CargoType is not null)
+                r.CargoType = NormalizeString(req.CargoType);
+
+            if (req.PricePerTon.HasValue)
+                r.PricePerTon = req.PricePerTon;
+
+            if (req.SupplierName is not null)
+                r.SupplierName = NormalizeString(req.SupplierName);
+
+            if (req.CountryOfOrigin is not null)
+                r.CountryOfOrigin = NormalizeString(req.CountryOfOrigin);
+
+            if (req.PaymentMethod is not null)
+                r.PaymentMethod = NormalizeString(req.PaymentMethod);
+
+            if (req.ShippingMethod is not null)
+                r.ShippingMethod = NormalizeString(req.ShippingMethod);
+
+            if (req.LetterOfGuarantee is not null)
+                r.LetterOfGuarantee = NormalizeString(req.LetterOfGuarantee);
+
+            if (req.StartDate.HasValue)
+                r.StartDate = req.StartDate.Value.Date;
+
+            if (req.EndDate.HasValue)
+                r.EndDate = req.EndDate.Value.Date;
+
+            if (req.UploadedFile is not null)
+                r.UploadedFile = NormalizeString(req.UploadedFile);
+
+            if (req.Status is not null)
+            {
+                if (!TryNormalizeStatus(req.Status, out var newStatus))
+                    return BadRequest(new { message = "Invalid status." });
+
+                r.Status = newStatus;
+            }
+
             r.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -134,18 +250,13 @@ namespace WorkflowBackend.Api.Controllers
         [HttpPost("{id:guid}/status")]
         public async Task<ActionResult<RequestResponse>> ChangeStatus(Guid id, [FromBody] RequestStatusChangeRequest body)
         {
-            if (string.IsNullOrWhiteSpace(body.Status) || !AllowedStatuses.Contains(body.Status))
+            if (!TryNormalizeStatus(body.Status, out var newStatus))
                 return BadRequest(new { message = "Invalid status." });
 
             var r = await _db.Requests.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
             if (r is null) return NotFound();
 
-            var current = r.Status;
-            var allowed = AllowedTransitions.TryGetValue(current, out var nexts) ? nexts : Array.Empty<string>();
-            if (!allowed.Contains(body.Status, StringComparer.OrdinalIgnoreCase))
-                return BadRequest(new { message = $"Transition from '{current}' to '{body.Status}' is not allowed." });
-
-            r.Status = body.Status;
+            r.Status = newStatus;
             r.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
