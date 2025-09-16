@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
@@ -14,6 +15,7 @@ namespace WorkflowBackend.Api.Controllers
     public class RequestsController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly ILogger<RequestsController> _logger;
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         {
             "draft",
@@ -28,7 +30,11 @@ namespace WorkflowBackend.Api.Controllers
             "archived"
         };
 
-        public RequestsController(AppDbContext db) => _db = db;
+        public RequestsController(AppDbContext db, ILogger<RequestsController> logger)
+        {
+            _db = db;
+            _logger = logger;
+        }
 
         private Guid? CurrentUserId()
         {
@@ -388,7 +394,22 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             r.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Concurrency conflict while saving vote on request {RequestId} by user {UserId}",
+                    id,
+                    uid);
+                return Conflict(new
+                {
+                    message = "This request's votes changed while you were voting. Please reload and try again."
+                });
+            }
 
             // Reload votes to reflect changes
             await _db.Entry(r).Collection(x => x.Votes).LoadAsync();
