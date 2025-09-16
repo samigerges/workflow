@@ -454,6 +454,10 @@ namespace WorkflowBackend.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -467,6 +471,8 @@ namespace WorkflowBackend.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("RequestId", "UserId")
                         .IsUnique();
@@ -795,7 +801,15 @@ namespace WorkflowBackend.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("WorkflowBackend.Api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Request");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WorkflowBackend.Api.Models.Shipment", b =>

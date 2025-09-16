@@ -12,12 +12,16 @@ namespace WorkflowBackend.Api.Models
 
         [Required]
         public Guid UserId { get; set; }
+        public User? User { get; set; }
 
         /// <summary>
         /// +1 for approve/upvote, -1 for reject/downvote
         /// </summary>
         [Range(-1, 1)]
         public int Value { get; set; } = 0;
+
+        [MaxLength(2000)]
+        public string? Comment { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
