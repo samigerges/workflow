@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
@@ -15,6 +16,7 @@ namespace WorkflowBackend.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<ContractsController> _logger;
 
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         { "Draft", "Active", "Completed", "Cancelled", "Archived" };
@@ -28,10 +30,11 @@ namespace WorkflowBackend.Api.Controllers
             ["Archived"]  = Array.Empty<string>()
         };
 
-        public ContractsController(AppDbContext db, IWebHostEnvironment env)
+        public ContractsController(AppDbContext db, IWebHostEnvironment env, ILogger<ContractsController> logger)
         {
             _db = db;
             _env = env;
+            _logger = logger;
         }
 
         private Guid? CurrentUserId()
@@ -390,7 +393,22 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             c.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Concurrency conflict while saving vote on contract {ContractId} by user {UserId}",
+                    id,
+                    uid);
+                return Conflict(new
+                {
+                    message = "This contract's votes changed while you were voting. Please reload and try again."
+                });
+            }
 
             await _db.Entry(c).Collection(x => x.Votes).LoadAsync();
 
