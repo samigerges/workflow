@@ -68,8 +68,13 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<RequestVote>()
                 .HasIndex(v => new { v.RequestId, v.UserId }).IsUnique();
             modelBuilder.Entity<RequestVote>()
+                .Property(v => v.Comment).HasMaxLength(2000);
+            modelBuilder.Entity<RequestVote>()
                 .HasOne(v => v.Request).WithMany(r => r.Votes)
                 .HasForeignKey(v => v.RequestId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<RequestVote>()
+                .HasOne(v => v.User).WithMany()
+                .HasForeignKey(v => v.UserId).OnDelete(DeleteBehavior.Restrict);
 
             // Contract
             modelBuilder.Entity<Contract>().Property(c => c.Title).HasMaxLength(200).IsRequired();

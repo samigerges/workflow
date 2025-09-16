@@ -59,6 +59,56 @@ namespace WorkflowBackend.Api.Controllers
             return AllowedStatuses.Contains(normalized);
         }
 
+        private static string ToVoteName(int value) => value switch
+        {
+            >= 1 => "yes",
+            <= -1 => "no",
+            _ => "pending"
+        };
+
+        private static bool TryResolveVoteValue(RequestVoteRequest body, out int value, out string? errorMessage)
+        {
+            value = 0;
+            errorMessage = null;
+
+            int? resolved = body.Value;
+
+            if (resolved is null && body.Approve is not null)
+                resolved = body.Approve.Value ? 1 : -1;
+
+            if (resolved is null && !string.IsNullOrWhiteSpace(body.Vote))
+            {
+                var voteText = body.Vote.Trim().ToLowerInvariant();
+                resolved = voteText switch
+                {
+                    "yes" or "approve" or "approved" or "1" => 1,
+                    "no" or "reject" or "rejected" or "-1" => -1,
+                    _ => null
+                };
+
+                if (resolved is null)
+                {
+                    errorMessage = "Vote must be 'yes' or 'no'.";
+                    return false;
+                }
+            }
+
+            if (resolved is null)
+            {
+                errorMessage = "Vote 'value' must be -1 or 1 (or use vote: 'yes'/'no' or approve: true/false).";
+                return false;
+            }
+
+            if (resolved != 1 && resolved != -1)
+            {
+                errorMessage = "Vote 'value' must be -1 or 1 (or use vote: 'yes'/'no').";
+                return false;
+            }
+
+            value = resolved.Value;
+            return true;
+        }
+
         private static RequestResponse ToResponse(Request r, Guid? currentUserId)
         {
             var myVote = currentUserId is null
@@ -263,6 +313,32 @@ namespace WorkflowBackend.Api.Controllers
             return ToResponse(r, CurrentUserId());
         }
 
+        // GET /api/requests/{id}/votes
+        [HttpGet("{id:guid}/votes")]
+        public async Task<ActionResult<IEnumerable<RequestVoteResponse>>> GetVotes(Guid id)
+        {
+            var requestExists = await _db.Requests.AsNoTracking().AnyAsync(r => r.Id == id);
+            if (!requestExists) return NotFound();
+
+            var votes = await _db.RequestVotes
+                .Where(v => v.RequestId == id)
+                .Include(v => v.User)
+                .OrderByDescending(v => v.CreatedAt)
+                .ToListAsync();
+
+            var responses = votes.Select(v => new RequestVoteResponse(
+                v.Id,
+                v.RequestId,
+                v.UserId,
+                ToVoteName(v.Value),
+                v.Comment,
+                v.CreatedAt,
+                v.User is null ? null : new VoteUserResponse(v.User.Id, v.User.FirstName, v.User.LastName)
+            )).ToList();
+
+            return responses;
+        }
+
         // POST /api/requests/{id}/votes   { approve: true } OR { value: 1 }
         [HttpPost("{id:guid}/votes")]
         public async Task<ActionResult<RequestResponse>> Vote(Guid id, [FromBody] RequestVoteRequest body)
@@ -273,12 +349,15 @@ namespace WorkflowBackend.Api.Controllers
             var r = await _db.Requests.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
             if (r is null) return NotFound();
 
-            int? value = body.Value;
-            if (value is null && body.Approve is not null)
-                value = body.Approve.Value ? 1 : -1;
+            if (!TryResolveVoteValue(body, out var value, out var error))
+                return BadRequest(new { message = error });
 
-            if (value is null || (value != -1 && value != 1))
-                return BadRequest(new { message = "Vote 'value' must be -1 or 1 (or use approve: true/false)." });
+            var comment = string.IsNullOrWhiteSpace(body.Comment)
+                ? null
+                : body.Comment.Trim();
+
+            if (comment is not null && comment.Length > 2000)
+                comment = comment[..2000];
 
             var existing = r.Votes.FirstOrDefault(v => v.UserId == uid.Value);
 
@@ -288,20 +367,22 @@ namespace WorkflowBackend.Api.Controllers
                 {
                     RequestId = r.Id,
                     UserId = uid.Value,
-                    Value = value.Value,
+                    Value = value,
+                    Comment = comment,
                     CreatedAt = DateTime.UtcNow
                 });
             }
             else
             {
-                if (existing.Value == value.Value)
+                if (existing.Value == value && string.Equals(existing.Comment, comment, StringComparison.Ordinal))
                 {
                     // Toggle off same vote
                     _db.RequestVotes.Remove(existing);
                 }
                 else
                 {
-                    existing.Value = value.Value;
+                    existing.Value = value;
+                    existing.Comment = comment;
                     existing.CreatedAt = DateTime.UtcNow;
                 }
             }

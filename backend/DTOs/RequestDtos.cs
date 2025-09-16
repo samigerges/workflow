@@ -95,10 +95,33 @@ namespace WorkflowBackend.Api.DTOs
     );
 
     /// <summary>
-    /// Allows { approve: true/false } OR { value: 1/-1 }.
-    /// If both are provided, 'value' wins.
+    /// Allows legacy { approve: true/false } or { value: 1/-1 } alongside
+    /// the newer { vote: "yes"/"no", comment?: "..." } payload used by the UI.
     /// </summary>
-    public record RequestVoteRequest(bool? Approve, int? Value);
+    public class RequestVoteRequest
+    {
+        public bool? Approve { get; init; }
+
+        public int? Value { get; init; }
+
+        [MaxLength(10)]
+        public string? Vote { get; init; }
+
+        [MaxLength(2000)]
+        public string? Comment { get; init; }
+    }
+
+    public record VoteUserResponse(Guid Id, string FirstName, string LastName);
+
+    public record RequestVoteResponse(
+        Guid Id,
+        Guid RequestId,
+        Guid UserId,
+        string Vote,
+        string? Comment,
+        DateTime CreatedAt,
+        VoteUserResponse? User
+    );
 
     public record RequestResponse(
         Guid Id,
