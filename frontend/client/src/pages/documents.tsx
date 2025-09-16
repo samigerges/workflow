@@ -217,11 +217,25 @@ export default function Documents() {
       return;
     }
 
+    const entityIdToSend =
+      relatedEntity === 'general'
+        ? '00000000-0000-0000-0000-000000000000'
+        : relatedEntityId;
+
+    if (!entityIdToSend) {
+      toast({
+        title: "Missing selection",
+        description: `Please select a ${relatedEntity}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('entityType', relatedEntity || 'general');
-    formData.append('entityId', relatedEntityId || '0');
-    formData.append('documentType', documentType);
+    formData.append('entityId', entityIdToSend);
+    formData.append('type', documentType);
     formData.append('title', documentTitle);
 
     uploadMutation.mutate(formData);
