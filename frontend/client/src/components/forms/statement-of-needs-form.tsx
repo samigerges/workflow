@@ -28,11 +28,8 @@ const SHIPPING_METHODS = [
   { value: "c&f", label: "C&F" },
 ];
 
-// Updated schema to match backend DTO
-const requestFormSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-});
+// Use the backend request schema so all fields persist on submit
+const requestFormSchema = insertRequestSchema;
 
 // Only log schema in development
 if (process.env.NODE_ENV !== "production") {
@@ -40,7 +37,7 @@ if (process.env.NODE_ENV !== "production") {
   console.log("insertRequestSchema:", insertRequestSchema);
 }
 
-type RequestFormData = z.infer<typeof requestFormSchema>;
+type RequestFormData = z.infer<typeof insertRequestSchema>;
 
 interface StatementOfNeedsFormProps {
   onSuccess?: () => void;
@@ -105,12 +102,19 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
       // Build submit data
       const submitData: any = {
         ...payload,
-        startDate: payload.startDate || null,
-        endDate: payload.endDate || null,
-        status: saveAsDraft ? "draft" : (request ? request.status : "pending"),
+        startDate: payload.startDate
+          ? new Date(payload.startDate).toISOString()
+          : null,
+        endDate: payload.endDate
+          ? new Date(payload.endDate).toISOString()
+          : null,
+        status: saveAsDraft ? "draft" : request ? request.status : "pending",
         pricePerTon: payload.pricePerTon,
-        quantity: typeof payload.quantity === "string" ? parseInt(payload.quantity, 10) : payload.quantity,
-        uploadedFile: request?.uploadedFile || ""
+        quantity:
+          typeof payload.quantity === "string"
+            ? parseInt(payload.quantity, 10)
+            : payload.quantity,
+        uploadedFile: request?.uploadedFile || "",
       };
 
       // Clean undefined fields (optional)
