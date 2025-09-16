@@ -28,11 +28,8 @@ const SHIPPING_METHODS = [
   { value: "c&f", label: "C&F" },
 ];
 
-// Updated schema to match backend DTO
-const requestFormSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-});
+// Use the backend request schema so all fields persist on submit
+const requestFormSchema = insertRequestSchema;
 
 // Only log schema in development
 if (process.env.NODE_ENV !== "production") {
@@ -40,7 +37,7 @@ if (process.env.NODE_ENV !== "production") {
   console.log("insertRequestSchema:", insertRequestSchema);
 }
 
-type RequestFormData = z.infer<typeof requestFormSchema>;
+type RequestFormData = z.infer<typeof insertRequestSchema>;
 
 interface StatementOfNeedsFormProps {
   onSuccess?: () => void;
