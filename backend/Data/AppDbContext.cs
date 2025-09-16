@@ -51,7 +51,17 @@ namespace WorkflowBackend.Api.Data
 
             // Request
             modelBuilder.Entity<Request>().Property(r => r.Title).HasMaxLength(200).IsRequired();
-            modelBuilder.Entity<Request>().Property(r => r.Status).HasMaxLength(50).HasDefaultValue("Draft");
+            modelBuilder.Entity<Request>().Property(r => r.Status).HasMaxLength(50).HasDefaultValue("pending");
+            modelBuilder.Entity<Request>().Property(r => r.Quantity).HasPrecision(18, 2);
+            modelBuilder.Entity<Request>().Property(r => r.UnitOfMeasure).HasMaxLength(50);
+            modelBuilder.Entity<Request>().Property(r => r.CargoType).HasMaxLength(100);
+            modelBuilder.Entity<Request>().Property(r => r.PricePerTon).HasPrecision(18, 2);
+            modelBuilder.Entity<Request>().Property(r => r.SupplierName).HasMaxLength(200);
+            modelBuilder.Entity<Request>().Property(r => r.CountryOfOrigin).HasMaxLength(100);
+            modelBuilder.Entity<Request>().Property(r => r.PaymentMethod).HasMaxLength(100);
+            modelBuilder.Entity<Request>().Property(r => r.ShippingMethod).HasMaxLength(100);
+            modelBuilder.Entity<Request>().Property(r => r.LetterOfGuarantee).HasMaxLength(4000);
+            modelBuilder.Entity<Request>().Property(r => r.UploadedFile).HasMaxLength(255);
             modelBuilder.Entity<Request>()
                 .HasOne(r => r.CreatedBy).WithMany()
                 .HasForeignKey(r => r.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);

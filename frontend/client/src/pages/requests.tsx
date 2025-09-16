@@ -85,7 +85,7 @@ export default function Requests() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      await apiRequest("PUT", `/api/requests/${id}`, { status });
+      await apiRequest("POST", `/api/requests/${id}/status`, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });

@@ -13,7 +13,39 @@ namespace WorkflowBackend.Api.Models
         public string? Description { get; set; }
 
         [MaxLength(50)]
-        public string Status { get; set; } = "Draft"; // Draft, Submitted, Approved, Rejected, Archived
+        public string Status { get; set; } = "pending";
+
+        public decimal? Quantity { get; set; }
+
+        [MaxLength(50)]
+        public string? UnitOfMeasure { get; set; }
+
+        [MaxLength(100)]
+        public string? CargoType { get; set; }
+
+        public decimal? PricePerTon { get; set; }
+
+        [MaxLength(200)]
+        public string? SupplierName { get; set; }
+
+        [MaxLength(100)]
+        public string? CountryOfOrigin { get; set; }
+
+        [MaxLength(100)]
+        public string? PaymentMethod { get; set; }
+
+        [MaxLength(100)]
+        public string? ShippingMethod { get; set; }
+
+        [MaxLength(4000)]
+        public string? LetterOfGuarantee { get; set; }
+
+        public DateTime? StartDate { get; set; }
+
+        public DateTime? EndDate { get; set; }
+
+        [MaxLength(255)]
+        public string? UploadedFile { get; set; }
 
         public Guid? CreatedByUserId { get; set; }
         public User? CreatedBy { get; set; }

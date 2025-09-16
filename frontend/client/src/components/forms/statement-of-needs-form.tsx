@@ -108,7 +108,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
         startDate: payload.startDate || null,
         endDate: payload.endDate || null,
         status: saveAsDraft ? "draft" : (request ? request.status : "pending"),
-        pricePerTon: payload.pricePerTon !== undefined ? String(payload.pricePerTon) : undefined,
+        pricePerTon: payload.pricePerTon,
         quantity: typeof payload.quantity === "string" ? parseInt(payload.quantity, 10) : payload.quantity,
         uploadedFile: request?.uploadedFile || ""
       };
@@ -123,27 +123,27 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
 
       // Primary create/update
       const requestResult = await apiRequest(method, url, submitData);
+      const requestData = await requestResult.json();
+      const requestId = request?.id ?? requestData?.id;
 
       // If there's a file selected, upload it and update the request's uploadedFile field
-      if (selectedFile) {
+      if (selectedFile && requestId) {
         const formData = new FormData();
         formData.append("file", selectedFile);
         formData.append("entityType", "request");
-        // prefer the id returned by the create call, fallback to existing request id
-        formData.append("entityId", String((requestResult as any)?.id ?? request?.id ?? ""));
+        formData.append("entityId", String(requestId));
 
-        // assume apiRequest returns parsed JSON (adjust if your apiRequest returns Response)
-        const uploadResult = await apiRequest("POST", "/api/upload-document", formData);
+        const uploadResponse = await apiRequest("POST", "/api/upload-document", formData);
+        const uploadResult = await uploadResponse.json();
 
-        // uploadResult may contain fileName; fallback to selectedFile.name
         const fileName = uploadResult?.fileName || selectedFile.name;
 
         if (fileName) {
-          await apiRequest("PUT", url, { uploadedFile: fileName });
+          await apiRequest("PUT", `/api/requests/${requestId}`, { uploadedFile: fileName });
         }
       }
 
-      return requestResult;
+      return requestData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
