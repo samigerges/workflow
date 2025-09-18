@@ -93,6 +93,9 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
       // Add form fields - ensure required fields are present
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
+          if (typeof value === 'number' && Number.isNaN(value)) {
+            return;
+          }
           // Handle special cases for GUID fields
           if (key === 'requestId' && (value === '' || value === '0' || value === 'none')) {
             // Skip empty requestId
