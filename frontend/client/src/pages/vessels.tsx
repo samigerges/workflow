@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,9 +17,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Ship, Edit, Download, MapPin, Calendar, Eye, Activity, Trash } from "lucide-react";
+import { normalizeLc, type NormalizedLC } from "@/lib/lc";
 
 // Component to display LC numbers for a vessel
-function VesselLCDisplay({ vesselId, lcs }: { vesselId: number; lcs: any[] }) {
+function VesselLCDisplay({
+  vesselId,
+  normalizedLcMap,
+}: {
+  vesselId: number;
+  normalizedLcMap: Map<string, NormalizedLC>;
+}) {
   const { data: vesselLCs } = useQuery({
     queryKey: [`/api/vessels/${vesselId}/letters-of-credit`],
     enabled: !!vesselId,
@@ -34,10 +41,11 @@ function VesselLCDisplay({ vesselId, lcs }: { vesselId: number; lcs: any[] }) {
   return (
     <div className="space-y-1">
       {vesselLCsArray.map((vesselLC: any, index: number) => {
-        const lc = lcs.find((l: any) => l.id === vesselLC.lcId);
+        const normalizedLc = normalizedLcMap.get(String(vesselLC.lcId));
+        const lcNumber = normalizedLc?.number ?? `LC-${vesselLC.lcId}`;
         return (
           <Badge key={index} variant="secondary" className="text-xs">
-            {lc ? lc.lcNumber : `LC-${vesselLC.lcId}`}
+            {lcNumber}
           </Badge>
         );
       })}
@@ -140,6 +148,18 @@ export default function Vessels() {
   const vesselsArray = Array.isArray(vessels) ? vessels : [];
   const contractsArray = Array.isArray(contracts) ? contracts : [];
   const lcsArray = Array.isArray(lcs) ? lcs : [];
+
+  const normalizedLcMap = useMemo(() => {
+    const map = new Map<string, NormalizedLC>();
+    lcsArray.forEach((lc: any) => {
+      const normalized = normalizeLc(lc);
+      const key = lc?.id ?? normalized.id;
+      if (key !== null && key !== undefined) {
+        map.set(String(key), normalized);
+      }
+    });
+    return map;
+  }, [lcsArray]);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -340,7 +360,7 @@ export default function Vessels() {
                         <TableCell className="font-medium">{vessel.vesselName || 'Unnamed Vessel'}</TableCell>
                         <TableCell>CON-{vessel.contractId ? vessel.contractId.toString().padStart(3, '0') : '000'}</TableCell>
                         <TableCell>
-                          <VesselLCDisplay vesselId={vessel.id} lcs={lcsArray} />
+                  <VesselLCDisplay vesselId={vessel.id} normalizedLcMap={normalizedLcMap} />
                         </TableCell>
                         <TableCell>{vessel.quantity || 0} tons</TableCell>
                         <TableCell>

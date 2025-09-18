@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import FileUpload from "@/components/ui/file-upload";
 import { CURRENCIES } from "@/lib/constants";
+import { normalizeLc } from "@/lib/lc";
 
 // Create a more flexible schema for drafts - matching backend DTO
 const lcFormSchema = z.object({
@@ -47,6 +48,8 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
 
+  const normalizedLc = useMemo(() => (lc ? normalizeLc(lc) : null), [lc]);
+
   const {
     register,
     handleSubmit,
@@ -55,58 +58,78 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
     watch
   } = useForm<LCFormData>({
     resolver: zodResolver(lcFormSchema),
-    defaultValues: lc ? {
-      ...lc,
-      issueDate: lc.issueDate ? new Date(lc.issueDate).toISOString().split('T')[0] : '',
-      expiryDate: lc.expiryDate ? new Date(lc.expiryDate).toISOString().split('T')[0] : '',
-    } : {
-      currency: "USD",
-      status: "draft"
-    }
+    defaultValues: normalizedLc
+      ? {
+          number: normalizedLc.number,
+          issuingBank: normalizedLc.issuingBank ?? "",
+          amount: normalizedLc.amount ?? undefined,
+          currency: normalizedLc.currency ?? "USD",
+          issueDate: normalizedLc.issueDate
+            ? new Date(normalizedLc.issueDate).toISOString().split("T")[0]
+            : "",
+          expiryDate: normalizedLc.expiryDate
+            ? new Date(normalizedLc.expiryDate).toISOString().split("T")[0]
+            : "",
+          applicant: normalizedLc.applicant ?? "",
+          beneficiary: normalizedLc.beneficiary ?? "",
+          contractId: normalizedLc.contractId ?? "",
+          status: normalizedLc.statusKey ?? "draft",
+        }
+      : {
+          currency: "USD",
+          status: "draft",
+        },
   });
 
-  // Watch for changes in quantity
-  const watchedQuantity = watch('quantity');
+  const watchedAmount = watch("amount");
+  const watchedCurrency = watch("currency");
 
   const createMutation = useMutation({
     mutationFn: async (data: LCFormData) => {
       const formData = new FormData();
       
       // Add form fields - ensure required fields are present
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          if (key === 'unitPrice') {
-            // Convert unitPrice to string for FormData
-            if (typeof value === 'number' && value >= 0) {
-              formData.append(key, value.toString());
-            }
-          } else {
-            formData.append(key, value.toString());
-          }
-        }
-      });
+      formData.append("number", data.number.trim());
 
-      // Add default values for required fields if not provided (for drafts)
-      if (data.status === 'draft') {
-        if (!data.unitPrice || data.unitPrice === 0) {
-          formData.append('unitPrice', '0');
-        }
-        if (!data.issueDate) {
-          formData.append('issueDate', new Date().toISOString().split('T')[0]);
-        }
-        if (!data.expiryDate) {
-          const defaultExpiry = new Date();
-          defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 1);
-          formData.append('expiryDate', defaultExpiry.toISOString().split('T')[0]);
-        }
-        if (!data.issuingBank) {
-          formData.append('issuingBank', 'TBD');
-        }
+      if (data.issuingBank) {
+        formData.append("issuingBank", data.issuingBank);
+      }
+
+      const normalizedAmount =
+        typeof data.amount === "number" && !Number.isNaN(data.amount)
+          ? data.amount
+          : null;
+      if (normalizedAmount !== null) {
+        formData.append("amount", normalizedAmount.toString());
+      }
+
+      if (data.currency) {
+        formData.append("currency", data.currency);
+      }
+
+      if (data.issueDate) {
+        formData.append("issueDate", data.issueDate);
+      }
+
+      if (data.expiryDate) {
+        formData.append("expiryDate", data.expiryDate);
+      }
+
+      if (data.applicant) {
+        formData.append("applicant", data.applicant);
+      }
+
+      if (data.beneficiary) {
+        formData.append("beneficiary", data.beneficiary);
+      }
+
+      if (data.contractId) {
+        formData.append("contractId", data.contractId);
       }
 
       // Add file if selected
       if (selectedFiles.length > 0) {
-        formData.append('lcFile', selectedFiles[0]);
+        formData.append("lcFile", selectedFiles[0]);
       }
 
       const url = lc
@@ -115,14 +138,10 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
       const method = lc ? "PUT" : "POST";
 
       const response = await apiRequest(method, url, formData);
-
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-
       return response.json();
     },
     onSuccess: () => {
+      setSelectedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
       toast({
         title: "Success",
@@ -151,10 +170,9 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
   });
 
   const onSubmit = (data: LCFormData) => {
-    console.log("LC Form submitted with data:", data);
-    
     // Check if file is required - for new LCs or existing LCs without a file
-    const isFileRequired = !lc || !lc.uploadedFile;
+    const hasExistingFile = Boolean(normalizedLc?.fileUrl || normalizedLc?.fileName);
+    const isFileRequired = !lc || !hasExistingFile;
     
     if (isFileRequired && selectedFiles.length === 0) {
       setFileError("LC documentation is required");
@@ -192,9 +210,9 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="currency">Currency</Label>
-              <Select 
+              <Select
                 onValueChange={(value) => setValue("currency", value)}
-                defaultValue={lc?.currency || "USD"}
+                defaultValue={normalizedLc?.currency || "USD"}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -222,17 +240,19 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
           </div>
 
           {/* LC Amount Display */}
-          {watch('amount') && (
+          {typeof watchedAmount === "number" && !Number.isNaN(watchedAmount) && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-semibold text-blue-900 mb-2">LC Information</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-blue-700">Amount:</span>
-                  <p className="font-medium">{watch('amount') ? `${Number(watch('amount')).toLocaleString()} ${watch('currency') || 'USD'}` : '0'}</p>
+                  <p className="font-medium">
+                    {watchedAmount.toLocaleString()} {watchedCurrency || "USD"}
+                  </p>
                 </div>
                 <div>
                   <span className="text-blue-700">Currency:</span>
-                  <p className="font-medium">{watch('currency') || 'USD'}</p>
+                  <p className="font-medium">{watchedCurrency || "USD"}</p>
                 </div>
               </div>
             </div>
@@ -272,19 +292,28 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
             </div>
             <div>
               <Label htmlFor="contractId">Related Contract</Label>
-              <Select 
+              <Select
                 onValueChange={(value) => setValue("contractId", value)}
-                defaultValue={lc?.contractId?.toString()}
+                defaultValue={normalizedLc?.contractId || undefined}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a contract" />
                 </SelectTrigger>
                 <SelectContent>
-                  {contracts.map((contract) => (
-                    <SelectItem key={contract.id} value={contract.id.toString()}>
-                      CON-{contract.id.toString().padStart(3, '0')} - {contract.supplierName}
-                    </SelectItem>
-                  ))}
+                  {contracts.map((contract) => {
+                    const contractId = String(contract.id);
+                    const supplierName = contract.supplierName ? ` - ${contract.supplierName}` : "";
+                    const title = contract.title
+                      ? contract.title
+                      : `Contract ${contractId.slice(0, 8)}`;
+
+                    return (
+                      <SelectItem key={contractId} value={contractId}>
+                        {title}
+                        {supplierName}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -320,18 +349,21 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
 
           <div>
             <Label>LC Documentation *</Label>
-            <FileUpload
-              accept=".pdf"
-              multiple
-              onFileSelect={(files) => {
-                setSelectedFiles(files);
-                if (files.length > 0) {
-                  setFileError(""); // Clear error when file is selected
-                }
-              }}
-              existingFile={lc?.uploadedFile}
-              description="PDF files up to 10MB each - Required for all LCs"
-            />
+          <FileUpload
+            accept=".pdf"
+            multiple
+            onFileSelect={(files) => {
+              setSelectedFiles(files);
+              if (files.length > 0) {
+                setFileError(""); // Clear error when file is selected
+              }
+            }}
+            description="PDF files up to 10MB each - Required for all LCs"
+            existingFile={
+              normalizedLc?.fileName ||
+              (normalizedLc?.fileUrl ? normalizedLc.fileUrl.split("/").pop() : undefined)
+            }
+          />
             {fileError && (
               <p className="text-sm text-red-500 mt-1">{fileError}</p>
             )}

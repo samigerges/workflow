@@ -56,6 +56,7 @@ import {
   parseISO,
   startOfMonth,
 } from "date-fns";
+import { normalizeLc, formatLcCurrency } from "@/lib/lc";
 
 // ---------- Types ----------
 interface LetterOfCredit {
@@ -139,6 +140,15 @@ export default function Reports() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const normalizedLcEntries = useMemo(
+    () =>
+      lettersOfCredit.map((lc) => ({
+        raw: lc,
+        normalized: normalizeLc(lc),
+      })),
+    [lettersOfCredit],
+  );
+
   const { data: contracts = [], isLoading: contractsLoading } = useQuery<Contract[]>({
     queryKey: ["/api/contracts"],
     enabled: isAuthenticated,
@@ -174,19 +184,42 @@ export default function Reports() {
   const from = fromDate ? parseISO(fromDate) : null;
   const to = toDate ? parseISO(toDate) : null;
 
-  const selectedLC = useMemo(() => {
+  const selectedLcEntry = useMemo(() => {
     if (!selectedLCFilter || selectedLCFilter === "__ALL__") return null;
-    return lettersOfCredit.find((lc) => String(lc.id) === selectedLCFilter) ?? null;
-  }, [lettersOfCredit, selectedLCFilter]);
+    return (
+      normalizedLcEntries.find((entry) => {
+        const entryId = entry.raw?.id ?? entry.normalized.id;
+        if (entryId === null || entryId === undefined) return false;
+        return String(entryId) === selectedLCFilter;
+      }) ?? null
+    );
+  }, [normalizedLcEntries, selectedLCFilter]);
+
+  const selectedLcRaw = selectedLcEntry?.raw ?? null;
+  const selectedLcId = selectedLcEntry
+    ? (() => {
+        const idValue = selectedLcEntry.raw?.id ?? selectedLcEntry.normalized.id;
+        return idValue === null || idValue === undefined ? null : String(idValue);
+      })()
+    : null;
 
   // Filtered Vessels based on port/date/LC
   const filteredVessels = useMemo(() => {
     return vessels.filter((v) => {
-      if (selectedPortFilter && selectedPortFilter !== "__ALL__" && v.portOfDischarge !== selectedPortFilter) return false;
-      if (selectedLC && !(selectedLC.vesselIds || []).map(String).includes(String(v.id))) return false;
+      if (selectedPortFilter && selectedPortFilter !== "__ALL__" && v.portOfDischarge !== selectedPortFilter) {
+        return false;
+      }
+
+      if (
+        selectedLcRaw &&
+        !(selectedLcRaw.vesselIds || []).map(String).includes(String(v.id))
+      ) {
+        return false;
+      }
+
       return true;
     });
-  }, [vessels, selectedPortFilter, selectedLC]);
+  }, [vessels, selectedPortFilter, selectedLcRaw]);
 
   // Filtered Contracts based on supplier/date
   const filteredContracts = useMemo(() => {
@@ -208,31 +241,38 @@ export default function Reports() {
 
   // ---------- LC Analytics ----------
   const lcAnalytics = useMemo(() => {
-    return lettersOfCredit
-      .filter((lc) => (selectedLC ? lc.id === selectedLC.id : true))
-      .map((lc) => {
+    return normalizedLcEntries
+      .filter(({ raw, normalized }) => {
+        if (!selectedLcId) return true;
+        const entryId = raw?.id ?? normalized.id;
+        if (entryId === null || entryId === undefined) return false;
+        return String(entryId) === selectedLcId;
+      })
+      .map(({ raw, normalized }) => {
         const allocatedVessels = filteredVessels.filter((v) =>
-          (lc.vesselIds || []).map(String).includes(String(v.id))
+          (raw?.vesselIds || []).map(String).includes(String(v.id)),
         );
         const allocatedAmount = allocatedVessels.reduce(
           (sum, v) => sum + asNumber(v.quantity, 0),
-          0
+          0,
         );
-        const totalAmount = asNumber(lc.amount ?? lc.quantity, 0);
+        const normalizedAmount = normalized.amount ?? null;
+        const fallbackQuantity = asNumber(raw?.quantity, 0);
+        const totalAmount = normalizedAmount ?? fallbackQuantity;
         const remainingAmount = Math.max(0, totalAmount - allocatedAmount);
         return {
-          id: lc.id,
-          lcNumber: lc.lcNumber || `LC-${lc.id}`,
+          id: normalized.id ?? raw?.id,
+          lcNumber: normalized.number,
           totalAmount,
           allocatedAmount,
           remainingAmount,
-          currency: lc.currency || "USD",
-          status: lc.status,
-          expiryDate: lc.expiryDate,
-          issuingBank: lc.issuingBank,
+          currency: normalized.currency ?? "USD",
+          status: normalized.status,
+          expiryDate: normalized.expiryDate,
+          issuingBank: normalized.issuingBank,
         };
       });
-  }, [lettersOfCredit, filteredVessels, selectedLC]);
+  }, [normalizedLcEntries, filteredVessels, selectedLcId]);
 
   // ---------- Contract Analytics ----------
   const contractAnalytics = useMemo(() => {
@@ -397,8 +437,14 @@ export default function Reports() {
   }, [vessels]);
 
   const uniqueLCs = useMemo(() => {
-    return lettersOfCredit.map((lc) => ({ id: lc.id, number: lc.lcNumber || `LC-${lc.id}` }));
-  }, [lettersOfCredit]);
+    return normalizedLcEntries
+      .map(({ raw, normalized }) => {
+        const idValue = raw?.id ?? normalized.id;
+        if (idValue === null || idValue === undefined) return null;
+        return { id: idValue, number: normalized.number };
+      })
+      .filter((entry): entry is { id: string | number; number: string } => entry !== null);
+  }, [normalizedLcEntries]);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -660,14 +706,12 @@ export default function Reports() {
                         >
                           <TableCell className="font-medium text-blue-600">{lc.lcNumber}</TableCell>
                           <TableCell>{lc.issuingBank || "N/A"}</TableCell>
-                          <TableCell>
-                            {new Intl.NumberFormat(undefined, { style: "currency", currency: lc.currency ?? "USD", maximumFractionDigits: 0 }).format(lc.totalAmount)}
-                          </TableCell>
+                          <TableCell>{formatLcCurrency(lc.totalAmount, lc.currency)}</TableCell>
                           <TableCell className="text-blue-600">
-                            {new Intl.NumberFormat(undefined, { style: "currency", currency: lc.currency ?? "USD", maximumFractionDigits: 0 }).format(lc.allocatedAmount)}
+                            {formatLcCurrency(lc.allocatedAmount, lc.currency)}
                           </TableCell>
                           <TableCell className="text-green-600">
-                            {new Intl.NumberFormat(undefined, { style: "currency", currency: lc.currency ?? "USD", maximumFractionDigits: 0 }).format(lc.remainingAmount)}
+                            {formatLcCurrency(lc.remainingAmount, lc.currency)}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">

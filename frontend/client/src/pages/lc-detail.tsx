@@ -8,14 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import VesselSummary from "@/components/vessel-summary";
-import { 
+import {
   ArrowLeft,
-  University, 
-  Ship, 
+  University,
+  Ship,
   Calendar,
   Package,
-  DollarSign
+  DollarSign,
 } from "lucide-react";
+import { normalizeLc, formatLcCurrency, formatLcDate } from "@/lib/lc";
 
 export default function LCDetail() {
   const { id } = useParams();
@@ -54,31 +55,37 @@ export default function LCDetail() {
   }, [vessels, lcData]);
 
   // Calculate LC analytics
+  const normalizedLc = useMemo(() => (lcData ? normalizeLc(lcData) : null), [lcData]);
+
   const lcAnalytics = useMemo(() => {
-    if (!lcData) return null;
-    
-    const allocatedAmount = lcVessels.reduce((sum, vessel) => sum + (vessel.quantity || 0), 0);
-    const totalAmount = lcData.amount || lcData.quantity || 0;
+    if (!lcData || !normalizedLc) return null;
+
+    const allocatedAmount = lcVessels.reduce(
+      (sum, vessel) => sum + (Number(vessel.quantity) || 0),
+      0,
+    );
+    const totalAmount = normalizedLc.amount ?? Number(lcData.quantity) || 0;
     const remainingAmount = Math.max(0, totalAmount - allocatedAmount);
     const utilizationRate = totalAmount > 0 ? (allocatedAmount / totalAmount) * 100 : 0;
 
     return {
-      id: lcData.id,
-      lcNumber: lcData.lcNumber || `LC-${lcData.id}`,
+      id: normalizedLc.id ?? lcData.id,
+      lcNumber: normalizedLc.number,
       totalAmount,
       allocatedAmount,
       remainingAmount,
       utilizationRate,
-      currency: lcData.currency || 'USD',
-      status: lcData.status,
-      expiryDate: lcData.expiryDate,
-      issuingBank: lcData.issuingBank,
-      issueDate: lcData.issueDate,
-      duration: lcData.expiryDate && lcData.issueDate 
-        ? `${new Date(lcData.issueDate).toLocaleDateString()} - ${new Date(lcData.expiryDate).toLocaleDateString()}`
-        : 'N/A'
+      currency: normalizedLc.currency ?? "USD",
+      status: normalizedLc.status,
+      expiryDate: normalizedLc.expiryDate,
+      issuingBank: normalizedLc.issuingBank,
+      issueDate: normalizedLc.issueDate,
+      duration:
+        normalizedLc.issueDate && normalizedLc.expiryDate
+          ? `${formatLcDate(normalizedLc.issueDate)} - ${formatLcDate(normalizedLc.expiryDate)}`
+          : "N/A",
     };
-  }, [lcData, lcVessels]);
+  }, [lcData, normalizedLc, lcVessels]);
 
   const handleVesselClick = (vessel: any) => {
     setSelectedVessel(vessel);
@@ -154,7 +161,7 @@ export default function LCDetail() {
                   <span className="text-sm font-medium text-gray-600">Total Amount</span>
                 </div>
                 <p className="text-xl font-bold text-blue-600">
-                  {lcAnalytics.totalAmount.toLocaleString()} {lcAnalytics.currency}
+                  {formatLcCurrency(lcAnalytics.totalAmount, lcAnalytics.currency)}
                 </p>
               </div>
 
@@ -179,13 +186,13 @@ export default function LCDetail() {
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-600 font-medium">Allocated Amount</p>
                 <p className="text-2xl font-bold text-blue-700">
-                  {lcAnalytics.allocatedAmount.toLocaleString()} {lcAnalytics.currency}
+                  {formatLcCurrency(lcAnalytics.allocatedAmount, lcAnalytics.currency)}
                 </p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
                 <p className="text-sm text-green-600 font-medium">Remaining Amount</p>
                 <p className="text-2xl font-bold text-green-700">
-                  {lcAnalytics.remainingAmount.toLocaleString()} {lcAnalytics.currency}
+                  {formatLcCurrency(lcAnalytics.remainingAmount, lcAnalytics.currency)}
                 </p>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg">

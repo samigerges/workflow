@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,7 @@ import { Calendar, Ship, Package, MapPin, FileText, ExternalLink, University, Do
 import { useQuery } from "@tanstack/react-query";
 import StatusBadge from "@/components/ui/status-badge";
 import VesselDocuments from "@/components/vessel-documents";
+import { normalizeLc, type NormalizedLC, formatLcCurrency } from "@/lib/lc";
 
 interface VesselSummaryProps {
   vessel: any;
@@ -33,10 +35,6 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
     enabled: isOpen && !!vessel.id,
   });
 
-  // Debug logs for vessel LCs
-  console.log("Vessel ID:", vessel.id);
-  console.log("Vessel LCs data:", vesselLCs);
-
   const { data: loadingPorts } = useQuery({
     queryKey: ["/api/vessels", vessel.id, "loading-ports"],
     enabled: isOpen && !!vessel.id,
@@ -46,6 +44,18 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
   const lcsArray = Array.isArray(lcs) ? lcs : [];
   const vesselLCsArray = Array.isArray(vesselLCs) ? vesselLCs : [];
   const loadingPortsArray = Array.isArray(loadingPorts) ? loadingPorts : [];
+
+  const normalizedLcMap = useMemo(() => {
+    const map = new Map<string, NormalizedLC>();
+    lcsArray.forEach((lc: any) => {
+      const normalized = normalizeLc(lc);
+      const key = lc?.id ?? normalized.id;
+      if (key !== null && key !== undefined) {
+        map.set(String(key), normalized);
+      }
+    });
+    return map;
+  }, [lcsArray]);
 
   const associatedContract = contractsArray.find((contract: any) => contract.id === vessel.contractId);
 
@@ -126,21 +136,49 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
               {vesselLCsArray.length > 0 ? (
                 <div className="space-y-3">
                   {vesselLCsArray.map((vesselLC: any, index: number) => {
-                    const lc = lcsArray.find((l: any) => l.id === vesselLC.lcId);
+                    const normalizedLc = normalizedLcMap.get(String(vesselLC.lcId));
+                    const lcNumber = normalizedLc?.number ?? `LC-${vesselLC.lcId}`;
+                    const issuingBank = normalizedLc?.issuingBank ?? "Unknown";
+                    const lcStatusKey = normalizedLc?.statusKey ?? normalizedLc?.status?.toLowerCase();
+                    const statusLabel = normalizedLc?.status
+                      ? normalizedLc.status.charAt(0).toUpperCase() + normalizedLc.status.slice(1)
+                      : "Unknown";
+                    const lcAmountLabel = formatLcCurrency(
+                      normalizedLc?.amount ?? null,
+                      normalizedLc?.currency ?? null,
+                    );
                     return (
                       <div key={index} className="p-3 border rounded-lg">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
                             <span className="text-sm font-medium text-gray-500">LC Number:</span>
-                            <p className="text-gray-900">{lc?.lcNumber || 'Unknown'}</p>
+                            <p className="text-gray-900">{lcNumber}</p>
                           </div>
                           <div>
                             <span className="text-sm font-medium text-gray-500">Issuing Bank:</span>
-                            <p className="text-gray-900">{lc?.issuingBank || 'Unknown'}</p>
+                            <p className="text-gray-900">{issuingBank}</p>
                           </div>
                           <div>
                             <span className="text-sm font-medium text-gray-500">Quantity:</span>
                             <p className="text-gray-900">{vesselLC.quantity} tons</p>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-gray-500">LC Amount:</span>
+                            <p className="text-gray-900">{lcAmountLabel}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-gray-500">LC Status:</span>
+                            <Badge
+                              className={
+                                lcStatusKey === "issued"
+                                  ? "bg-green-100 text-green-800"
+                                  : lcStatusKey === "expired"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }
+                            >
+                              {statusLabel}
+                            </Badge>
                           </div>
                         </div>
                         {vesselLC.notes && (
@@ -344,13 +382,23 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
               <CardContent>
                 <div className="space-y-4">
                   {vesselLCsArray.map((vesselLC: any, index: number) => {
-                      const lc = lcsArray.find((l: any) => l.id === vesselLC.lcId);
+                    const normalizedLc = normalizedLcMap.get(String(vesselLC.lcId));
+                    const lcNumber = normalizedLc?.number ?? `LC-${vesselLC.lcId}`;
+                    const issuingBank = normalizedLc?.issuingBank ?? "Not specified";
+                    const lcStatusKey = normalizedLc?.statusKey ?? normalizedLc?.status?.toLowerCase();
+                    const statusLabel = normalizedLc?.status
+                      ? normalizedLc.status.charAt(0).toUpperCase() + normalizedLc.status.slice(1)
+                      : "Unknown";
+                    const lcAmountLabel = formatLcCurrency(
+                      normalizedLc?.amount ?? null,
+                      normalizedLc?.currency ?? null,
+                    );
                     return (
                       <div key={index} className="border rounded-lg p-4 bg-gray-50">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <h4 className="font-semibold text-gray-900">LC Number</h4>
-                            <p className="text-gray-700">{lc?.lcNumber || `LC-${vesselLC.lcId}`}</p>
+                            <p className="text-gray-700">{lcNumber}</p>
                           </div>
                           <div className="flex items-center space-x-2">
                             <Package className="h-4 w-4 text-gray-500" />
@@ -361,17 +409,25 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
                           </div>
                           <div>
                             <h4 className="font-semibold text-gray-900">Issuing Bank</h4>
-                            <p className="text-gray-700">{lc?.issuingBank || 'Not specified'}</p>
+                            <p className="text-gray-700">{issuingBank}</p>
                           </div>
                           <div>
                             <h4 className="font-semibold text-gray-900">Status</h4>
-                            <Badge className={
-                              lc?.status === 'issued' ? 'bg-green-100 text-green-800' :
-                              lc?.status === 'expired' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'
-                            }>
-                              {lc?.status?.charAt(0).toUpperCase() + lc?.status?.slice(1) || 'Unknown'}
+                            <Badge
+                              className={
+                                lcStatusKey === "issued"
+                                  ? "bg-green-100 text-green-800"
+                                  : lcStatusKey === "expired"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }
+                            >
+                              {statusLabel}
                             </Badge>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">LC Amount</h4>
+                            <p className="text-gray-700">{lcAmountLabel}</p>
                           </div>
                         </div>
                       </div>
