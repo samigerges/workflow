@@ -21,6 +21,7 @@ import {
   Plus
 } from "lucide-react";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { normalizeLc, formatLcCurrency } from "@/lib/lc";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -208,9 +209,12 @@ export default function Dashboard() {
               <CardContent>
                 {(lettersOfCredit as any[]) && (lettersOfCredit as any[]).length > 0 ? (
                   <div className="space-y-3">
-                    {(lettersOfCredit as any[]).map((lc: any) => (
-                      <div 
-                        key={lc.id}
+                    {(lettersOfCredit as any[]).map((lc: any) => {
+                      const normalized = normalizeLc(lc);
+
+                      return (
+                      <div
+                        key={normalized.id ?? lc.id}
                         className="w-full p-4 bg-gradient-to-r from-purple-50 to-purple-100/50 rounded-xl border border-purple-200/50 cursor-pointer hover:shadow-medium transition-all duration-200 card-hover"
                         onClick={() => {
                           setSelectedLC(lc);
@@ -223,18 +227,19 @@ export default function Dashboard() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="font-bold text-purple-900">{lc.lcNumber}</span>
+                              <span className="font-bold text-purple-900">{normalized.number}</span>
                               <span className="text-sm font-bold text-purple-700 bg-purple-200 px-2 py-1 rounded-lg">
-                                {parseFloat(lc.quantity || 0).toLocaleString()} tons
+                                {formatLcCurrency(normalized.amount, normalized.currency)}
                               </span>
                             </div>
                             <span className="text-sm text-purple-700 font-medium truncate block">
-                              {lc.issuingBank}
+                              {normalized.issuingBank ?? "—"}
                             </span>
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12">

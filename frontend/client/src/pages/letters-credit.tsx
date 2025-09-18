@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,11 +9,30 @@ import LetterOfCreditForm from "@/components/forms/letter-of-credit-form";
 import LCSummary from "@/components/lc-summary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, University, Edit, Download, Eye, Trash } from "lucide-react";
+import { Plus, University, Edit, Eye, Trash } from "lucide-react";
+import StatusBadge from "@/components/ui/status-badge";
+import {
+  normalizeLc,
+  formatLcCurrency,
+  formatLcDate,
+  isLcExpired,
+  daysUntilLcExpiry,
+} from "@/lib/lc";
+
+const STATUS_OPTIONS = [
+  "Draft",
+  "Issued",
+  "Amended",
+  "Utilized",
+  "Expired",
+  "Cancelled",
+  "Archived",
+] as const;
+
+const STATUS_FILTER_OPTIONS = ["all", ...STATUS_OPTIONS.map((status) => status.toLowerCase())] as const;
 
 export default function LettersCredit() {
   const { toast } = useToast();
@@ -28,13 +47,8 @@ export default function LettersCredit() {
 
   // Delete LC mutation
   const deleteLCMutation = useMutation({
-      mutationFn: async (lcId: number) => {
-        const response = await apiRequest("DELETE", `/api/letters-of-credit/${lcId}`);
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || `${response.status}: ${response.statusText}`);
-        }
-        return response.json();
+      mutationFn: async (lcId: string | number) => {
+        await apiRequest("DELETE", `/api/letters-of-credit/${lcId}`);
       },
     onSuccess: () => {
       // Remove all LC-related queries from cache completely
@@ -87,27 +101,70 @@ export default function LettersCredit() {
   // Ensure contracts is an array
   const contractsArray = Array.isArray(contracts) ? contracts : [];
 
-  const { data: vessels = [] } = useQuery({
-    queryKey: ["/api/vessels"],
-    retry: false,
-  });
+  const normalizedEntries = useMemo(
+    () => lcArray.map((lc: any) => ({ raw: lc, normalized: normalizeLc(lc) })),
+    [lcArray],
+  );
 
-  // Ensure vessels is an array
-  const vesselsArray = Array.isArray(vessels) ? vessels : [];
+  const normalizedLCs = useMemo(
+    () => normalizedEntries.map((entry) => entry.normalized),
+    [normalizedEntries],
+  );
 
+  const filteredEntries = useMemo(
+    () =>
+      statusFilter === "all"
+        ? normalizedEntries
+        : normalizedEntries.filter(
+            (entry) => entry.normalized.statusKey === statusFilter,
+          ),
+    [normalizedEntries, statusFilter],
+  );
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "draft": return "bg-gray-100 text-gray-800";
-      case "issued": return "bg-green-100 text-green-800";
-      case "expired": return "bg-red-100 text-red-800";
-      case "cancelled": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+  const issuedCount = normalizedLCs.filter((lc) => lc.statusKey === "issued").length;
+  const documentsCount = normalizedLCs.filter((lc) => Boolean(lc.fileUrl)).length;
+  const linkedContractsCount = normalizedLCs.reduce((set, lc) => {
+    if (lc.contractId) {
+      set.add(lc.contractId);
     }
-  };
+    return set;
+  }, new Set<string>()).size;
+  const expiringSoonCount = normalizedLCs.filter((lc) => {
+    const days = daysUntilLcExpiry(lc.expiryDate);
+    return typeof days === "number" && days > 0 && days <= 5;
+  }).length;
+  const statusFilterLabel = statusFilter === "all"
+    ? "All"
+    : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
 
-  const isExpired = (expiryDate: string) => {
-    return new Date(expiryDate) < new Date();
+  const handleStatusChange = async (lcId: string | number, newStatus: string) => {
+    try {
+      await apiRequest("POST", `/api/letters-of-credit/${lcId}/status`, { status: newStatus });
+      queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({
+        title: "Success",
+        description: "LC status updated successfully",
+      });
+    } catch (error) {
+      if (error instanceof Error && isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+
+      toast({
+        title: "Error",
+        description: "Failed to update LC status",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -128,11 +185,13 @@ export default function LettersCredit() {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="issued">Issued</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  {STATUS_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option === "all"
+                        ? "All Statuses"
+                        : option.charAt(0).toUpperCase() + option.slice(1)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -198,10 +257,8 @@ export default function LettersCredit() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-secondary-600">Total Issued LCs</p>
-                    <p className="text-3xl font-bold text-secondary-900">
-                      {lcArray.filter((lc: any) => lc.status === 'issued').length}
-                    </p>
+                    <p className="text-sm font-medium text-secondary-600">Issued LCs</p>
+                    <p className="text-3xl font-bold text-secondary-900">{issuedCount}</p>
                   </div>
                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                     <University className="text-green-600" size={20} />
@@ -214,14 +271,8 @@ export default function LettersCredit() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-secondary-600">Total Available Quantity</p>
-                    <p className="text-3xl font-bold text-secondary-900">
-                      {(() => {
-                        // Calculate total remaining quantity across all LCs
-                        const totalRemainingQuantity = lcArray.reduce((sum: number, lc: any) => sum + (parseInt(lc.remainingQuantity) || 0), 0);
-                        return totalRemainingQuantity.toLocaleString();
-                      })()} tons
-                    </p>
+                    <p className="text-sm font-medium text-secondary-600">LCs with Documents</p>
+                    <p className="text-3xl font-bold text-secondary-900">{documentsCount}</p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                     <University className="text-blue-600" size={20} />
@@ -234,14 +285,8 @@ export default function LettersCredit() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-secondary-600">Total Allocated Quantity</p>
-                    <p className="text-3xl font-bold text-secondary-900">
-                      {(() => {
-                        // Calculate total allocated quantity across all LCs
-                        const totalAllocatedQuantity = lcArray.reduce((sum: number, lc: any) => sum + (parseInt(lc.allocatedQuantity) || 0), 0);
-                        return totalAllocatedQuantity.toLocaleString();
-                      })()} tons
-                    </p>
+                    <p className="text-sm font-medium text-secondary-600">Linked Contracts</p>
+                    <p className="text-3xl font-bold text-secondary-900">{linkedContractsCount}</p>
                   </div>
                   <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                     <University className="text-purple-600" size={20} />
@@ -256,10 +301,7 @@ export default function LettersCredit() {
                   <div>
                     <p className="text-sm font-medium text-secondary-600">Expiring Soon (5 Days)</p>
                     <p className="text-3xl font-bold text-secondary-900">
-                      {lcArray.filter((lc: any) => {
-                        const daysUntilExpiry = Math.ceil((new Date(lc.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                        return daysUntilExpiry <= 5 && daysUntilExpiry > 0;
-                      }).length}
+                      {expiringSoonCount}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -284,16 +326,16 @@ export default function LettersCredit() {
                     <div key={i} className="h-16 bg-secondary-100 rounded-lg animate-pulse" />
                   ))}
                 </div>
-              ) : lcArray.length > 0 ? (
+              ) : filteredEntries.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>LC Number</TableHead>
-                      <TableHead>Unit Price</TableHead>
-                      <TableHead>Total Qty</TableHead>
-                      <TableHead>Allocated</TableHead>
-                      <TableHead>Remaining</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Currency</TableHead>
                       <TableHead>Issuing Bank</TableHead>
+                      <TableHead>Applicant</TableHead>
+                      <TableHead>Beneficiary</TableHead>
                       <TableHead>Issue Date</TableHead>
                       <TableHead>Expiry Date</TableHead>
                       <TableHead>Status</TableHead>
@@ -301,102 +343,93 @@ export default function LettersCredit() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {lcArray.map((lc: any) => (
-                      <TableRow key={lc.id} className={isExpired(lc.expiryDate) ? "bg-red-50" : ""}>
-                        <TableCell className="font-medium">{lc.lcNumber}</TableCell>
-                        <TableCell>
-                          ${parseFloat(lc.unitPrice || lc.amount || 0).toLocaleString()} {lc.currency}
-                        </TableCell>
-                        <TableCell>{lc.quantity || 0} tons</TableCell>
-                        <TableCell className="text-orange-600 font-medium">{lc.allocatedQuantity || 0} tons</TableCell>
-                        <TableCell className="text-green-600 font-medium">{lc.remainingQuantity || 0} tons</TableCell>
-                        <TableCell>{lc.issuingBank}</TableCell>
-                        <TableCell>
-                          {new Date(lc.issueDate).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className={isExpired(lc.expiryDate) ? "text-red-600 font-medium" : ""}>
-                          {new Date(lc.expiryDate).toLocaleDateString()}
-                          {isExpired(lc.expiryDate) && (
-                            <div className="text-xs text-red-500">Expired</div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Select 
-                            value={lc.status} 
-                            onValueChange={(newStatus) => {
-                              const formData = new FormData();
-                              formData.append('status', newStatus);
-                              
-                                apiRequest('PUT', `/api/letters-of-credit/${lc.id}`, formData).then(response => {
-                                  if (response.ok) {
-                                    queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-                                    toast({
-                                      title: "Success",
-                                      description: "LC status updated successfully",
-                                    });
-                                  } else {
-                                    toast({
-                                      title: "Error",
-                                      description: "Failed to update LC status",
-                                      variant: "destructive",
-                                    });
+                    {filteredEntries.map(({ raw, normalized }, index) => {
+                      const rowKey = normalized.id ?? raw?.id ?? index;
+                      const expired = isLcExpired(normalized.expiryDate);
+                      const statusValue = normalized.status || "Draft";
+                      const statusOptionsForRow = Array.from(new Set([...STATUS_OPTIONS, statusValue]));
+                      const lcIdentifier = raw?.id ?? normalized.id;
+
+                      return (
+                        <TableRow key={String(rowKey)} className={expired ? "bg-red-50" : ""}>
+                          <TableCell className="font-medium">{normalized.number}</TableCell>
+                          <TableCell>{formatLcCurrency(normalized.amount, normalized.currency)}</TableCell>
+                          <TableCell>{normalized.currency ?? "—"}</TableCell>
+                          <TableCell>{normalized.issuingBank ?? "—"}</TableCell>
+                          <TableCell>{normalized.applicant ?? "—"}</TableCell>
+                          <TableCell>{normalized.beneficiary ?? "—"}</TableCell>
+                          <TableCell>{formatLcDate(normalized.issueDate)}</TableCell>
+                          <TableCell className={expired ? "text-red-600 font-medium" : ""}>
+                            {formatLcDate(normalized.expiryDate)}
+                            {expired && <div className="text-xs text-red-500">Expired</div>}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-2">
+                              <StatusBadge status={normalized.statusKey} type="lc" />
+                              <Select
+                                value={statusValue}
+                                onValueChange={(newStatus) => {
+                                  if (lcIdentifier == null) return;
+                                  handleStatusChange(lcIdentifier, newStatus);
+                                }}
+                                disabled={lcIdentifier == null}
+                              >
+                                <SelectTrigger className="w-40">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {statusOptionsForRow.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-blue-50 hover:bg-blue-100 border-blue-200"
+                                onClick={() => {
+                                  setViewingLC(raw);
+                                  setShowViewDialog(true);
+                                }}
+                                title="View LC summary"
+                              >
+                                <Eye size={14} className="mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-blue-500 hover:bg-blue-600 text-white"
+                                onClick={() => {
+                                  setEditingLC(raw);
+                                  setShowEditDialog(true);
+                                }}
+                              >
+                                <Edit size={14} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  if (window.confirm("Are you sure you want to delete this Letter of Credit?")) {
+                                    if (lcIdentifier == null) return;
+                                    deleteLCMutation.mutate(lcIdentifier);
                                   }
-                                });
-                            }}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="draft">Draft</SelectItem>
-                              <SelectItem value="issued">Issued</SelectItem>
-                              <SelectItem value="expired">Expired</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="bg-blue-50 hover:bg-blue-100 border-blue-200"
-                              onClick={() => {
-                                setViewingLC(lc);
-                                setShowViewDialog(true);
-                              }}
-                              title="View LC summary"
-                            >
-                              <Eye size={14} className="mr-1" />
-                              View
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              className="bg-blue-500 hover:bg-blue-600 text-white"
-                              onClick={() => {
-                                setEditingLC(lc);
-                                setShowEditDialog(true);
-                              }}
-                            >
-                              <Edit size={14} />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => {
-                                if (window.confirm("Are you sure you want to delete this Letter of Credit?")) {
-                                  deleteLCMutation.mutate(lc.id);
-                                }
-                              }}
-                              disabled={deleteLCMutation.isPending}
-                            >
-                              <Trash size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                                }}
+                                disabled={deleteLCMutation.isPending}
+                              >
+                                <Trash size={14} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               ) : (
@@ -404,12 +437,12 @@ export default function LettersCredit() {
                   <University className="mx-auto h-12 w-12 text-secondary-400" />
                   <h3 className="mt-4 text-lg font-semibold text-secondary-900">No letters of credit found</h3>
                   <p className="mt-2 text-secondary-600">
-                    {statusFilter === "all" 
-                      ? "Get started by creating your first letter of credit." 
-                      : `No LCs with status "${statusFilter}" found.`}
+                    {statusFilter === "all"
+                      ? "Get started by creating your first letter of credit."
+                      : `No LCs with status "${statusFilterLabel}" found.`}
                   </p>
                   {user && ['admin', 'finance_officer'].includes((user as any)?.role) ? (
-                    <Button 
+                    <Button
                       className="mt-4 bg-primary-500 hover:bg-primary-600 text-white"
                       onClick={() => setShowCreateDialog(true)}
                     >

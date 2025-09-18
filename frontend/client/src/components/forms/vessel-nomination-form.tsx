@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import FileUpload from "@/components/ui/file-upload";
 import { CARGO_TYPES, COUNTRIES, PORTS } from "@/lib/constants";
 import { Plus, Trash2 } from "lucide-react";
+import { normalizeLc } from "@/lib/lc";
 
 // Updated schema to match backend DTO
 const vesselFormSchema = z.object({
@@ -81,6 +82,15 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
       status: "nominated"
     }
   });
+
+  const lcsArray = Array.isArray(lcs) ? lcs : [];
+
+  const normalizedLcs = useMemo(() => {
+    return lcsArray.map((lc: any) => ({
+      raw: lc,
+      normalized: normalizeLc(lc),
+    }));
+  }, [lcsArray]);
 
   const createMutation = useMutation({
     mutationFn: async (data: VesselFormData) => {
@@ -346,11 +356,17 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                             <SelectValue placeholder="Select LC" />
                           </SelectTrigger>
                           <SelectContent>
-                            {lcs.map((lc) => (
-                              <SelectItem key={lc.id} value={lc.id.toString()}>
-                                {lc.lcNumber} - {lc.issuingBank}
-                              </SelectItem>
-                            ))}
+                            {normalizedLcs.map(({ raw, normalized }) => {
+                              const lcId = raw?.id ?? normalized.id;
+                              if (lcId === null || lcId === undefined) {
+                                return null;
+                              }
+                              return (
+                                <SelectItem key={String(lcId)} value={String(lcId)}>
+                                  {normalized.number} - {normalized.issuingBank ?? "Unknown Bank"}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </div>
