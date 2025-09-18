@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { parseApiError } from '@/lib/api-error';
 import { CheckCircle, XCircle, MessageSquare, User, Calendar, Vote } from 'lucide-react';
 
 interface RequestVote {
@@ -85,20 +86,28 @@ export function RequestVotingContent({ requestId, currentUserId }: RequestVoting
       setComment('');
       setVoteType('yes'); // Reset to default
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error("Vote submission error:", error);
-      
-      let errorMessage = "Failed to submit opinion";
-      
-      // Try to extract error message from different possible error formats
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
+
+      const { message: errorMessage, statusCode } = parseApiError(
+        error,
+        "Failed to submit opinion",
+      );
+
+      if (statusCode === 409) {
+        void queryClient.invalidateQueries({
+          queryKey: [`/api/requests/${requestId}/votes`],
+        });
+        void refetch();
+
+        toast({
+          title: "Opinions Updated",
+          description: `${errorMessage} We've refreshed the latest opinions. Please review them and submit again.`,
+          variant: "destructive",
+        });
+        return;
       }
-      
+
       toast({
         title: "Opinion Submission Failed",
         description: errorMessage,
@@ -264,19 +273,28 @@ export function RequestVoteButton({ requestId, currentUserId }: RequestVoteButto
       setComment('');
       setVoteType('yes');
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error("Vote submission error:", error);
-      
-      let errorMessage = "Failed to submit opinion";
-      
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
+
+      const { message: errorMessage, statusCode } = parseApiError(
+        error,
+        "Failed to submit opinion",
+      );
+
+      if (statusCode === 409) {
+        void queryClient.invalidateQueries({
+          queryKey: [`/api/requests/${requestId}/votes`],
+        });
+        void refetch();
+
+        toast({
+          title: "Opinions Updated",
+          description: `${errorMessage} We've refreshed the latest opinions. Please review them and submit again.`,
+          variant: "destructive",
+        });
+        return;
       }
-      
+
       toast({
         title: "Opinion Submission Failed",
         description: errorMessage,

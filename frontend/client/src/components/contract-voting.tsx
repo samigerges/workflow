@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { parseApiError } from '@/lib/api-error';
 import { CheckCircle, XCircle, MessageSquare, User, Calendar, Vote } from 'lucide-react';
 
 interface ContractVote {
@@ -77,8 +78,26 @@ export function ContractVotingContent({ contractId, currentUserId }: ContractVot
       setComment('');
       refetch();
     },
-    onError: (error: any) => {
-      const errorMessage = error?.message || "Failed to submit opinion";
+    onError: (error: unknown) => {
+      const { message: errorMessage, statusCode } = parseApiError(
+        error,
+        "Failed to submit opinion",
+      );
+
+      if (statusCode === 409) {
+        void queryClient.invalidateQueries({
+          queryKey: [`/api/contracts/${contractId}/votes`],
+        });
+        void refetch();
+
+        toast({
+          title: "Opinions Updated",
+          description: `${errorMessage} We've refreshed the latest opinions. Please review them and submit again.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -202,7 +221,7 @@ export function ContractVoteButton({ contractId, currentUserId }: ContractVoteBu
   const [comment, setComment] = useState('');
 
   // Check if user has already voted
-  const { data: votesData } = useQuery({
+  const { data: votesData, refetch } = useQuery({
     queryKey: [`/api/contracts/${contractId}/votes`],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/contracts/${contractId}/votes`);
@@ -231,8 +250,26 @@ export function ContractVoteButton({ contractId, currentUserId }: ContractVoteBu
       queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       setComment('');
     },
-    onError: (error: any) => {
-      const errorMessage = error?.message || "Failed to submit opinion";
+    onError: (error: unknown) => {
+      const { message: errorMessage, statusCode } = parseApiError(
+        error,
+        "Failed to submit opinion",
+      );
+
+      if (statusCode === 409) {
+        void queryClient.invalidateQueries({
+          queryKey: [`/api/contracts/${contractId}/votes`],
+        });
+        void refetch();
+
+        toast({
+          title: "Opinions Updated",
+          description: `${errorMessage} We've refreshed the latest opinions. Please review them and submit again.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Error",
         description: errorMessage,
