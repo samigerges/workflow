@@ -19,6 +19,12 @@ import { ContractVotingContent, ContractVoteButton } from "@/components/contract
 import ContractSummary from "@/components/contract-summary";
 import StatusChangeDropdown from "@/components/ui/status-change-dropdown";
 import type { Contract as ContractRecord } from "@/lib/schemas";
+import {
+  CARGO_TYPES,
+  CONTRACT_PAYMENT_METHODS,
+  CONTRACT_SHIPPING_METHODS,
+} from "@/lib/constants";
+import { getOptionLabel } from "@/lib/utils";
 
 type ContractWithFile = ContractRecord & {
   fileName?: string | null;
@@ -330,6 +336,7 @@ export default function Contracts() {
                       <TableHead>Contract ID</TableHead>
                       <TableHead>Supplier</TableHead>
                       <TableHead>Cargo Type</TableHead>
+                      <TableHead>Country of Origin</TableHead>
                       <TableHead>Quantity (tons)</TableHead>
                       <TableHead>Price per Unit</TableHead>
                       <TableHead>Shipping Method</TableHead>
@@ -347,22 +354,33 @@ export default function Contracts() {
                       const allocatedQuantity = contractVessels.reduce((sum, vessel) => sum + (vessel.quantity || 0), 0);
                       const remainingQuantity = (contract.quantity || 0) - allocatedQuantity;
                       const dynamicStatus = calculateContractStatus(contract, (vessels as any[]) || []);
-                      
+                      const cargoTypeLabel = contract.cargoType
+                        ? getOptionLabel(CARGO_TYPES, contract.cargoType)
+                        : "-";
+                      const countryLabel = contract.countryOfOrigin || "-";
+                      const shippingMethodLabel = contract.shippingMethod
+                        ? getOptionLabel(CONTRACT_SHIPPING_METHODS, contract.shippingMethod)
+                        : "-";
+                      const paymentMethodLabel = contract.paymentMethod
+                        ? getOptionLabel(CONTRACT_PAYMENT_METHODS, contract.paymentMethod)
+                        : "-";
+
                       return (
                         <TableRow key={contract.id}>
                           <TableCell className="font-medium">
                             CON-{contract.id.toString().padStart(3, '0')}
                           </TableCell>
                           <TableCell>{contract.supplierName || '-'}</TableCell>
-                          <TableCell>{contract.cargoType || '-'}</TableCell>
+                          <TableCell>{cargoTypeLabel}</TableCell>
+                          <TableCell>{countryLabel}</TableCell>
                           <TableCell>
                             {contract.quantity ? contract.quantity.toLocaleString() : '-'}
                           </TableCell>
                           <TableCell>
                             {contract.pricePerTon ? `$${Number(contract.pricePerTon).toLocaleString()}` : '-'}
                           </TableCell>
-                          <TableCell>{contract.shippingMethod || '-'}</TableCell>
-                          <TableCell>{contract.paymentMethod || '-'}</TableCell>
+                          <TableCell>{shippingMethodLabel}</TableCell>
+                          <TableCell>{paymentMethodLabel}</TableCell>
                           <TableCell>
                             <span className={allocatedQuantity > 0 ? 'text-blue-600 font-medium' : 'text-gray-500'}>
                               {allocatedQuantity.toLocaleString()}
