@@ -113,7 +113,9 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
         formData.append('contractFile', selectedFiles[0]);
       }
 
-      const url = contract ? `/api/contracts/${contract.id}` : "/api/contracts";
+      const url = contract
+        ? `/api/contracts/${contract.id}/upload`
+        : "/api/contracts";
       const method = contract ? "PUT" : "POST";
       
         const response = await apiRequest(method, url, formData);
