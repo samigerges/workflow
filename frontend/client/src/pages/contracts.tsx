@@ -18,6 +18,25 @@ import DocumentVoting from "@/components/document-voting";
 import { ContractVotingContent, ContractVoteButton } from "@/components/contract-voting";
 import ContractSummary from "@/components/contract-summary";
 import StatusChangeDropdown from "@/components/ui/status-change-dropdown";
+import type { Contract as ContractRecord } from "@/lib/schemas";
+
+type ContractWithFile = ContractRecord & {
+  fileName?: string | null;
+  fileUrl?: string | null;
+  uploadedFile?: string | null;
+};
+
+const normalizeContract = (contract: any): ContractWithFile => {
+  const fileName = contract?.fileName ?? contract?.uploadedFile ?? null;
+  const fileUrl = contract?.fileUrl ?? (fileName ? `/uploads/${fileName}` : null);
+
+  return {
+    ...contract,
+    fileName,
+    fileUrl,
+    uploadedFile: contract?.uploadedFile ?? fileName ?? null,
+  };
+};
 
 export default function Contracts() {
   const { toast } = useToast();
@@ -52,6 +71,13 @@ export default function Contracts() {
   const { data: allContracts, isLoading: contractsLoading } = useQuery({
     queryKey: ["/api/contracts"],
     retry: false,
+    select: (data: any) => {
+      if (!Array.isArray(data)) {
+        return data;
+      }
+
+      return data.map(normalizeContract);
+    },
   });
 
   // Filter contracts based on calculated status

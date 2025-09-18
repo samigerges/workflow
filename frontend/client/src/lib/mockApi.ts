@@ -32,6 +32,40 @@ function generateId(list: { id: any }[]) {
   return list.length ? Math.max(...list.map((i) => Number(i.id))) + 1 : 1;
 }
 
+function normalizeContractDocument(payload: any, existing?: any) {
+  if (!payload) return payload;
+
+  const result: Record<string, any> = { ...payload };
+  const rawFile = (payload as any)?.contractFile;
+
+  let fileName: string | null =
+    typeof payload?.fileName === "string" && payload.fileName
+      ? payload.fileName
+      : existing?.fileName ?? existing?.uploadedFile ?? null;
+
+  if (rawFile && typeof rawFile === "object" && "name" in rawFile && typeof rawFile.name === "string") {
+    fileName = rawFile.name;
+  } else if (typeof rawFile === "string" && rawFile) {
+    fileName = rawFile;
+  }
+
+  const fileUrl: string | null =
+    typeof payload?.fileUrl === "string" && payload.fileUrl
+      ? payload.fileUrl
+      : existing?.fileUrl ?? (fileName ? `/uploads/${fileName}` : null);
+
+  if (Object.prototype.hasOwnProperty.call(result, "contractFile")) {
+    delete result.contractFile;
+  }
+
+  return {
+    ...result,
+    fileName: fileName ?? null,
+    fileUrl: fileUrl ?? null,
+    uploadedFile: fileName ?? null,
+  };
+}
+
 export async function apiRequest(
   methodOrUrl: string,
   urlOrData?: any,
@@ -146,7 +180,8 @@ export async function apiRequest(
     if (method === "GET") return jsonResponse(contracts);
     if (method === "POST") {
       const payload = body instanceof FormData ? formDataToObject(body) : body || {};
-      const newContract = { id: generateId(contracts), ...payload } as any;
+      const normalizedPayload = normalizeContractDocument(payload);
+      const newContract = { id: generateId(contracts), ...normalizedPayload } as any;
       contracts.push(newContract);
       return jsonResponse(newContract, 201);
     }
@@ -158,7 +193,8 @@ export async function apiRequest(
     if (idx !== -1) {
       if (method === "PUT") {
         const payload = body instanceof FormData ? formDataToObject(body) : body || {};
-        contracts[idx] = { ...contracts[idx], ...payload } as any;
+        const normalizedPayload = normalizeContractDocument(payload, contracts[idx]);
+        contracts[idx] = { ...contracts[idx], ...normalizedPayload } as any;
         return jsonResponse(contracts[idx]);
       }
       if (method === "DELETE") {

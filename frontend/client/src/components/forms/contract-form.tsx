@@ -51,7 +51,7 @@ const contractFormSchema = z.object({
   },
   {
     message: "Contract document is required",
-    path: ["uploadedFile"]
+    path: ["fileName"]
   }
 );
 
@@ -85,6 +85,9 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
       endDate: contract.endDate ? new Date(contract.endDate).toISOString().split('T')[0] : '',
     } : {}
   });
+
+  const existingFileName = contract?.fileName ?? contract?.uploadedFile ?? undefined;
+  const hasExistingFile = Boolean(contract?.fileUrl || existingFileName);
 
   const createMutation = useMutation({
     mutationFn: async (data: ContractFormData) => {
@@ -191,7 +194,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
 
   const onSubmit = (data: ContractFormData) => {
     // Validate mandatory file upload
-    if (selectedFiles.length === 0 && !contract?.uploadedFile) {
+    if (selectedFiles.length === 0 && !hasExistingFile) {
       toast({
         title: "Contract Document Required",
         description: "Please upload a contract document",
@@ -386,10 +389,10 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             <FileUpload
               accept=".pdf,.doc,.docx"
               onFileSelect={setSelectedFiles}
-              existingFile={contract?.uploadedFile}
+              existingFile={existingFileName}
               description="PDF, DOC, DOCX up to 10MB (Required)"
             />
-            {selectedFiles.length === 0 && !contract?.uploadedFile && (
+            {selectedFiles.length === 0 && !hasExistingFile && (
               <p className="text-sm text-red-500 mt-1">Contract document is required</p>
             )}
           </div>
