@@ -109,10 +109,12 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
         formData.append('lcFile', selectedFiles[0]);
       }
 
-      const url = lc ? `/api/letters-of-credit/${lc.id}` : "/api/letters-of-credit";
+      const url = lc
+        ? `/api/letters-of-credit/${lc.id}/upload`
+        : "/api/letters-of-credit/upload";
       const method = lc ? "PUT" : "POST";
-      
-        const response = await apiRequest(method, url, formData);
+
+      const response = await apiRequest(method, url, formData);
 
       if (!response.ok) {
         throw new Error(`${response.status}: ${response.statusText}`);
