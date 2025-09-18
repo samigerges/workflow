@@ -13,18 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import FileUpload from "@/components/ui/file-upload";
-import { CARGO_TYPES, COUNTRIES } from "@/lib/constants";
-
-const PAYMENT_METHODS = [
-  { value: "lc", label: "Letter of Credit (LC)" },
-  { value: "At sight", label: "At sight" }
-];
-
-const SHIPPING_METHODS = [
-  { value: "fob", label: "FOB" },
-  { value: "cif", label: "CIF" },
-  { value: "c&f", label: "C&F" },
-];
+import {
+  CARGO_TYPES,
+  CONTRACT_PAYMENT_METHODS,
+  CONTRACT_SHIPPING_METHODS,
+  COUNTRIES,
+} from "@/lib/constants";
 
 // Create a more flexible schema for drafts - consistent with backend DTO
 const contractFormSchema = z.object({
@@ -356,7 +350,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PAYMENT_METHODS.map((method) => (
+                  {CONTRACT_PAYMENT_METHODS.map((method) => (
                     <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -375,7 +369,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                   <SelectValue placeholder="Select shipping method" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SHIPPING_METHODS.map((method) => (
+                  {CONTRACT_SHIPPING_METHODS.map((method) => (
                     <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
                   ))}
                 </SelectContent>

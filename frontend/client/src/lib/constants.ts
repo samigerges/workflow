@@ -120,6 +120,17 @@ export const CARGO_TYPES = [
   { value: "other", label: "Other" }
 ];
 
+export const CONTRACT_PAYMENT_METHODS = [
+  { value: "lc", label: "Letter of Credit (LC)" },
+  { value: "At sight", label: "At sight" },
+];
+
+export const CONTRACT_SHIPPING_METHODS = [
+  { value: "fob", label: "FOB" },
+  { value: "cif", label: "CIF" },
+  { value: "c&f", label: "C&F" },
+];
+
 export const SHIPMENT_STATUSES = {
   loading: { label: 'Loading', color: 'bg-blue-100 text-blue-800' },
   loaded: { label: 'Loaded', color: 'bg-green-100 text-green-800' },

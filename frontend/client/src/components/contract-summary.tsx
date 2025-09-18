@@ -3,9 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, DollarSign, Package, Truck, User, FileText, ExternalLink, Ship } from "lucide-react";
+import { Calendar, DollarSign, ExternalLink, FileText, Globe, Package, Ship, Truck, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import StatusBadge from "@/components/ui/status-badge";
+import {
+  CARGO_TYPES,
+  CONTRACT_PAYMENT_METHODS,
+  CONTRACT_SHIPPING_METHODS,
+} from "@/lib/constants";
+import { getOptionLabel } from "@/lib/utils";
 
 interface ContractSummaryProps {
   contract: any;
@@ -31,6 +37,17 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
   const documentName = contract.fileName ?? contract.uploadedFile ?? null;
   const documentUrl = contract.fileUrl ?? (contract.uploadedFile ? `/uploads/${contract.uploadedFile}` : null);
   const hasDocument = Boolean(documentName || documentUrl);
+
+  const displayCargoType = contract.cargoType
+    ? getOptionLabel(CARGO_TYPES, contract.cargoType)
+    : "-";
+  const displayPaymentMethod = contract.paymentMethod
+    ? getOptionLabel(CONTRACT_PAYMENT_METHODS, contract.paymentMethod)
+    : "-";
+  const displayShippingMethod = contract.shippingMethod
+    ? getOptionLabel(CONTRACT_SHIPPING_METHODS, contract.shippingMethod)
+    : "-";
+  const displayCountry = contract.countryOfOrigin || "-";
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -84,7 +101,7 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
                   <Package className="h-4 w-4 text-gray-500" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Cargo Type:</span>
-                    <p className="text-gray-900">{contract.cargoType || '-'}</p>
+                    <p className="text-gray-900">{displayCargoType}</p>
                   </div>
                 </div>
 
@@ -93,6 +110,14 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
                   <div>
                     <span className="text-sm font-medium text-gray-500">Total Quantity:</span>
                     <p className="text-gray-900">{contract.quantity ? `${contract.quantity.toLocaleString()} tons` : '-'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Globe className="h-4 w-4 text-gray-500" />
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Country of Origin:</span>
+                    <p className="text-gray-900">{displayCountry}</p>
                   </div>
                 </div>
 
@@ -116,7 +141,7 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
                   <Truck className="h-4 w-4 text-gray-500" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Shipping Method:</span>
-                    <p className="text-gray-900">{contract.shippingMethod || '-'}</p>
+                    <p className="text-gray-900">{displayShippingMethod}</p>
                   </div>
                 </div>
 
@@ -124,7 +149,7 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
                   <DollarSign className="h-4 w-4 text-gray-500" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Payment Method:</span>
-                    <p className="text-gray-900">{contract.paymentMethod || '-'}</p>
+                    <p className="text-gray-900">{displayPaymentMethod}</p>
                   </div>
                 </div>
 
