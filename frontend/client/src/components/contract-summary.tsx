@@ -24,10 +24,13 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
 
   // Filter vessels for this contract
   const contractVessels = vessels ? (vessels as any[]).filter(vessel => vessel.contractId === contract.id) : [];
-  
+
   // Calculate total vessel quantities and remaining
   const totalVesselQuantity = contractVessels.reduce((sum, vessel) => sum + (vessel.quantity || 0), 0);
   const remainingQuantity = (contract.quantity || 0) - totalVesselQuantity;
+  const documentName = contract.fileName ?? contract.uploadedFile ?? null;
+  const documentUrl = contract.fileUrl ?? (contract.uploadedFile ? `/uploads/${contract.uploadedFile}` : null);
+  const hasDocument = Boolean(documentName || documentUrl);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -154,7 +157,7 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
           </Card>
 
           {/* Contract Document */}
-          {contract.uploadedFile && (
+          {hasDocument && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center space-x-2">
@@ -166,25 +169,32 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <FileText className="h-5 w-5 text-blue-600" />
-                    <span className="font-medium">{contract.uploadedFile}</span>
+                    <span className="font-medium">{documentName || "Contract document"}</span>
                     <Badge variant="outline">
                       {contract.documentStatus || 'Active'}
                     </Badge>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = `/uploads/${contract.uploadedFile}`;
-                      link.target = '_blank';
-                      link.click();
-                    }}
-                    className="bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200"
-                  >
-                    <ExternalLink size={14} className="mr-1" />
-                    View Document
-                  </Button>
+                  {documentUrl ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = documentUrl;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                        link.click();
+                      }}
+                      className="bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200"
+                    >
+                      <ExternalLink size={14} className="mr-1" />
+                      View Document
+                    </Button>
+                  ) : (
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                      Link unavailable
+                    </Badge>
+                  )}
                 </div>
               </CardContent>
             </Card>

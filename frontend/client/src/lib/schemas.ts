@@ -124,7 +124,8 @@ export const insertContractSchema = z.object({
   endDate: z.string().optional(),
   reviewNotes: z.string().optional(),
   status: z.string().optional(),
-  uploadedFile: z.string().optional(),
+  fileName: z.string().nullish(),
+  fileUrl: z.string().nullish(),
   createdBy: z.string().optional(),
 });
 

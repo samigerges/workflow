@@ -83,12 +83,14 @@ export const contracts = [
     contractTerms: "Standard terms and conditions apply",
     startDate: "2024-01-20T00:00:00.000Z",
     endDate: "2024-06-20T00:00:00.000Z",
-    createdAt: "2024-01-15T08:00:00.000Z"
+    createdAt: "2024-01-15T08:00:00.000Z",
+    fileName: "wheat-import-contract.pdf",
+    fileUrl: "/uploads/wheat-import-contract.pdf"
   },
-  { 
-    id: 2, 
-    requestId: 2, 
-    title: "Rice Import Contract", 
+  {
+    id: 2,
+    requestId: 2,
+    title: "Rice Import Contract",
     description: "Premium rice import contract",
     status: "approved",
     quantity: 3000,
@@ -103,12 +105,14 @@ export const contracts = [
     contractTerms: "Quality specifications as per contract",
     startDate: "2024-02-15T00:00:00.000Z",
     endDate: "2024-08-15T00:00:00.000Z",
-    createdAt: "2024-02-10T10:30:00.000Z"
+    createdAt: "2024-02-10T10:30:00.000Z",
+    fileName: "rice-import-contract.pdf",
+    fileUrl: "/uploads/rice-import-contract.pdf"
   },
-  { 
-    id: 3, 
-    requestId: 3, 
-    title: "Steel Import Contract", 
+  {
+    id: 3,
+    requestId: 3,
+    title: "Steel Import Contract",
     description: "Industrial steel materials contract",
     status: "under_review",
     quantity: 2000,
@@ -123,7 +127,9 @@ export const contracts = [
     contractTerms: "Industrial grade specifications",
     startDate: "2024-03-10T00:00:00.000Z",
     endDate: "2024-09-10T00:00:00.000Z",
-    createdAt: "2024-03-05T14:15:00.000Z"
+    createdAt: "2024-03-05T14:15:00.000Z",
+    fileName: "steel-import-contract.pdf",
+    fileUrl: "/uploads/steel-import-contract.pdf"
   }
 ];
 
