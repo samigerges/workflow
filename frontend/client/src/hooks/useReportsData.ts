@@ -56,9 +56,22 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
     [contracts, filterByDateRange]
   );
 
-  const filteredVesselsForDateRange = useMemo(() => 
-    filterByDateRange(vessels), 
+  const filteredVesselsForDateRange = useMemo(() =>
+    filterByDateRange(vessels),
     [vessels, filterByDateRange]
+  );
+
+  // Apply supplier and country filters
+  const filteredVessels = useMemo(() =>
+    filteredVesselsForDateRange.filter((vessel: Vessel) => {
+      const contract = filteredContracts.find((c: Contract) => c.id === vessel.contractId);
+
+      const supplierMatch = selectedSupplier ? contract?.supplierName === selectedSupplier : true;
+      const countryMatch = selectedCountry ? vessel.countryOfOrigin === selectedCountry : true;
+
+      return supplierMatch && countryMatch;
+    }),
+    [filteredVesselsForDateRange, filteredContracts, selectedSupplier, selectedCountry]
   );
 
   // Process suppliers data
@@ -67,15 +80,18 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
       const supplierName = contract.supplierName || 'Unknown Supplier';
       const existing = acc.find(item => item.supplier === supplierName);
       
+      const contractQuantity = Number(contract.quantity ?? 0);
+      const vesselsForContract = filteredVesselsForDateRange.filter((v: Vessel) => v.contractId === contract.id).length;
+
       if (existing) {
         existing.contracts += 1;
-        existing.quantity += contract.quantity || 0;
-        existing.vessels += filteredVesselsForDateRange.filter((v: Vessel) => v.contractId === contract.id).length;
+        existing.quantity += contractQuantity;
+        existing.vessels += vesselsForContract;
       } else {
         acc.push({
           supplier: supplierName,
-          vessels: filteredVesselsForDateRange.filter((v: Vessel) => v.contractId === contract.id).length,
-          quantity: contract.quantity || 0,
+          vessels: vesselsForContract,
+          quantity: contractQuantity,
           contracts: 1
         });
       }
@@ -85,76 +101,103 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
   }, [filteredContracts, filteredVesselsForDateRange]);
 
   // Get supplier-specific data
-  const selectedSupplierData = useMemo(() => 
-    selectedSupplier ? suppliersData.find(s => s.supplier === selectedSupplier) : null,
-    [selectedSupplier, suppliersData]
-  );
+  const selectedSupplierData = useMemo(() => {
+    if (!selectedSupplier) return null;
+
+    const supplierContracts = filteredContracts.filter((c: Contract) => c.supplierName === selectedSupplier);
+
+    const vesselMatchesSupplier = (vessel: Vessel) => {
+      if (typeof vessel.contractId !== "number") return false;
+      return supplierContracts.some((contract) => contract.id === vessel.contractId);
+    };
+
+    const vesselsForSupplier = filteredVesselsForDateRange.filter(vesselMatchesSupplier);
+    const filteredSupplierVessels = filteredVessels.filter(vesselMatchesSupplier);
+
+    const totalQuantity = supplierContracts.reduce(
+      (sum: number, contract: Contract) => sum + Number(contract.quantity ?? 0),
+      0,
+    );
+
+    return {
+      supplier: selectedSupplier,
+      vessels: selectedCountry ? filteredSupplierVessels.length : vesselsForSupplier.length,
+      quantity: totalQuantity,
+      contracts: supplierContracts.length,
+    } satisfies SupplierData;
+  }, [selectedSupplier, filteredContracts, filteredVesselsForDateRange, filteredVessels, selectedCountry]);
 
   // Calculate quantity metrics
   const calculateQuantityMetrics = useMemo(() => {
     return (contracts: Contract[], vessels: Vessel[]): QuantityMetrics => {
-      const totalContracted = contracts.reduce((sum: number, contract: Contract) => sum + (contract.quantity || 0), 0);
-      
-      // Calculate arrived quantity from discharged vessel quantities
+      const totalContracted = contracts.reduce(
+        (sum: number, contract: Contract) => sum + Number(contract.quantity ?? 0),
+        0,
+      );
+
       const arrivedQuantity = vessels.reduce((sum: number, vessel: Vessel) => {
-        return sum + (vessel.dischargedQuantity || 0);
+        const discharged = vessel.dischargedQuantity ?? vessel.quantity ?? 0;
+        return sum + Number(discharged);
       }, 0);
-      
-      const remainingQuantity = totalContracted - arrivedQuantity;
-      
+
+      const remainingQuantity = Math.max(totalContracted - arrivedQuantity, 0);
+
       return {
         totalContracted,
         arrivedQuantity,
-        remainingQuantity
+        remainingQuantity,
       };
     };
   }, []);
 
-  // Get metrics for selected supplier or all
-  const relevantContracts = useMemo(() => 
-    selectedSupplier 
+  // Get metrics for selected filters
+  const relevantContracts = useMemo(() => {
+    const supplierFiltered = selectedSupplier
       ? filteredContracts.filter((c: Contract) => c.supplierName === selectedSupplier)
-      : filteredContracts,
-    [selectedSupplier, filteredContracts]
-  );
+      : filteredContracts;
 
-  const relevantVessels = useMemo(() => 
-    selectedSupplier
-      ? filteredVesselsForDateRange.filter((vessel: Vessel) => {
-          const contract = filteredContracts.find((c: Contract) => c.id === vessel.contractId);
-          return contract?.supplierName === selectedSupplier;
-        })
-      : filteredVesselsForDateRange,
-    [selectedSupplier, filteredVesselsForDateRange, filteredContracts]
-  );
+    if (!selectedCountry) {
+      return supplierFiltered;
+    }
 
-  const quantityMetrics = useMemo(() => 
-    calculateQuantityMetrics(relevantContracts, relevantVessels),
-    [calculateQuantityMetrics, relevantContracts, relevantVessels]
+    const contractIdsFromVessels = new Set<number>();
+    filteredVessels.forEach((vessel) => {
+      if (typeof vessel.contractId === "number") {
+        contractIdsFromVessels.add(vessel.contractId);
+      }
+    });
+
+    if (contractIdsFromVessels.size === 0) {
+      return [];
+    }
+
+    return supplierFiltered.filter((contract) => contractIdsFromVessels.has(contract.id));
+  }, [filteredContracts, filteredVessels, selectedSupplier, selectedCountry]);
+
+  const quantityMetrics = useMemo(
+    () => calculateQuantityMetrics(relevantContracts, filteredVessels),
+    [calculateQuantityMetrics, relevantContracts, filteredVessels]
   );
 
   // Calculate display totals
-  const displayTotals = useMemo((): DisplayTotals => ({
-    totalSuppliers: selectedSupplierData ? 1 : suppliersData.length,
-    totalVessels: selectedSupplierData ? selectedSupplierData.vessels : filteredVesselsForDateRange.length,
-    totalContracts: selectedSupplierData ? selectedSupplierData.contracts : filteredContracts.length,
-    totalContracted: quantityMetrics.totalContracted || 0,
-    arrivedQuantity: quantityMetrics.arrivedQuantity || 0,
-    remainingQuantity: quantityMetrics.remainingQuantity || 0
-  }), [selectedSupplierData, suppliersData, filteredVesselsForDateRange, filteredContracts, quantityMetrics]);
+  const displayTotals = useMemo((): DisplayTotals => {
+    const supplierCount = selectedSupplier
+      ? 1
+      : new Set(
+          relevantContracts
+            .map((contract) => contract.supplierName)
+            .filter((name): name is string => Boolean(name)),
+        ).size;
 
-  // Filter vessels by selected criteria
-  const filteredVessels = useMemo(() => 
-    filteredVesselsForDateRange.filter((vessel: Vessel) => {
-      const contract = filteredContracts.find((c: Contract) => c.id === vessel.contractId);
-      
-      const supplierMatch = selectedSupplier ? contract?.supplierName === selectedSupplier : true;
-      const countryMatch = selectedCountry ? vessel.countryOfOrigin === selectedCountry : true;
-      
-      return supplierMatch && countryMatch;
-    }), 
-    [filteredVesselsForDateRange, filteredContracts, selectedSupplier, selectedCountry]
-  );
+    return {
+      totalSuppliers: supplierCount,
+      totalVessels: filteredVessels.length,
+      totalContracts: relevantContracts.length,
+      totalContracted: quantityMetrics.totalContracted,
+      arrivedQuantity: quantityMetrics.arrivedQuantity,
+      remainingQuantity: quantityMetrics.remainingQuantity,
+    } satisfies DisplayTotals;
+  }, [filteredVessels, quantityMetrics, relevantContracts, selectedSupplier]);
 
   // Get unique suppliers for dropdown
   const availableSuppliers = useMemo(() => 
