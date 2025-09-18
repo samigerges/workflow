@@ -66,6 +66,40 @@ function normalizeContractDocument(payload: any, existing?: any) {
   };
 }
 
+function normalizeLetterOfCreditDocument(payload: any, existing?: any) {
+  if (!payload) return payload;
+
+  const result: Record<string, any> = { ...payload };
+  const rawFile = (payload as any)?.lcFile;
+
+  let fileName: string | null =
+    typeof payload?.fileName === "string" && payload.fileName
+      ? payload.fileName
+      : existing?.fileName ?? existing?.uploadedFile ?? null;
+
+  if (rawFile && typeof rawFile === "object" && "name" in rawFile && typeof rawFile.name === "string") {
+    fileName = rawFile.name;
+  } else if (typeof rawFile === "string" && rawFile) {
+    fileName = rawFile;
+  }
+
+  const fileUrl: string | null =
+    typeof payload?.fileUrl === "string" && payload.fileUrl
+      ? payload.fileUrl
+      : existing?.fileUrl ?? (fileName ? `/uploads/${fileName}` : null);
+
+  if (Object.prototype.hasOwnProperty.call(result, "lcFile")) {
+    delete result.lcFile;
+  }
+
+  return {
+    ...result,
+    fileName: fileName ?? null,
+    fileUrl: fileUrl ?? null,
+    uploadedFile: fileName ?? null,
+  };
+}
+
 export async function apiRequest(
   methodOrUrl: string,
   urlOrData?: any,
@@ -186,6 +220,13 @@ export async function apiRequest(
       return jsonResponse(newContract, 201);
     }
   }
+  if (url === "/api/contracts/upload" && method === "POST") {
+    const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+    const normalizedPayload = normalizeContractDocument(payload);
+    const newContract = { id: generateId(contracts), ...normalizedPayload } as any;
+    contracts.push(newContract);
+    return jsonResponse(newContract, 201);
+  }
   match = url.match(/^\/api\/contracts\/(\d+)$/);
   if (match) {
     const id = Number(match[1]);
@@ -201,6 +242,17 @@ export async function apiRequest(
         contracts.splice(idx, 1);
         return jsonResponse({ ok: true });
       }
+    }
+  }
+  match = url.match(/^\/api\/contracts\/(\d+)\/upload$/);
+  if (match) {
+    const id = Number(match[1]);
+    const idx = contracts.findIndex((c) => c.id === id);
+    if (idx !== -1 && method === "PUT") {
+      const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+      const normalizedPayload = normalizeContractDocument(payload, contracts[idx]);
+      contracts[idx] = { ...contracts[idx], ...normalizedPayload } as any;
+      return jsonResponse(contracts[idx]);
     }
   }
   match = url.match(/^\/api\/contracts\/(\d+)\/votes$/);
@@ -219,10 +271,18 @@ export async function apiRequest(
     if (method === "GET") return jsonResponse(lettersOfCredit);
     if (method === "POST") {
       const payload = body instanceof FormData ? formDataToObject(body) : body || {};
-      const lc = { id: generateId(lettersOfCredit), ...payload } as any;
+      const normalizedPayload = normalizeLetterOfCreditDocument(payload);
+      const lc = { id: generateId(lettersOfCredit), ...normalizedPayload } as any;
       lettersOfCredit.push(lc);
       return jsonResponse(lc, 201);
     }
+  }
+  if (url === "/api/letters-of-credit/upload" && method === "POST") {
+    const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+    const normalizedPayload = normalizeLetterOfCreditDocument(payload);
+    const lc = { id: generateId(lettersOfCredit), ...normalizedPayload } as any;
+    lettersOfCredit.push(lc);
+    return jsonResponse(lc, 201);
   }
   match = url.match(/^\/api\/letters-of-credit\/(\d+)$/);
   if (match) {
@@ -231,13 +291,25 @@ export async function apiRequest(
     if (idx !== -1) {
       if (method === "PUT") {
         const payload = body instanceof FormData ? formDataToObject(body) : body || {};
-        lettersOfCredit[idx] = { ...lettersOfCredit[idx], ...payload } as any;
+        const normalizedPayload = normalizeLetterOfCreditDocument(payload, lettersOfCredit[idx]);
+        lettersOfCredit[idx] = { ...lettersOfCredit[idx], ...normalizedPayload } as any;
         return jsonResponse(lettersOfCredit[idx]);
       }
       if (method === "DELETE") {
         lettersOfCredit.splice(idx, 1);
         return jsonResponse({ ok: true });
       }
+    }
+  }
+  match = url.match(/^\/api\/letters-of-credit\/(\d+)\/upload$/);
+  if (match) {
+    const id = Number(match[1]);
+    const idx = lettersOfCredit.findIndex((l) => l.id === id);
+    if (idx !== -1 && method === "PUT") {
+      const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+      const normalizedPayload = normalizeLetterOfCreditDocument(payload, lettersOfCredit[idx]);
+      lettersOfCredit[idx] = { ...lettersOfCredit[idx], ...normalizedPayload } as any;
+      return jsonResponse(lettersOfCredit[idx]);
     }
   }
   match = url.match(/^\/api\/letters-of-credit\/(\d+)\/vessels$/);
