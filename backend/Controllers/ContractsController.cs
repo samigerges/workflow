@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using System.Security.Claims;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
@@ -35,6 +37,28 @@ namespace WorkflowBackend.Api.Controllers
             _db = db;
             _env = env;
             _logger = logger;
+        }
+
+        private async Task<bool> RequestExistsAsync(Guid requestId) =>
+            await _db.Requests.AnyAsync(r => r.Id == requestId);
+
+        private ActionResult<ContractResponse> HandleContractSaveFailure(DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while saving contract changes");
+
+            if (ex.InnerException is PostgresException pg &&
+                pg.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+            {
+                return BadRequest(new
+                {
+                    message = "The related record referenced by this contract no longer exists. Please refresh and try again."
+                });
+            }
+
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An unexpected error occurred while saving the contract."
+            });
         }
 
         private Guid? CurrentUserId()
@@ -133,6 +157,12 @@ namespace WorkflowBackend.Api.Controllers
         [Consumes("application/json")]
         public async Task<ActionResult<ContractResponse>> CreateJson([FromBody] ContractCreateRequest req)
         {
+            if (string.IsNullOrWhiteSpace(req.Title))
+                return BadRequest(new { message = "Title is required." });
+
+            if (req.RequestId is Guid rid && !await RequestExistsAsync(rid))
+                return BadRequest(new { message = "The selected request could not be found." });
+
             var c = new Contract
             {
                 Title = req.Title.Trim(),
@@ -154,7 +184,14 @@ namespace WorkflowBackend.Api.Controllers
             };
 
             _db.Contracts.Add(c);
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return HandleContractSaveFailure(ex);
+            }
             await _db.Entry(c).Collection(x => x.Votes).LoadAsync();
 
             return CreatedAtAction(nameof(GetOne), new { id = c.Id }, ToResponse(c, CurrentUserId()));
@@ -180,6 +217,9 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] string? reviewNotes,
             [FromForm(Name = "contractFile")] IFormFile? file)
         {
+            if (string.IsNullOrWhiteSpace(title))
+                return BadRequest(new { message = "Title is required." });
+
             var c = new Contract
             {
                 Title = title.Trim(),
@@ -200,6 +240,9 @@ namespace WorkflowBackend.Api.Controllers
                 ReviewNotes = string.IsNullOrWhiteSpace(reviewNotes) ? null : reviewNotes.Trim()
             };
 
+            if (c.RequestId is Guid rid && !await RequestExistsAsync(rid))
+                return BadRequest(new { message = "The selected request could not be found." });
+
             if (file is not null)
             {
                 try
@@ -215,7 +258,14 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             _db.Contracts.Add(c);
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return HandleContractSaveFailure(ex);
+            }
             await _db.Entry(c).Collection(x => x.Votes).LoadAsync();
 
             return CreatedAtAction(nameof(GetOne), new { id = c.Id }, ToResponse(c, CurrentUserId()));
@@ -230,6 +280,12 @@ namespace WorkflowBackend.Api.Controllers
         {
             var c = await _db.Contracts.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
             if (c is null) return NotFound();
+
+            if (string.IsNullOrWhiteSpace(req.Title))
+                return BadRequest(new { message = "Title is required." });
+
+            if (req.RequestId is Guid rid && !await RequestExistsAsync(rid))
+                return BadRequest(new { message = "The selected request could not be found." });
 
             c.Title = req.Title.Trim();
             c.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
@@ -247,7 +303,14 @@ namespace WorkflowBackend.Api.Controllers
             c.ReviewNotes = string.IsNullOrWhiteSpace(req.ReviewNotes) ? null : req.ReviewNotes.Trim();
             c.UpdatedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return HandleContractSaveFailure(ex);
+            }
             return ToResponse(c, CurrentUserId());
         }
 
@@ -275,9 +338,29 @@ namespace WorkflowBackend.Api.Controllers
             var c = await _db.Contracts.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
             if (c is null) return NotFound();
 
+            if (string.IsNullOrWhiteSpace(title))
+                return BadRequest(new { message = "Title is required." });
+
             c.Title = title.Trim();
             c.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-            c.RequestId = Guid.TryParse(requestId, out var rid) ? rid : c.RequestId;
+            if (requestId is not null)
+            {
+                if (string.IsNullOrWhiteSpace(requestId) || requestId.Equals("none", StringComparison.OrdinalIgnoreCase))
+                {
+                    c.RequestId = null;
+                }
+                else if (Guid.TryParse(requestId, out var rid))
+                {
+                    if (!await RequestExistsAsync(rid))
+                        return BadRequest(new { message = "The selected request could not be found." });
+
+                    c.RequestId = rid;
+                }
+                else
+                {
+                    return BadRequest(new { message = "Invalid request id." });
+                }
+            }
             c.SupplierName = string.IsNullOrWhiteSpace(supplierName) ? c.SupplierName : supplierName.Trim();
             c.Quantity = quantity ?? c.Quantity;
             c.CargoType = string.IsNullOrWhiteSpace(cargoType) ? c.CargoType : cargoType.Trim();
@@ -305,7 +388,14 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             c.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return HandleContractSaveFailure(ex);
+            }
 
             return ToResponse(c, CurrentUserId());
         }
