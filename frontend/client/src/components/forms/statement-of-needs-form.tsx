@@ -487,17 +487,23 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="mt-4">
-            <label for="currency" class="block text-sm font-medium text-gray-700 mb-1">
-              Payment Currency
-            </label>
-            <select id="currency" name="currency" class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-              <option value="USD">USD - US Dollar</option>
-              <option value="EGP">EGP - Egyptian Pound</option>
-              <option value="AED">AED - Emirati Dirham</option>
-            </select>
-          </div>
-            
+            <div className="mt-4">
+              <label
+                htmlFor="currency"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Payment Currency
+              </label>
+              <select
+                id="currency"
+                name="currency"
+                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              >
+                <option value="USD">USD - US Dollar</option>
+                <option value="EGP">EGP - Egyptian Pound</option>
+                <option value="AED">AED - Emirati Dirham</option>
+              </select>
+            </div>
           </div>
 
           {/* Document Upload Section */}
@@ -564,16 +570,16 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
               type="button"
               variant="outline"
               onClick={handleSaveAsDraft}
-              disabled={createMutation.isLoading}
+              disabled={createMutation.isPending}
             >
               Save as Draft
             </Button>
             <Button
               type="submit"
               className="bg-primary-500 hover:bg-primary-600 text-black border-2 border-primary-700 hover:border-primary-800"
-              disabled={createMutation.isLoading}
+              disabled={createMutation.isPending}
             >
-              {createMutation.isLoading ? "Submitting..." : "Submit Request"}
+              {createMutation.isPending ? "Submitting..." : "Submit Request"}
             </Button>
           </div>
         </form>

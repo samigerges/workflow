@@ -5,7 +5,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { insertVesselSchema } from "@/lib/schemas";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,12 +18,25 @@ import { CARGO_TYPES, COUNTRIES, PORTS } from "@/lib/constants";
 import { Plus, Trash2 } from "lucide-react";
 import { normalizeLc } from "@/lib/lc";
 
-// Updated schema to match backend DTO
+// Updated schema to match vessel form fields
 const vesselFormSchema = z.object({
-  name: z.string().min(1, "Vessel name is required"), // Changed from vesselName to name
-  status: z.string().optional(),
-  eta: z.string().optional(),
-  etd: z.string().optional(),
+  name: z.string().min(1, "Vessel name is required"),
+  status: z.string().optional().nullable(),
+  eta: z.string().optional().nullable(),
+  etd: z.string().optional().nullable(),
+  contractId: z.number().int().positive().optional().nullable(),
+  quantity: z.number().nonnegative().optional().nullable(),
+  cargoType: z.string().optional().nullable(),
+  countryOfOrigin: z.string().optional().nullable(),
+  portOfDischarge: z.string().optional().nullable(),
+  tradeTerms: z.string().optional().nullable(),
+  insuranceCompany: z.string().optional().nullable(),
+  inspectionCompany: z.string().optional().nullable(),
+  shippingCompany: z.string().optional().nullable(),
+  insuranceCost: z.union([z.number(), z.string()]).optional().nullable(),
+  inspectionCost: z.union([z.number(), z.string()]).optional().nullable(),
+  shippingCost: z.union([z.number(), z.string()]).optional().nullable(),
+  shippingInstructions: z.string().optional().nullable(),
 });
 
 type VesselFormData = z.infer<typeof vesselFormSchema>;
@@ -59,13 +71,15 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
   const queryClient = useQueryClient();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [vesselLCs, setVesselLCs] = useState<VesselLC[]>(
-    vessel ? [] : [{ lcId: 0, quantity: 0, notes: '' }]
+    vessel ? [] : [{ lcId: 0, quantity: 0, notes: "" }]
   );
-  const [loadingPorts, setLoadingPorts] = useState<LoadingPort[]>([{ 
-    portName: '', 
-    expectedQuantity: 0, 
-    loadingStatus: 'pending' 
-  }]);
+  const [loadingPorts, setLoadingPorts] = useState<LoadingPort[]>([
+    {
+      portName: "",
+      expectedQuantity: 0,
+      loadingStatus: "pending",
+    },
+  ]);
 
   const {
     register,
@@ -75,12 +89,24 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
     watch
   } = useForm<VesselFormData>({
     resolver: zodResolver(vesselFormSchema),
-    defaultValues: vessel ? {
-      ...vessel,
-      eta: vessel.eta ? new Date(vessel.eta).toISOString().slice(0, 16) : '',
-    } : {
-      status: "nominated"
-    }
+    defaultValues: vessel
+      ? {
+          ...vessel,
+          eta: vessel.eta ? new Date(vessel.eta).toISOString().slice(0, 16) : "",
+          contractId:
+            vessel.contractId !== null && vessel.contractId !== undefined
+              ? Number(vessel.contractId)
+              : undefined,
+          quantity:
+            vessel.quantity !== null && vessel.quantity !== undefined
+              ? Number(vessel.quantity)
+              : undefined,
+          tradeTerms: vessel.tradeTerms ?? "FOB",
+        }
+      : {
+          status: "nominated",
+          tradeTerms: "FOB",
+        }
   });
 
   const lcsArray = Array.isArray(lcs) ? lcs : [];
@@ -98,7 +124,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
       
       // Add form fields
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
+        if (value !== undefined && value !== null && value !== "") {
           formData.append(key, value.toString());
         }
       });
@@ -110,13 +136,8 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
 
       const url = vessel ? `/api/vessels/${vessel.id}` : "/api/vessels";
       const method = vessel ? "PUT" : "POST";
-      
-        const response = await apiRequest(method, url, formData);
 
-      if (!response.ok) {
-        throw new Error(`${response.status}: ${response.statusText}`);
-      }
-
+      const response = await apiRequest(method, url, formData);
       const createdVessel = await response.json();
 
       // Create/update vessel LCs if any
@@ -206,8 +227,14 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="contractId">Related Contract *</Label>
-              <Select 
-                onValueChange={(value) => setValue("contractId", parseInt(value))}
+              <Select
+                onValueChange={(value) => {
+                  const parsed = Number(value);
+                  setValue(
+                    "contractId",
+                    Number.isNaN(parsed) ? undefined : parsed,
+                  );
+                }}
                 defaultValue={vessel?.contractId?.toString()}
               >
                 <SelectTrigger className={errors.contractId ? "border-red-500" : ""}>
@@ -317,7 +344,9 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setVesselLCs([...vesselLCs, { lcId: 0, quantity: 0, notes: '' }])}
+                  onClick={() =>
+                    setVesselLCs([...vesselLCs, { lcId: 0, quantity: 0, notes: "" }])
+                  }
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add LC
@@ -327,7 +356,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => setVesselLCs([{ lcId: 0, quantity: 0, notes: '' }])}
+                    onClick={() => setVesselLCs([{ lcId: 0, quantity: 0, notes: "" }])}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add First LC
