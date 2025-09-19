@@ -64,7 +64,8 @@ export default function LCDetail() {
       (sum, vessel) => sum + (Number(vessel.quantity) || 0),
       0,
     );
-    const totalAmount = normalizedLc.amount ?? Number(lcData.quantity) || 0;
+    const fallbackAmount = Number(lcData.quantity) || 0;
+    const totalAmount = normalizedLc.amount ?? fallbackAmount;
     const remainingAmount = Math.max(0, totalAmount - allocatedAmount);
     const utilizationRate = totalAmount > 0 ? (allocatedAmount / totalAmount) * 100 : 0;
 

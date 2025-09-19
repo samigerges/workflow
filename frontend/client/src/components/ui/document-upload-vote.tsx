@@ -35,6 +35,28 @@ interface DocumentUploadVoteProps {
   entityId: number;
 }
 
+interface VoteRecord {
+  id: number;
+  vote: "accept" | "reject";
+  comment?: string | null;
+  user?: {
+    id?: number | string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
+}
+
+interface DocumentRecord {
+  id: number;
+  fileName: string;
+  createdAt: string;
+  uploadedByUser?: {
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
+  votes: VoteRecord[];
+}
+
 export default function DocumentUploadVote({ entityType, entityId }: DocumentUploadVoteProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -58,7 +80,7 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
   const watchedVote = watch("vote");
 
   // Fetch documents for this entity
-  const { data: documents } = useQuery({
+  const { data: documents = [] } = useQuery<DocumentRecord[]>({
     queryKey: ["/api/document-votes", entityType, entityId],
     retry: false,
   });
@@ -72,12 +94,7 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
       formData.append("entityId", entityId.toString());
       formData.append("description", `${entityType} document`);
 
-        const response = await apiRequest("POST", "/api/documents/upload", formData);
-
-        if (!response.ok) {
-          throw new Error("Failed to upload document");
-        }
-
+      const response = await apiRequest("POST", "/api/documents/upload", formData);
       return response.json();
     },
     onSuccess: () => {
@@ -102,10 +119,7 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
   // Vote submission mutation
   const voteMutation = useMutation({
     mutationFn: async (data: VoteFormData & { documentId: number }) => {
-      return await apiRequest(`/api/document-votes/${data.documentId}/vote`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      await apiRequest("POST", `/api/document-votes/${data.documentId}/vote`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/document-votes", entityType, entityId] });
@@ -175,26 +189,29 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
     });
   };
 
-  const getVoteStatusColor = (votes: any[]) => {
-    const acceptVotes = votes?.filter(v => v.vote === "accept").length || 0;
-    const rejectVotes = votes?.filter(v => v.vote === "reject").length || 0;
-    
+  const getVoteStatusColor = (votes: VoteRecord[] = []) => {
+    const acceptVotes = votes.filter((v) => v.vote === "accept").length;
+    const rejectVotes = votes.filter((v) => v.vote === "reject").length;
+
     if (rejectVotes > 0) return "bg-red-100 text-red-800";
     if (acceptVotes >= 2) return "bg-green-100 text-green-800";
     return "bg-yellow-100 text-yellow-800";
   };
 
-  const getVoteStatusText = (votes: any[]) => {
-    const acceptVotes = votes?.filter(v => v.vote === "accept").length || 0;
-    const rejectVotes = votes?.filter(v => v.vote === "reject").length || 0;
-    
+  const getVoteStatusText = (votes: VoteRecord[] = []) => {
+    const acceptVotes = votes.filter((v) => v.vote === "accept").length;
+    const rejectVotes = votes.filter((v) => v.vote === "reject").length;
+
     if (rejectVotes > 0) return "Rejected";
     if (acceptVotes >= 2) return "Approved";
     return `Pending (${acceptVotes}/2 approvals)`;
   };
 
-  const hasUserVoted = (votes: any[]) => {
-    return votes?.some(v => v.userId === user?.id);
+  const currentUserId = (user as { id?: number | string | null } | null | undefined)?.id ?? null;
+
+  const hasUserVoted = (votes: VoteRecord[] = []) => {
+    if (currentUserId === null) return false;
+    return votes.some((v) => v.user?.id === currentUserId);
   };
 
   return (
@@ -246,16 +263,18 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {documents && documents.length > 0 ? (
+          {documents.length > 0 ? (
             <div className="space-y-4">
-              {documents.map((doc: any) => (
+              {documents.map((doc) => (
                 <div key={doc.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <h4 className="font-medium">{doc.fileName}</h4>
-                      <p className="text-sm text-gray-600">
-                        Uploaded by {doc.uploadedByUser?.firstName} {doc.uploadedByUser?.lastName}
-                      </p>
+                      {doc.uploadedByUser && (
+                        <p className="text-sm text-gray-600">
+                          Uploaded by {doc.uploadedByUser.firstName ?? ""} {doc.uploadedByUser.lastName ?? ""}
+                        </p>
+                      )}
                       <p className="text-xs text-gray-500">
                         {new Date(doc.createdAt).toLocaleDateString()}
                       </p>
@@ -266,11 +285,11 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
                   </div>
 
                   {/* Votes Display */}
-                  {doc.votes && doc.votes.length > 0 && (
+                  {doc.votes.length > 0 && (
                     <div className="mb-3">
                       <h5 className="text-sm font-medium mb-2">Recommendations:</h5>
                       <div className="space-y-2">
-                        {doc.votes.map((vote: any) => (
+                        {doc.votes.map((vote) => (
                           <div key={vote.id} className="flex items-start gap-2 text-sm">
                             {vote.vote === "accept" ? (
                               <Check size={16} className="text-green-600 mt-0.5" />
@@ -279,7 +298,7 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
                             )}
                             <div>
                               <span className="font-medium">
-                                {vote.user?.firstName} {vote.user?.lastName}
+                                {vote.user?.firstName ?? ""} {vote.user?.lastName ?? ""}
                               </span>
                               <span className={vote.vote === "accept" ? "text-green-600" : "text-red-600"}>
                                 {" "}({vote.vote})
