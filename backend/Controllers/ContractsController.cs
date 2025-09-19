@@ -224,7 +224,7 @@ namespace WorkflowBackend.Api.Controllers
             {
                 Title = title.Trim(),
                 Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
-                RequestId = Guid.TryParse(requestId, out var rid) ? rid : null,
+                 RequestId = Guid.TryParse(requestId, out var parsedRequestId) ? parsedRequestId : null,
                 Status = "Draft",
                 CreatedByUserId = CurrentUserId(),
                 SupplierName = string.IsNullOrWhiteSpace(supplierName) ? null : supplierName.Trim(),
@@ -240,7 +240,7 @@ namespace WorkflowBackend.Api.Controllers
                 ReviewNotes = string.IsNullOrWhiteSpace(reviewNotes) ? null : reviewNotes.Trim()
             };
 
-            if (c.RequestId is Guid rid && !await RequestExistsAsync(rid))
+            if (c.RequestId is Guid existingRequestId && !await RequestExistsAsync(existingRequestId))
                 return BadRequest(new { message = "The selected request could not be found." });
 
             if (file is not null)
