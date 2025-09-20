@@ -62,7 +62,7 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [documentTitle, setDocumentTitle] = useState("");
   const [showVoteDialog, setShowVoteDialog] = useState(false);
   const [votingDocument, setVotingDocument] = useState<any>(null);
 
@@ -87,27 +87,20 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
 
   // Upload document mutation
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("entityType", entityType);
-      formData.append("entityId", entityId.toString());
-      formData.append("description", `${entityType} document`);
-
+    mutationFn: async (formData: FormData) => {
       const response = await apiRequest("POST", "/api/documents/upload", formData);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/document-votes", entityType, entityId] });
       setSelectedFile(null);
-      setUploading(false);
+      setDocumentTitle("");
       toast({
         title: "Success",
         description: "Document uploaded successfully",
       });
     },
-    onError: (error) => {
-      setUploading(false);
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to upload document",
@@ -165,14 +158,45 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
       }
 
       setSelectedFile(file);
+      setDocumentTitle((prev) => {
+        if (prev && prev.trim().length > 0) {
+          return prev;
+        }
+
+        const baseName = file.name.replace(/\.[^.]+$/, "");
+        return baseName;
+      });
     }
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
-    
-    setUploading(true);
-    uploadMutation.mutate(selectedFile);
+    if (!selectedFile) {
+      toast({
+        title: "File required",
+        description: "Please choose a document to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const trimmedTitle = documentTitle.trim();
+    if (!trimmedTitle) {
+      toast({
+        title: "Title required",
+        description: "Please provide a title for the document",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("entityType", entityType);
+    formData.append("entityId", String(entityId));
+    formData.append("title", trimmedTitle);
+    formData.append("type", entityType);
+
+    uploadMutation.mutate(formData);
   };
 
   const handleVote = (document: any) => {
@@ -235,6 +259,17 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
               className="mt-1"
             />
           </div>
+
+          <div>
+            <Label htmlFor="documentTitle">Document Title *</Label>
+            <Input
+              id="documentTitle"
+              value={documentTitle}
+              onChange={(event) => setDocumentTitle(event.target.value)}
+              placeholder="Enter a descriptive title"
+              className="mt-1"
+            />
+          </div>
           
           {selectedFile && (
             <div className="p-3 bg-gray-50 rounded-lg">
@@ -246,10 +281,10 @@ export default function DocumentUploadVote({ entityType, entityId }: DocumentUpl
           
           <Button
             onClick={handleUpload}
-            disabled={!selectedFile || uploading}
+            disabled={!selectedFile || uploadMutation.isPending}
             className="w-full"
           >
-            {uploading ? "Uploading..." : "Upload Document"}
+            {uploadMutation.isPending ? "Uploading..." : "Upload Document"}
           </Button>
         </CardContent>
       </Card>
