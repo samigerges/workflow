@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using WorkflowBackend.Api.Models;
 
 namespace WorkflowBackend.Api.DTOs
 {
     public record ContractCreateRequest(
         [param:Required, MaxLength(200)] string Title,
-        [param:MaxLength(4000)] string? Description,
+        [param:MaxLength(Contract.NarrativeMaxLength)] string? Description,
         Guid? RequestId,
         string? SupplierName,
         decimal? Quantity,
@@ -13,15 +14,15 @@ namespace WorkflowBackend.Api.DTOs
         decimal? PricePerTon,
         string? PaymentMethod,
         string? ShippingMethod,
-        string? ContractTerms,
+        [param:MaxLength(Contract.NarrativeMaxLength)] string? ContractTerms,
         DateTime? StartDate,
         DateTime? EndDate,
-        string? ReviewNotes
+        [param:MaxLength(Contract.ReviewNotesMaxLength)] string? ReviewNotes
     );
 
     public record ContractUpdateRequest(
         [param:Required, MaxLength(200)] string Title,
-        [param:MaxLength(4000)] string? Description,
+        [param:MaxLength(Contract.NarrativeMaxLength)] string? Description,
         Guid? RequestId,
         string? SupplierName,
         decimal? Quantity,
@@ -30,10 +31,10 @@ namespace WorkflowBackend.Api.DTOs
         decimal? PricePerTon,
         string? PaymentMethod,
         string? ShippingMethod,
-        string? ContractTerms,
+        [param:MaxLength(Contract.NarrativeMaxLength)] string? ContractTerms,
         DateTime? StartDate,
         DateTime? EndDate,
-        string? ReviewNotes
+        [param:MaxLength(Contract.ReviewNotesMaxLength)] string? ReviewNotes
     );
 
     public record ContractStatusChangeRequest(

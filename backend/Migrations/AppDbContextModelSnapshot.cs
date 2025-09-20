@@ -33,8 +33,8 @@ namespace WorkflowBackend.Api.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.Property<string>("ContractTerms")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasMaxLength(20000)
+                        .HasColumnType("text");
 
                     b.Property<string>("CountryOfOrigin")
                         .HasMaxLength(100)
@@ -47,8 +47,8 @@ namespace WorkflowBackend.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasMaxLength(20000)
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp with time zone");
@@ -75,8 +75,8 @@ namespace WorkflowBackend.Api.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("ReviewNotes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasMaxLength(20000)
+                        .HasColumnType("text");
 
                     b.Property<string>("ShippingMethod")
                         .HasMaxLength(100)
