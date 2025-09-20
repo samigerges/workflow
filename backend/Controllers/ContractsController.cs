@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using System.Globalization;
 using System.Security.Claims;
+using System.Text;
 using System.Text.RegularExpressions;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
@@ -42,6 +44,12 @@ namespace WorkflowBackend.Api.Controllers
         }
 
         private static readonly Regex VarcharLengthRegex = new("character varying\\((\\d+)\\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex SqliteLengthConstraintRegex = new(@"length\((?<column>""?[^"")]+""?)\)\s*<=\s*(?<limit>\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex SqliteConstraintNameRegex = new(@"CK_Contracts_(?<column>[A-Za-z0-9]+)_(?:Length|MaxLength)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private const int SqliteConstraintErrorCode = 19;
+        private const int SqliteConstraintForeignKeyErrorCode = 787;
+        private const int SqliteConstraintCheckErrorCode = 275;
 
         private static readonly IReadOnlyDictionary<string, (string Label, int? Limit)> ColumnLengthHints =
             new Dictionary<string, (string, int?)>(StringComparer.OrdinalIgnoreCase)
@@ -71,33 +79,25 @@ namespace WorkflowBackend.Api.Controllers
             {
                 if (pg.SqlState == PostgresErrorCodes.ForeignKeyViolation)
                 {
-                    return BadRequest(new
-                    {
-                        message = "The related record referenced by this contract no longer exists. Please refresh and try again."
-                    });
+                    return ForeignKeyViolationResponse();
                 }
 
                 if (pg.SqlState == PostgresErrorCodes.StringDataRightTruncation)
                 {
-                    var columnKey = pg.ColumnName ?? string.Empty;
-                    (string Label, int? Limit) fieldInfo;
-                    if (!ColumnLengthHints.TryGetValue(columnKey, out fieldInfo))
-                    {
-                        var label = string.IsNullOrWhiteSpace(pg.ColumnName)
-                            ? "one of the fields"
-                            : pg.ColumnName.Replace("_", " ");
-                        var formattedLabel = string.IsNullOrWhiteSpace(pg.ColumnName)
-                            ? label
-                            : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(label);
-                        fieldInfo = (formattedLabel, (int?)null);
-                    }
+                    return CreateStringTooLongResponse(pg.ColumnName, null, pg.MessageText, pg.Detail);
+                }
+            }
 
-                    var limit = fieldInfo.Limit ?? TryParseLimit(pg.MessageText) ?? TryParseLimit(pg.Detail);
-                    var message = limit is int max
-                        ? $"The value for {fieldInfo.Label} exceeds the maximum length of {max} characters."
-                        : $"The value provided for {fieldInfo.Label} is too long. Please shorten it and try again.";
+            if (ex.InnerException is SqliteException sqlite)
+            {
+                if (IsSqliteForeignKeyViolation(sqlite))
+                {
+                    return ForeignKeyViolationResponse();
+                }
 
-                    return BadRequest(new { message });
+                if (IsSqliteStringLengthViolation(sqlite, out var columnName, out var limit))
+                {
+                    return CreateStringTooLongResponse(columnName, limit, sqlite.Message);
                 }
             }
 
@@ -115,7 +115,139 @@ namespace WorkflowBackend.Api.Controllers
             if (match.Success && int.TryParse(match.Groups[1].Value, out var limit))
                 return limit;
 
+            match = SqliteLengthConstraintRegex.Match(message);
+            if (match.Success && int.TryParse(match.Groups["limit"].Value, out limit))
+                return limit;
+
             return null;
+        }
+
+        private ActionResult<ContractResponse> ForeignKeyViolationResponse() => BadRequest(new
+        {
+            message = "The related record referenced by this contract no longer exists. Please refresh and try again."
+        });
+
+        private ActionResult<ContractResponse> CreateStringTooLongResponse(string? rawColumnName, int? explicitLimit, params string?[] messages)
+        {
+            var columnKey = NormalizeColumnKey(rawColumnName);
+
+            (string Label, int? Limit) fieldInfo;
+            if (!string.IsNullOrEmpty(columnKey) && ColumnLengthHints.TryGetValue(columnKey, out fieldInfo))
+            {
+                // Field info found
+            }
+            else
+            {
+                var labelSource = string.IsNullOrWhiteSpace(rawColumnName)
+                    ? "one of the fields"
+                    : rawColumnName!.Replace("_", " ");
+                var formattedLabel = string.IsNullOrWhiteSpace(rawColumnName)
+                    ? labelSource
+                    : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(labelSource);
+                fieldInfo = (formattedLabel, (int?)null);
+            }
+
+            var limit = explicitLimit ?? fieldInfo.Limit;
+            if (!limit.HasValue)
+            {
+                foreach (var message in messages)
+                {
+                    limit = TryParseLimit(message);
+                    if (limit.HasValue) break;
+                }
+            }
+
+            var responseMessage = limit is int max
+                ? $"The value for {fieldInfo.Label} exceeds the maximum length of {max} characters."
+                : $"The value provided for {fieldInfo.Label} is too long. Please shorten it and try again.";
+
+            return BadRequest(new { message = responseMessage });
+        }
+
+        private static bool IsSqliteForeignKeyViolation(SqliteException ex)
+        {
+            if (ex.SqliteExtendedErrorCode == SqliteConstraintForeignKeyErrorCode)
+                return true;
+
+            return ex.SqliteErrorCode == SqliteConstraintErrorCode &&
+                   ex.Message?.IndexOf("FOREIGN KEY constraint failed", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsSqliteStringLengthViolation(SqliteException ex, out string? columnName, out int? limit)
+        {
+            columnName = null;
+            limit = null;
+
+            var isConstraint = ex.SqliteExtendedErrorCode == SqliteConstraintCheckErrorCode ||
+                               (ex.SqliteErrorCode == SqliteConstraintErrorCode &&
+                                ex.Message?.IndexOf("CHECK constraint failed", StringComparison.OrdinalIgnoreCase) >= 0);
+
+            if (!isConstraint)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(ex.Message))
+            {
+                var match = SqliteLengthConstraintRegex.Match(ex.Message);
+                if (match.Success)
+                {
+                    columnName = match.Groups["column"].Value.Trim('\"');
+                    if (int.TryParse(match.Groups["limit"].Value, out var parsedLimit))
+                    {
+                        limit = parsedLimit;
+                    }
+                    return true;
+                }
+
+                var nameMatch = SqliteConstraintNameRegex.Match(ex.Message);
+                if (nameMatch.Success)
+                {
+                    columnName = nameMatch.Groups["column"].Value;
+                    return true;
+                }
+            }
+
+            return true;
+        }
+
+        private static string NormalizeColumnKey(string? columnName)
+        {
+            if (string.IsNullOrWhiteSpace(columnName)) return string.Empty;
+
+            var trimmed = columnName.Trim();
+            var lowered = trimmed.ToLowerInvariant();
+            if (ColumnLengthHints.ContainsKey(lowered))
+                return lowered;
+
+            var snake = ToSnakeCase(trimmed);
+            if (ColumnLengthHints.ContainsKey(snake))
+                return snake;
+
+            return lowered;
+        }
+
+        private static string ToSnakeCase(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+
+            var builder = new StringBuilder(value.Length + 5);
+            for (var i = 0; i < value.Length; i++)
+            {
+                var c = value[i];
+                if (char.IsUpper(c))
+                {
+                    if (i > 0 && value[i - 1] != '_')
+                        builder.Append('_');
+                    builder.Append(char.ToLowerInvariant(c));
+                }
+                else
+                {
+                    builder.Append(char.ToLowerInvariant(c));
+                }
+            }
+
+            return builder.ToString();
         }
 
         private Guid? CurrentUserId()
