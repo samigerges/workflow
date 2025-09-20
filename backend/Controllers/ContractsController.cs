@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using System.Globalization;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
 using WorkflowBackend.Api.Models;
@@ -39,6 +41,24 @@ namespace WorkflowBackend.Api.Controllers
             _logger = logger;
         }
 
+        private static readonly Regex VarcharLengthRegex = new("character varying\\((\\d+)\\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private static readonly IReadOnlyDictionary<string, (string Label, int? Limit)> ColumnLengthHints =
+            new Dictionary<string, (string, int?)>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["title"] = ("Title", 200),
+                ["description"] = ("Description", Contract.NarrativeMaxLength),
+                ["contract_terms"] = ("Contract terms", Contract.NarrativeMaxLength),
+                ["review_notes"] = ("Review notes", Contract.ReviewNotesMaxLength),
+                ["supplier_name"] = ("Supplier name", 200),
+                ["cargo_type"] = ("Cargo type", 100),
+                ["country_of_origin"] = ("Country of origin", 100),
+                ["payment_method"] = ("Payment method", 100),
+                ["shipping_method"] = ("Shipping method", 100),
+                ["file_name"] = ("File name", 255),
+                ["file_path"] = ("File path", 500)
+            };
+
         private async Task<bool> RequestExistsAsync(Guid requestId) =>
             await _db.Requests.AnyAsync(r => r.Id == requestId);
 
@@ -47,18 +67,55 @@ namespace WorkflowBackend.Api.Controllers
             _logger.LogError(ex, "Database error while saving contract changes");
 
             if (ex.InnerException is PostgresException pg &&
-                pg.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+                pg.SqlState is not null)
             {
-                return BadRequest(new
+                if (pg.SqlState == PostgresErrorCodes.ForeignKeyViolation)
                 {
-                    message = "The related record referenced by this contract no longer exists. Please refresh and try again."
-                });
+                    return BadRequest(new
+                    {
+                        message = "The related record referenced by this contract no longer exists. Please refresh and try again."
+                    });
+                }
+
+                if (pg.SqlState == PostgresErrorCodes.StringDataRightTruncation)
+                {
+                    var columnKey = pg.ColumnName ?? string.Empty;
+                    (string Label, int? Limit) fieldInfo;
+                    if (!ColumnLengthHints.TryGetValue(columnKey, out fieldInfo))
+                    {
+                        var label = string.IsNullOrWhiteSpace(pg.ColumnName)
+                            ? "one of the fields"
+                            : pg.ColumnName.Replace("_", " ");
+                        var formattedLabel = string.IsNullOrWhiteSpace(pg.ColumnName)
+                            ? label
+                            : CultureInfo.CurrentCulture.TextInfo.ToTitleCase(label);
+                        fieldInfo = (formattedLabel, (int?)null);
+                    }
+
+                    var limit = fieldInfo.Limit ?? TryParseLimit(pg.MessageText) ?? TryParseLimit(pg.Detail);
+                    var message = limit is int max
+                        ? $"The value for {fieldInfo.Label} exceeds the maximum length of {max} characters."
+                        : $"The value provided for {fieldInfo.Label} is too long. Please shorten it and try again.";
+
+                    return BadRequest(new { message });
+                }
             }
 
             return StatusCode(StatusCodes.Status500InternalServerError, new
             {
                 message = "An unexpected error occurred while saving the contract."
             });
+        }
+
+        private static int? TryParseLimit(string? message)
+        {
+            if (string.IsNullOrWhiteSpace(message)) return null;
+
+            var match = VarcharLengthRegex.Match(message);
+            if (match.Success && int.TryParse(match.Groups[1].Value, out var limit))
+                return limit;
+
+            return null;
         }
 
         private Guid? CurrentUserId()

@@ -1,15 +1,20 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WorkflowBackend.Api.Models
 {
     public class Contract
     {
+        public const int NarrativeMaxLength = 20000;
+        public const int ReviewNotesMaxLength = 20000;
+
         public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required, MaxLength(200)]
         public string Title { get; set; } = string.Empty;
 
-        [MaxLength(4000)]
+        [MaxLength(NarrativeMaxLength)]
+        [Column(TypeName = "text")]
         public string? Description { get; set; }
 
         [MaxLength(50)]
@@ -54,13 +59,15 @@ namespace WorkflowBackend.Api.Models
         [MaxLength(100)]
         public string? ShippingMethod { get; set; }
 
-        [MaxLength(4000)]
+        [MaxLength(NarrativeMaxLength)]
+        [Column(TypeName = "text")]
         public string? ContractTerms { get; set; }
 
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
 
-        [MaxLength(1000)]
+        [MaxLength(ReviewNotesMaxLength)]
+        [Column(TypeName = "text")]
         public string? ReviewNotes { get; set; }
     }
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,10 +20,53 @@ import {
   COUNTRIES,
 } from "@/lib/constants";
 
+const CONTRACT_NARRATIVE_LIMIT = 20000;
+const REVIEW_NOTES_LIMIT = 20000;
+
+function extractErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    const match = error.message.match(/^(\d{3}):\s*([\s\S]*)$/);
+    if (match) {
+      const [, statusCode, rawBody] = match;
+      if (statusCode) {
+        const body = rawBody.trim();
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed && typeof parsed === "object" && "message" in parsed) {
+            const message = (parsed as { message?: unknown }).message;
+            if (typeof message === "string") {
+              return message;
+            }
+          }
+        } catch {
+          // fall through to return the body as-is
+        }
+        if (body) {
+          return body.replace(/^"|"$/g, "");
+        }
+      }
+    }
+
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return undefined;
+}
+
 // Create a more flexible schema for drafts - consistent with backend DTO
 const contractFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
+  description: z
+    .string()
+    .max(
+      CONTRACT_NARRATIVE_LIMIT,
+      `Description must be at most ${CONTRACT_NARRATIVE_LIMIT} characters`,
+    )
+    .optional(),
   requestId: z.string().optional(), // Made optional since it's not always required
   supplierName: z.string().min(1, "Supplier name is required"),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1").optional().or(z.literal("")),
@@ -32,10 +75,22 @@ const contractFormSchema = z.object({
   pricePerTon: z.coerce.number().positive("Price per ton must be positive").optional(),
   paymentMethod: z.string().optional(),
   shippingMethod: z.string().optional(),
-  contractTerms: z.string().optional(),
+  contractTerms: z
+    .string()
+    .max(
+      CONTRACT_NARRATIVE_LIMIT,
+      `Contract terms must be at most ${CONTRACT_NARRATIVE_LIMIT} characters`,
+    )
+    .optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  reviewNotes: z.string().optional(),
+  reviewNotes: z
+    .string()
+    .max(
+      REVIEW_NOTES_LIMIT,
+      `Review notes must be at most ${REVIEW_NOTES_LIMIT} characters`,
+    )
+    .optional(),
   createdBy: z.string().optional(),
 })
 .refine(
@@ -63,6 +118,11 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  const longNarrativeHelper = useMemo(
+    () => `Maximum ${CONTRACT_NARRATIVE_LIMIT.toLocaleString()} characters`,
+    [],
+  );
 
   const {
     register,
@@ -140,9 +200,12 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
         }, 500);
         return;
       }
+      const friendlyMessage = extractErrorMessage(error);
       toast({
         title: "Error",
-        description: contract ? "Failed to update contract" : "Failed to create contract",
+        description:
+          friendlyMessage ??
+          (contract ? "Failed to update contract" : "Failed to create contract"),
         variant: "destructive",
       });
     },
@@ -224,12 +287,17 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
 
           <div>
             <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              {...register("description")}
-              rows={3}
-              placeholder="Contract description"
-            />
+          <Textarea
+            id="description"
+            {...register("description")}
+            rows={3}
+            placeholder="Contract description"
+            maxLength={CONTRACT_NARRATIVE_LIMIT}
+          />
+          <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+          {errors.description && (
+            <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
+          )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -395,12 +463,17 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
 
           <div>
             <Label htmlFor="contractTerms">Contract Terms & Conditions</Label>
-            <Textarea
-              id="contractTerms"
-              {...register("contractTerms")}
-              rows={4}
-              placeholder="Key terms, payment conditions, delivery terms, etc."
-            />
+          <Textarea
+            id="contractTerms"
+            {...register("contractTerms")}
+            rows={4}
+            placeholder="Key terms, payment conditions, delivery terms, etc."
+            maxLength={CONTRACT_NARRATIVE_LIMIT}
+          />
+          <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+          {errors.contractTerms && (
+            <p className="text-sm text-red-500 mt-1">{errors.contractTerms.message}</p>
+          )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -426,12 +499,17 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
 
           <div>
             <Label htmlFor="reviewNotes">Review Notes</Label>
-            <Textarea
-              id="reviewNotes"
-              {...register("reviewNotes")}
-              rows={3}
-              placeholder="Administrative notes and comments"
-            />
+          <Textarea
+            id="reviewNotes"
+            {...register("reviewNotes")}
+            rows={3}
+            placeholder="Administrative notes and comments"
+            maxLength={REVIEW_NOTES_LIMIT}
+          />
+          <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+          {errors.reviewNotes && (
+            <p className="text-sm text-red-500 mt-1">{errors.reviewNotes.message}</p>
+          )}
           </div>
 
           <div className="flex justify-between">
