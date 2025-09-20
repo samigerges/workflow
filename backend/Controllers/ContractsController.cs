@@ -46,10 +46,13 @@ namespace WorkflowBackend.Api.Controllers
         private static readonly Regex VarcharLengthRegex = new("character varying\\((\\d+)\\)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex SqliteLengthConstraintRegex = new(@"length\((?<column>""?[^"")]+""?)\)\s*<=\s*(?<limit>\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex SqliteConstraintNameRegex = new(@"CK_Contracts_(?<column>[A-Za-z0-9]+)_(?:Length|MaxLength)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex SqlServerColumnNameRegex = new(@"column\s+'(?<column>[^']+)'", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex SqlServerMaxLengthRegex = new(@"maximum\s+(?:length|size)\s*(?:is|of)\s*(?<limit>\d+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private const int SqliteConstraintErrorCode = 19;
         private const int SqliteConstraintForeignKeyErrorCode = 787;
         private const int SqliteConstraintCheckErrorCode = 275;
+        private static readonly HashSet<int> SqlServerStringLengthErrorNumbers = new() { 2627, 2628, 8152 };
 
         private static readonly IReadOnlyDictionary<string, (string Label, int? Limit)> ColumnLengthHints =
             new Dictionary<string, (string, int?)>(StringComparer.OrdinalIgnoreCase)
@@ -88,6 +91,11 @@ namespace WorkflowBackend.Api.Controllers
                 }
             }
 
+            if (TryHandleSqlServerException(ex.InnerException) is { } sqlServerResult)
+            {
+                return sqlServerResult;
+            }
+
             if (ex.InnerException is SqliteException sqlite)
             {
                 if (IsSqliteForeignKeyViolation(sqlite))
@@ -118,6 +126,94 @@ namespace WorkflowBackend.Api.Controllers
             match = SqliteLengthConstraintRegex.Match(message);
             if (match.Success && int.TryParse(match.Groups["limit"].Value, out limit))
                 return limit;
+
+            match = SqlServerMaxLengthRegex.Match(message);
+            if (match.Success && int.TryParse(match.Groups["limit"].Value, out limit))
+                return limit;
+
+            return null;
+        }
+
+        private ActionResult<ContractResponse>? TryHandleSqlServerException(Exception? innerException)
+        {
+            if (innerException is null) return null;
+
+            var typeName = innerException.GetType().FullName;
+            if (typeName is not "System.Data.SqlClient.SqlException" and not "Microsoft.Data.SqlClient.SqlException")
+            {
+                return null;
+            }
+
+            var errorNumber = TryGetSqlServerErrorNumber(innerException);
+            if (errorNumber == 547)
+            {
+                return ForeignKeyViolationResponse();
+            }
+
+            if (errorNumber is int code && SqlServerStringLengthErrorNumbers.Contains(code))
+            {
+                var messages = GetSqlServerErrorMessages(innerException).ToArray();
+                var columnName = GetSqlServerColumnName(messages);
+                return CreateStringTooLongResponse(columnName, null, messages);
+            }
+
+            return null;
+        }
+
+        private static int? TryGetSqlServerErrorNumber(Exception sqlException)
+        {
+            var numberProperty = sqlException.GetType().GetProperty("Number");
+            if (numberProperty?.GetValue(sqlException) is int number)
+            {
+                return number;
+            }
+
+            var errorsProperty = sqlException.GetType().GetProperty("Errors");
+            if (errorsProperty?.GetValue(sqlException) is System.Collections.IEnumerable errors)
+            {
+                foreach (var error in errors)
+                {
+                    var nestedNumber = error?.GetType().GetProperty("Number")?.GetValue(error);
+                    if (nestedNumber is int nestedInt)
+                    {
+                        return nestedInt;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static IEnumerable<string?> GetSqlServerErrorMessages(Exception sqlException)
+        {
+            yield return sqlException.Message;
+
+            var errorsProperty = sqlException.GetType().GetProperty("Errors");
+            if (errorsProperty?.GetValue(sqlException) is System.Collections.IEnumerable errors)
+            {
+                foreach (var error in errors)
+                {
+                    var message = error?.GetType().GetProperty("Message")?.GetValue(error) as string;
+                    if (!string.IsNullOrWhiteSpace(message))
+                    {
+                        yield return message;
+                    }
+                }
+            }
+        }
+
+        private static string? GetSqlServerColumnName(IEnumerable<string?> messages)
+        {
+            foreach (var message in messages)
+            {
+                if (string.IsNullOrWhiteSpace(message)) continue;
+
+                var match = SqlServerColumnNameRegex.Match(message);
+                if (match.Success)
+                {
+                    return match.Groups["column"].Value;
+                }
+            }
 
             return null;
         }

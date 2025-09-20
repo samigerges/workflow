@@ -4,8 +4,10 @@ using WorkflowBackend.Api.Models;
 namespace WorkflowBackend.Api.DTOs
 {
     public record ContractCreateRequest(
-        [param:Required, MaxLength(200)] string Title,
-        [param:MaxLength(Contract.NarrativeMaxLength)] string? Description,
+        [param:Required, MaxLength(200)]
+        [property:MaxLength(200)] string Title,
+        [param:MaxLength(Contract.NarrativeMaxLength)]
+        [property:MaxLength(Contract.NarrativeMaxLength)] string? Description,
         Guid? RequestId,
         string? SupplierName,
         decimal? Quantity,
@@ -14,15 +16,19 @@ namespace WorkflowBackend.Api.DTOs
         decimal? PricePerTon,
         string? PaymentMethod,
         string? ShippingMethod,
-        [param:MaxLength(Contract.NarrativeMaxLength)] string? ContractTerms,
+        [param:MaxLength(Contract.NarrativeMaxLength)]
+        [property:MaxLength(Contract.NarrativeMaxLength)] string? ContractTerms,
         DateTime? StartDate,
         DateTime? EndDate,
-        [param:MaxLength(Contract.ReviewNotesMaxLength)] string? ReviewNotes
+        [param:MaxLength(Contract.ReviewNotesMaxLength)]
+        [property:MaxLength(Contract.ReviewNotesMaxLength)] string? ReviewNotes
     );
 
     public record ContractUpdateRequest(
-        [param:Required, MaxLength(200)] string Title,
-        [param:MaxLength(Contract.NarrativeMaxLength)] string? Description,
+        [param:Required, MaxLength(200)]
+        [property:MaxLength(200)] string Title,
+        [param:MaxLength(Contract.NarrativeMaxLength)]
+        [property:MaxLength(Contract.NarrativeMaxLength)] string? Description,
         Guid? RequestId,
         string? SupplierName,
         decimal? Quantity,
@@ -31,10 +37,12 @@ namespace WorkflowBackend.Api.DTOs
         decimal? PricePerTon,
         string? PaymentMethod,
         string? ShippingMethod,
-        [param:MaxLength(Contract.NarrativeMaxLength)] string? ContractTerms,
+        [param:MaxLength(Contract.NarrativeMaxLength)]
+        [property:MaxLength(Contract.NarrativeMaxLength)] string? ContractTerms,
         DateTime? StartDate,
         DateTime? EndDate,
-        [param:MaxLength(Contract.ReviewNotesMaxLength)] string? ReviewNotes
+        [param:MaxLength(Contract.ReviewNotesMaxLength)]
+        [property:MaxLength(Contract.ReviewNotesMaxLength)] string? ReviewNotes
     );
 
     public record ContractStatusChangeRequest(
