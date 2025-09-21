@@ -58,6 +58,24 @@ namespace WorkflowBackend.Api.Controllers
             );
         }
 
+        private async Task<(Guid? normalizedId, IActionResult? error)> NormalizeAndValidateContractIdAsync(Guid? contractId)
+        {
+            var normalized = contractId.HasValue && contractId.Value == Guid.Empty
+                ? null
+                : contractId;
+
+            if (normalized.HasValue)
+            {
+                var exists = await _db.Contracts.AnyAsync(c => c.Id == normalized.Value);
+                if (!exists)
+                {
+                    return (null, BadRequest(new { message = "The specified contract does not exist." }));
+                }
+            }
+
+            return (normalized, null);
+        }
+
         private async Task<(string? relPath, string? originalName)> SaveLcFileAsync(IFormFile? file)
         {
             if (file is null || file.Length == 0) return (null, null);
@@ -116,6 +134,10 @@ namespace WorkflowBackend.Api.Controllers
         [Consumes("application/json")]
         public async Task<ActionResult<LetterOfCreditResponse>> CreateJson([FromBody] LetterOfCreditCreateRequest req)
         {
+            var (contractId, contractError) = await NormalizeAndValidateContractIdAsync(req.ContractId);
+            if (contractError is not null)
+                return contractError;
+
             var lc = new LetterOfCredit
             {
                 Number = req.Number.Trim(),
@@ -126,7 +148,7 @@ namespace WorkflowBackend.Api.Controllers
                 ExpiryDate = req.ExpiryDate,
                 Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim(),
                 Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim(),
-                ContractId = req.ContractId,
+                ContractId = contractId,
                 Status = "Draft",
                 CreatedByUserId = CurrentUserId()
             };
@@ -152,6 +174,10 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] Guid? contractId,
             [FromForm(Name = "lcFile")] IFormFile? file)
         {
+            var (normalizedContractId, contractError) = await NormalizeAndValidateContractIdAsync(contractId);
+            if (contractError is not null)
+                return contractError;
+
             var lc = new LetterOfCredit
             {
                 Number = number.Trim(),
@@ -162,7 +188,7 @@ namespace WorkflowBackend.Api.Controllers
                 ExpiryDate = expiryDate,
                 Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim(),
                 Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim(),
-                ContractId = contractId,
+                ContractId = normalizedContractId,
                 Status = "Draft",
                 CreatedByUserId = CurrentUserId()
             };
@@ -197,6 +223,10 @@ namespace WorkflowBackend.Api.Controllers
             var lc = await _db.LettersOfCredit.FindAsync(id);
             if (lc is null) return NotFound();
 
+            var (contractId, contractError) = await NormalizeAndValidateContractIdAsync(req.ContractId);
+            if (contractError is not null)
+                return contractError;
+
             lc.Number = req.Number.Trim();
             lc.IssuingBank = string.IsNullOrWhiteSpace(req.IssuingBank) ? null : req.IssuingBank.Trim();
             lc.Amount = req.Amount;
@@ -205,7 +235,7 @@ namespace WorkflowBackend.Api.Controllers
             lc.ExpiryDate = req.ExpiryDate;
             lc.Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim();
-            lc.ContractId = req.ContractId;
+            lc.ContractId = contractId;
             lc.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -231,6 +261,10 @@ namespace WorkflowBackend.Api.Controllers
             var lc = await _db.LettersOfCredit.FindAsync(id);
             if (lc is null) return NotFound();
 
+            var (normalizedContractId, contractError) = await NormalizeAndValidateContractIdAsync(contractId);
+            if (contractError is not null)
+                return contractError;
+
             lc.Number = number.Trim();
             lc.IssuingBank = string.IsNullOrWhiteSpace(issuingBank) ? null : issuingBank.Trim();
             lc.Amount = amount;
@@ -239,7 +273,7 @@ namespace WorkflowBackend.Api.Controllers
             lc.ExpiryDate = expiryDate;
             lc.Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim();
-            lc.ContractId = contractId;
+            lc.ContractId = normalizedContractId;
 
             if (file is not null)
             {
