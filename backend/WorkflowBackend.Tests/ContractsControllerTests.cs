@@ -14,11 +14,79 @@ using Xunit;
 using System.Threading;
 using System.Reflection;
 using System.Runtime.Serialization;
+using System.Text;
+using System.IO;
 
 namespace WorkflowBackend.Tests;
 
 public class ContractsControllerTests
 {
+    [Fact]
+    public async Task CreateForm_SavesPdfUploadsAndReturnsDownloadUrl()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+        var tempRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var environment = new FakeWebHostEnvironment(tempRoot);
+            var controller = CreateController(context, environment);
+
+            await using var pdfStream = new MemoryStream(Encoding.UTF8.GetBytes("%PDF-1.4 workflow test"));
+            var formFile = new FormFile(pdfStream, 0, pdfStream.Length, "contractFile", "uploaded-contract.pdf")
+            {
+                Headers = new HeaderDictionary(),
+                ContentType = "application/pdf"
+            };
+
+            var result = await controller.CreateForm(
+                title: "PDF contract",
+                description: null,
+                requestId: null,
+                supplierName: null,
+                quantity: null,
+                cargoType: null,
+                countryOfOrigin: null,
+                pricePerTon: null,
+                paymentMethod: null,
+                shippingMethod: null,
+                contractTerms: null,
+                startDate: null,
+                endDate: null,
+                reviewNotes: null,
+                file: formFile);
+
+            var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+            var payload = Assert.IsType<ContractResponse>(created.Value);
+
+            Assert.Equal("uploaded-contract.pdf", payload.FileName);
+            Assert.NotNull(payload.FileUrl);
+            Assert.Contains("/uploads/contracts/", payload.FileUrl!);
+
+            var savedContract = await context.Contracts.SingleAsync();
+            Assert.Equal("uploaded-contract.pdf", savedContract.FileName);
+            Assert.False(string.IsNullOrWhiteSpace(savedContract.FilePath));
+
+            var expectedPath = Path.Combine(
+                environment.WebRootPath ?? tempRoot,
+                savedContract.FilePath.Replace("/", Path.DirectorySeparatorChar.ToString(), StringComparison.Ordinal));
+
+            Assert.True(File.Exists(expectedPath));
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
     [Fact]
     public async Task CreateJson_PersistsVeryLongNarratives()
     {
@@ -148,15 +216,19 @@ public class ContractsControllerTests
         Assert.Equal("The value for Title exceeds the maximum length of 200 characters.", message);
     }
 
-    private static ContractsController CreateController(AppDbContext context)
+    private static ContractsController CreateController(AppDbContext context, IWebHostEnvironment? environment = null)
     {
-        var controller = new ContractsController(context, new FakeWebHostEnvironment(), NullLogger<ContractsController>.Instance)
+        var controller = new ContractsController(context, environment ?? new FakeWebHostEnvironment(), NullLogger<ContractsController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
             }
         };
+
+        var request = controller.ControllerContext.HttpContext.Request;
+        request.Scheme = "https";
+        request.Host = new HostString("test.local");
 
         return controller;
     }
@@ -361,11 +433,18 @@ public class ContractsControllerTests
 
     private sealed class FakeWebHostEnvironment : IWebHostEnvironment
     {
+        public FakeWebHostEnvironment(string? rootPath = null)
+        {
+            rootPath ??= Path.GetTempPath();
+            WebRootPath = rootPath;
+            ContentRootPath = rootPath;
+        }
+
         public string ApplicationName { get; set; } = "Test";
         public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
-        public string WebRootPath { get; set; } = Path.GetTempPath();
+        public string WebRootPath { get; set; }
         public string EnvironmentName { get; set; } = "Development";
-        public string ContentRootPath { get; set; } = Path.GetTempPath();
+        public string ContentRootPath { get; set; }
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 
