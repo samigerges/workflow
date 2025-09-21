@@ -42,6 +42,9 @@ namespace WorkflowBackend.Api.Controllers
             return Guid.TryParse(idStr, out var id) ? id : null;
         }
 
+        private static DateTime? ToUtc(DateTime? value) =>
+            value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : null;
+
         private LetterOfCreditResponse ToResponse(LetterOfCredit lc)
         {
             string? url = null;
@@ -122,8 +125,8 @@ namespace WorkflowBackend.Api.Controllers
                 IssuingBank = string.IsNullOrWhiteSpace(req.IssuingBank) ? null : req.IssuingBank.Trim(),
                 Amount = req.Amount,
                 Currency = string.IsNullOrWhiteSpace(req.Currency) ? null : req.Currency.Trim().ToUpperInvariant(),
-                IssueDate = req.IssueDate,
-                ExpiryDate = req.ExpiryDate,
+                IssueDate = ToUtc(req.IssueDate),
+                ExpiryDate = ToUtc(req.ExpiryDate),
                 Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim(),
                 Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim(),
                 ContractId = req.ContractId,
@@ -158,8 +161,8 @@ namespace WorkflowBackend.Api.Controllers
                 IssuingBank = string.IsNullOrWhiteSpace(issuingBank) ? null : issuingBank.Trim(),
                 Amount = amount,
                 Currency = string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant(),
-                IssueDate = issueDate,
-                ExpiryDate = expiryDate,
+                IssueDate = ToUtc(issueDate),
+                ExpiryDate = ToUtc(expiryDate),
                 Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim(),
                 Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim(),
                 ContractId = contractId,
@@ -201,8 +204,8 @@ namespace WorkflowBackend.Api.Controllers
             lc.IssuingBank = string.IsNullOrWhiteSpace(req.IssuingBank) ? null : req.IssuingBank.Trim();
             lc.Amount = req.Amount;
             lc.Currency = string.IsNullOrWhiteSpace(req.Currency) ? null : req.Currency.Trim().ToUpperInvariant();
-            lc.IssueDate = req.IssueDate;
-            lc.ExpiryDate = req.ExpiryDate;
+            lc.IssueDate = ToUtc(req.IssueDate);
+            lc.ExpiryDate = ToUtc(req.ExpiryDate);
             lc.Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim();
             lc.ContractId = req.ContractId;
@@ -235,8 +238,8 @@ namespace WorkflowBackend.Api.Controllers
             lc.IssuingBank = string.IsNullOrWhiteSpace(issuingBank) ? null : issuingBank.Trim();
             lc.Amount = amount;
             lc.Currency = string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant();
-            lc.IssueDate = issueDate;
-            lc.ExpiryDate = expiryDate;
+            lc.IssueDate = ToUtc(issueDate);
+            lc.ExpiryDate = ToUtc(expiryDate);
             lc.Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim();
             lc.ContractId = contractId;
