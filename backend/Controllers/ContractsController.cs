@@ -73,6 +73,9 @@ namespace WorkflowBackend.Api.Controllers
         private async Task<bool> RequestExistsAsync(Guid requestId) =>
             await _db.Requests.AnyAsync(r => r.Id == requestId);
 
+        private static DateTime? ToUtc(DateTime? value) =>
+            value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : null;
+
         private ActionResult<ContractResponse> HandleContractSaveFailure(DbUpdateException ex)
         {
             _logger.LogError(ex, "Database error while saving contract changes");
@@ -463,8 +466,8 @@ namespace WorkflowBackend.Api.Controllers
                 PaymentMethod = string.IsNullOrWhiteSpace(req.PaymentMethod) ? null : req.PaymentMethod.Trim(),
                 ShippingMethod = string.IsNullOrWhiteSpace(req.ShippingMethod) ? null : req.ShippingMethod.Trim(),
                 ContractTerms = string.IsNullOrWhiteSpace(req.ContractTerms) ? null : req.ContractTerms.Trim(),
-                StartDate = req.StartDate,
-                EndDate = req.EndDate,
+                StartDate = ToUtc(req.StartDate),
+                EndDate = ToUtc(req.EndDate),
                 ReviewNotes = string.IsNullOrWhiteSpace(req.ReviewNotes) ? null : req.ReviewNotes.Trim()
             };
 
@@ -520,8 +523,8 @@ namespace WorkflowBackend.Api.Controllers
                 PaymentMethod = string.IsNullOrWhiteSpace(paymentMethod) ? null : paymentMethod.Trim(),
                 ShippingMethod = string.IsNullOrWhiteSpace(shippingMethod) ? null : shippingMethod.Trim(),
                 ContractTerms = string.IsNullOrWhiteSpace(contractTerms) ? null : contractTerms.Trim(),
-                StartDate = startDate,
-                EndDate = endDate,
+                StartDate = ToUtc(startDate),
+                EndDate = ToUtc(endDate),
                 ReviewNotes = string.IsNullOrWhiteSpace(reviewNotes) ? null : reviewNotes.Trim()
             };
 
@@ -583,8 +586,8 @@ namespace WorkflowBackend.Api.Controllers
             c.PaymentMethod = string.IsNullOrWhiteSpace(req.PaymentMethod) ? null : req.PaymentMethod.Trim();
             c.ShippingMethod = string.IsNullOrWhiteSpace(req.ShippingMethod) ? null : req.ShippingMethod.Trim();
             c.ContractTerms = string.IsNullOrWhiteSpace(req.ContractTerms) ? null : req.ContractTerms.Trim();
-            c.StartDate = req.StartDate;
-            c.EndDate = req.EndDate;
+            c.StartDate = ToUtc(req.StartDate);
+            c.EndDate = ToUtc(req.EndDate);
             c.ReviewNotes = string.IsNullOrWhiteSpace(req.ReviewNotes) ? null : req.ReviewNotes.Trim();
             c.UpdatedAt = DateTime.UtcNow;
 
@@ -654,8 +657,8 @@ namespace WorkflowBackend.Api.Controllers
             c.PaymentMethod = string.IsNullOrWhiteSpace(paymentMethod) ? c.PaymentMethod : paymentMethod.Trim();
             c.ShippingMethod = string.IsNullOrWhiteSpace(shippingMethod) ? c.ShippingMethod : shippingMethod.Trim();
             c.ContractTerms = string.IsNullOrWhiteSpace(contractTerms) ? c.ContractTerms : contractTerms.Trim();
-            c.StartDate = startDate ?? c.StartDate;
-            c.EndDate = endDate ?? c.EndDate;
+            c.StartDate = startDate.HasValue ? ToUtc(startDate) : c.StartDate;
+            c.EndDate = endDate.HasValue ? ToUtc(endDate) : c.EndDate;
             c.ReviewNotes = string.IsNullOrWhiteSpace(reviewNotes) ? c.ReviewNotes : reviewNotes.Trim();
 
             if (file is not null)
