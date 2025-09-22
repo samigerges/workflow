@@ -46,4 +46,10 @@ namespace WorkflowBackend.Api.DTOs
         string? FileUrl,
         string? FileName
     );
+
+    public record LetterOfCreditVesselAllocationResponse(
+        Guid VesselId,
+        Guid LetterOfCreditId,
+        decimal? Quantity
+    );
 }

@@ -306,12 +306,20 @@ namespace WorkflowBackend.Api.Controllers
 
         // GET /api/letters-of-credit/{id}/vessels
         [HttpGet("{id:guid}/vessels")]
-        public async Task<ActionResult<IEnumerable<object>>> GetVesselsForLc(Guid id)
+        public async Task<ActionResult<IEnumerable<LetterOfCreditVesselAllocationResponse>>> GetVesselsForLc(Guid id)
         {
             var exists = await _db.LettersOfCredit.AnyAsync(x => x.Id == id);
             if (!exists) return NotFound();
-            // TODO: Replace with actual join once Vessel is implemented
-            return new List<object>();
+
+            var vessels = await _db.VesselLettersOfCredit
+                .Where(x => x.LetterOfCreditId == id)
+                .Select(x => new LetterOfCreditVesselAllocationResponse(
+                    x.VesselId,
+                    x.LetterOfCreditId,
+                    x.Vessel != null ? x.Vessel.Quantity : null))
+                .ToListAsync();
+
+            return vessels;
         }
     }
 }
