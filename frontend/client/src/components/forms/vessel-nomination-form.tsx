@@ -43,7 +43,7 @@ type VesselFormData = z.infer<typeof vesselFormSchema>;
 
 // Types for multiple LCs and loading ports
 interface VesselLC {
-  lcId: number;
+  lcId: string;
   quantity: number;
   notes?: string;
 }
@@ -71,7 +71,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
   const queryClient = useQueryClient();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [vesselLCs, setVesselLCs] = useState<VesselLC[]>(
-    vessel ? [] : [{ lcId: 0, quantity: 0, notes: "" }]
+    vessel ? [] : [{ lcId: "", quantity: 0, notes: "" }]
   );
   const [loadingPorts, setLoadingPorts] = useState<LoadingPort[]>([
     {
@@ -177,8 +177,10 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
       if (vesselLCs.length > 0) {
         const vesselId = vessel ? vessel.id : createdVessel.id;
         for (const vesselLC of vesselLCs) {
-          if (vesselLC.lcId > 0) {
-            await apiRequest("POST", `/api/vessels/${vesselId}/letters-of-credit`, vesselLC);
+          if (vesselLC.lcId) {
+            await apiRequest("POST", `/api/vessels/${vesselId}/letters-of-credit`, {
+              letterOfCreditId: vesselLC.lcId,
+            });
           }
         }
       }
@@ -378,7 +380,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setVesselLCs([...vesselLCs, { lcId: 0, quantity: 0, notes: "" }])
+                    setVesselLCs([...vesselLCs, { lcId: "", quantity: 0, notes: "" }])
                   }
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -389,7 +391,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => setVesselLCs([{ lcId: 0, quantity: 0, notes: "" }])}
+                    onClick={() => setVesselLCs([{ lcId: "", quantity: 0, notes: "" }])}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add First LC
@@ -406,11 +408,11 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                     <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
                       <div>
                         <Label>Letter of Credit</Label>
-                        <Select 
-                          value={vesselLC.lcId.toString()}
+                        <Select
+                          value={vesselLC.lcId || undefined}
                           onValueChange={(value) => {
                             const updated = [...vesselLCs];
-                            updated[index].lcId = parseInt(value);
+                            updated[index].lcId = value;
                             setVesselLCs(updated);
                           }}
                         >
