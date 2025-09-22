@@ -70,6 +70,9 @@ namespace WorkflowBackend.Api.Controllers
         private static string? NormalizePath(string? path) =>
             string.IsNullOrWhiteSpace(path) ? null : path.Replace("\\", "/");
 
+        private static DateTime? ToUtc(DateTime? value) =>
+            value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : null;
+
         private void ApplyUpsert(Vessel vessel, VesselUpsertRequest req)
         {
             vessel.Name = req.Name.Trim();
@@ -87,8 +90,8 @@ namespace WorkflowBackend.Api.Controllers
                 }
             }
 
-            vessel.Eta = req.Eta;
-            vessel.Etd = req.Etd;
+            vessel.Eta = ToUtc(req.Eta);
+            vessel.Etd = ToUtc(req.Etd);
             vessel.ContractId = req.ContractId;
             vessel.Quantity = req.Quantity;
             vessel.CargoType = NormalizeString(req.CargoType);
@@ -111,11 +114,11 @@ namespace WorkflowBackend.Api.Controllers
                 ? null
                 : req.ShippingInstructions.Trim();
 
-            vessel.ArrivalDate = req.ArrivalDate;
-            vessel.DischargeStartDate = req.DischargeStartDate;
-            vessel.DischargeEndDate = req.DischargeEndDate;
+            vessel.ArrivalDate = ToUtc(req.ArrivalDate);
+            vessel.DischargeStartDate = ToUtc(req.DischargeStartDate);
+            vessel.DischargeEndDate = ToUtc(req.DischargeEndDate);
             vessel.ActualQuantity = req.ActualQuantity;
-            vessel.CustomsReleaseDate = req.CustomsReleaseDate;
+            vessel.CustomsReleaseDate = ToUtc(req.CustomsReleaseDate);
 
             if (req.CustomsReleaseNumber is not null)
             {
