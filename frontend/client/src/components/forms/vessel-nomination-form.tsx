@@ -120,24 +120,57 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
 
   const createMutation = useMutation({
     mutationFn: async (data: VesselFormData) => {
-      const formData = new FormData();
-      
-      // Add form fields
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          formData.append(key, value.toString());
-        }
-      });
-
-      // Add file if selected
-      if (selectedFiles.length > 0) {
-        formData.append('instructionsFile', selectedFiles[0]);
-      }
-
-      const url = vessel ? `/api/vessels/${vessel.id}` : "/api/vessels";
+      const hasFile = selectedFiles.length > 0;
       const method = vessel ? "PUT" : "POST";
 
-      const response = await apiRequest(method, url, formData);
+      let payload: FormData | Record<string, unknown>;
+
+      if (hasFile) {
+        const formData = new FormData();
+
+        Object.entries(data).forEach(([key, value]) => {
+          if (
+            value !== undefined &&
+            value !== null &&
+            value !== "" &&
+            !(typeof value === "number" && Number.isNaN(value))
+          ) {
+            formData.append(key, String(value));
+          }
+        });
+
+        formData.append("instructionsFile", selectedFiles[0]);
+        payload = formData;
+      } else {
+        const sanitizedData = Object.entries(data).reduce(
+          (acc, [key, value]) => {
+            if (
+              value === undefined ||
+              value === null ||
+              value === "" ||
+              (typeof value === "number" && Number.isNaN(value))
+            ) {
+              return acc;
+            }
+
+            acc[key] = value;
+            return acc;
+          },
+          {} as Record<string, unknown>,
+        );
+
+        payload = sanitizedData;
+      }
+
+      const url = hasFile
+        ? vessel
+          ? `/api/vessels/${vessel.id}/upload`
+          : "/api/vessels/upload"
+        : vessel
+          ? `/api/vessels/${vessel.id}`
+          : "/api/vessels";
+
+      const response = await apiRequest(method, url, payload);
       const createdVessel = await response.json();
 
       // Create/update vessel LCs if any
