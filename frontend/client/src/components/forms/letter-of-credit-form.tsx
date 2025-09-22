@@ -143,6 +143,7 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
     onSuccess: () => {
       setSelectedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Success",
         description: lc ? "Letter of Credit updated successfully" : "Letter of Credit created successfully",
