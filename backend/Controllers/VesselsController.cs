@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Security.Claims;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
@@ -17,16 +18,19 @@ namespace WorkflowBackend.Api.Controllers
         private readonly IWebHostEnvironment _env;
 
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
-        { "Planned", "Nominated", "Loading", "Sailing", "Arrived", "Discharged", "Closed", "Archived" };
+        { "Planned", "Nominated", "Confirmed", "Loading", "In Transit", "Sailing", "Arrived", "Discharged", "Completed", "Closed", "Archived" };
 
         private static readonly Dictionary<string, string[]> AllowedTransitions = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["Planned"]    = new[] { "Nominated", "Archived" },
-            ["Nominated"]  = new[] { "Loading", "Archived" },
-            ["Loading"]    = new[] { "Sailing", "Archived" },
-            ["Sailing"]    = new[] { "Arrived", "Archived" },
-            ["Arrived"]    = new[] { "Discharged", "Archived" },
-            ["Discharged"] = new[] { "Closed", "Archived" },
+            ["Planned"]    = new[] { "Nominated", "Confirmed", "Loading", "Archived" },
+            ["Nominated"]  = new[] { "Confirmed", "Loading", "In Transit", "Sailing", "Archived" },
+            ["Confirmed"]  = new[] { "In Transit", "Loading", "Archived" },
+            ["Loading"]    = new[] { "Sailing", "In Transit", "Arrived", "Archived" },
+            ["Sailing"]    = new[] { "Arrived", "In Transit", "Archived" },
+            ["In Transit"] = new[] { "Arrived", "Discharged", "Archived" },
+            ["Arrived"]    = new[] { "Discharged", "Completed", "Closed", "Archived" },
+            ["Discharged"] = new[] { "Completed", "Closed", "Archived" },
+            ["Completed"]  = new[] { "Closed", "Archived" },
             ["Closed"]     = new[] { "Archived" },
             ["Archived"]   = Array.Empty<string>()
         };
@@ -50,11 +54,120 @@ namespace WorkflowBackend.Api.Controllers
             return $"{req.Scheme}://{req.Host}/{relPath.Replace("\\", "/")}";
         }
 
+        private static readonly TextInfo StatusTextInfo = CultureInfo.InvariantCulture.TextInfo;
+
+        private static string? NormalizeString(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private static string? NormalizeStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status)) return null;
+            var cleaned = status.Replace('_', ' ').Replace('-', ' ').Trim();
+            if (cleaned.Length == 0) return null;
+            return StatusTextInfo.ToTitleCase(cleaned.ToLowerInvariant());
+        }
+
+        private static string? NormalizePath(string? path) =>
+            string.IsNullOrWhiteSpace(path) ? null : path.Replace("\\", "/");
+
+        private void ApplyUpsert(Vessel vessel, VesselUpsertRequest req)
+        {
+            vessel.Name = req.Name.Trim();
+
+            if (req.Status is not null)
+            {
+                var normalizedStatus = NormalizeStatus(req.Status);
+                if (normalizedStatus is not null)
+                {
+                    vessel.Status = normalizedStatus;
+                }
+                else if (!string.IsNullOrWhiteSpace(req.Status))
+                {
+                    vessel.Status = req.Status.Trim();
+                }
+            }
+
+            vessel.Eta = req.Eta;
+            vessel.Etd = req.Etd;
+            vessel.ContractId = req.ContractId;
+            vessel.Quantity = req.Quantity;
+            vessel.CargoType = NormalizeString(req.CargoType);
+            vessel.CountryOfOrigin = NormalizeString(req.CountryOfOrigin);
+            vessel.PortOfDischarge = NormalizeString(req.PortOfDischarge);
+
+            if (req.TradeTerms is not null)
+            {
+                var normalizedTerms = NormalizeString(req.TradeTerms);
+                vessel.TradeTerms = normalizedTerms is null ? null : normalizedTerms.ToUpperInvariant();
+            }
+
+            vessel.InsuranceCompany = NormalizeString(req.InsuranceCompany);
+            vessel.InspectionCompany = NormalizeString(req.InspectionCompany);
+            vessel.ShippingCompany = NormalizeString(req.ShippingCompany);
+            vessel.InsuranceCost = req.InsuranceCost;
+            vessel.InspectionCost = req.InspectionCost;
+            vessel.ShippingCost = req.ShippingCost;
+            vessel.ShippingInstructions = string.IsNullOrWhiteSpace(req.ShippingInstructions)
+                ? null
+                : req.ShippingInstructions.Trim();
+
+            vessel.ArrivalDate = req.ArrivalDate;
+            vessel.DischargeStartDate = req.DischargeStartDate;
+            vessel.DischargeEndDate = req.DischargeEndDate;
+            vessel.ActualQuantity = req.ActualQuantity;
+            vessel.CustomsReleaseDate = req.CustomsReleaseDate;
+
+            if (req.CustomsReleaseNumber is not null)
+            {
+                vessel.CustomsReleaseNumber = NormalizeString(req.CustomsReleaseNumber);
+            }
+
+            if (req.CustomsReleaseStatus is not null)
+            {
+                vessel.CustomsReleaseStatus = NormalizeString(req.CustomsReleaseStatus)?.ToLowerInvariant();
+            }
+        }
+
         private VesselResponse ToResponse(Vessel v)
         {
+            var instructionsPath = NormalizePath(v.InstructionsPath);
+            var customsReleasePath = NormalizePath(v.CustomsReleaseFilePath);
+
             return new VesselResponse(
-                v.Id, v.Name, v.Status, v.Eta, v.Etd, v.CreatedAt, v.UpdatedAt,
-                MakeAbsolute(v.InstructionsPath), v.InstructionsFileName
+                v.Id,
+                v.Name,
+                v.Name,
+                v.Status,
+                v.Eta,
+                v.Etd,
+                v.ContractId,
+                v.Quantity,
+                v.CargoType,
+                v.CountryOfOrigin,
+                v.PortOfDischarge,
+                v.TradeTerms,
+                v.InsuranceCompany,
+                v.InspectionCompany,
+                v.ShippingCompany,
+                v.InsuranceCost,
+                v.InspectionCost,
+                v.ShippingCost,
+                v.ShippingInstructions,
+                v.ArrivalDate,
+                v.DischargeStartDate,
+                v.DischargeEndDate,
+                v.ActualQuantity,
+                v.CustomsReleaseDate,
+                v.CustomsReleaseNumber,
+                v.CustomsReleaseStatus,
+                MakeAbsolute(instructionsPath),
+                instructionsPath,
+                v.InstructionsFileName,
+                MakeAbsolute(customsReleasePath),
+                customsReleasePath,
+                v.CustomsReleaseFileName,
+                v.CreatedAt,
+                v.UpdatedAt
             );
         }
 
@@ -74,6 +187,25 @@ namespace WorkflowBackend.Api.Controllers
             using var stream = System.IO.File.Create(full);
             await file.CopyToAsync(stream);
             return Path.Combine("uploads", "vessels", safeName).Replace("\\", "/");
+        }
+
+        private async Task<string?> SaveCustomsReleaseAsync(IFormFile? file)
+        {
+            if (file is null || file.Length == 0) return null;
+
+            if (!FileUploadValidator.IsValid(file, out var error))
+                throw new InvalidOperationException(error);
+
+            var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var dir = Path.Combine(webRoot, "uploads", "vessels", "customs-release");
+            Directory.CreateDirectory(dir);
+            var ext = Path.GetExtension(file.FileName);
+            var safeName = $"{Guid.NewGuid():N}{ext}";
+            var full = Path.Combine(dir, safeName);
+            using var stream = System.IO.File.Create(full);
+            await file.CopyToAsync(stream);
+
+            return Path.Combine("uploads", "vessels", "customs-release", safeName).Replace("\\", "/");
         }
 
         private async Task<VesselDocumentResponse> SaveVesselDocumentAsync(Guid vesselId, IFormFile file, string? type)
@@ -155,51 +287,61 @@ namespace WorkflowBackend.Api.Controllers
         [Consumes("application/json")]
         public async Task<ActionResult<VesselResponse>> CreateJson([FromBody] VesselCreateRequest req)
         {
-            if (!string.IsNullOrWhiteSpace(req.Status) && !AllowedStatuses.Contains(req.Status))
+            var normalizedStatus = NormalizeStatus(req.Status);
+            if (normalizedStatus is not null && !AllowedStatuses.Contains(normalizedStatus))
                 return BadRequest(new { message = "Invalid status." });
 
-            var v = new Vessel
+            if (req.ContractId is Guid contractId && !await _db.Contracts.AnyAsync(c => c.Id == contractId))
+                return BadRequest(new { message = "Invalid contract." });
+
+            var vessel = new Vessel
             {
-                Name = req.Name.Trim(),
-                Status = string.IsNullOrWhiteSpace(req.Status) ? "Planned" : req.Status.Trim(),
-                Eta = req.Eta,
-                Etd = req.Etd,
-                CreatedByUserId = CurrentUserId()
+                CreatedByUserId = CurrentUserId(),
             };
 
-            _db.Vessels.Add(v);
+            ApplyUpsert(vessel, req);
+
+            if (string.IsNullOrWhiteSpace(vessel.Status))
+                vessel.Status = "Planned";
+
+            if (string.IsNullOrWhiteSpace(vessel.TradeTerms))
+                vessel.TradeTerms = "FOB";
+
+            vessel.CustomsReleaseStatus ??= "pending";
+
+            _db.Vessels.Add(vessel);
             await _db.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetOne), new { id = v.Id }, ToResponse(v));
+            return CreatedAtAction(nameof(GetOne), new { id = vessel.Id }, ToResponse(vessel));
         }
 
         // Multipart create with optional instructions file (field: instructionsFile)
         [HttpPost("upload")]
         [Consumes("multipart/form-data")]
         public async Task<ActionResult<VesselResponse>> CreateForm(
-            [FromForm] string name,
-            [FromForm] string? status,
-            [FromForm] DateTime? eta,
-            [FromForm] DateTime? etd,
-            [FromForm(Name = "instructionsFile")] IFormFile? file)
+            [FromForm] VesselCreateRequest req,
+            [FromForm(Name = "instructionsFile")] IFormFile? instructionsFile,
+            [FromForm(Name = "customsReleaseFile")] IFormFile? customsReleaseFile)
         {
-            if (!string.IsNullOrWhiteSpace(status) && !AllowedStatuses.Contains(status))
+            var normalizedStatus = NormalizeStatus(req.Status);
+            if (normalizedStatus is not null && !AllowedStatuses.Contains(normalizedStatus))
                 return BadRequest(new { message = "Invalid status." });
 
-            var v = new Vessel
+            if (req.ContractId is Guid contractId && !await _db.Contracts.AnyAsync(c => c.Id == contractId))
+                return BadRequest(new { message = "Invalid contract." });
+
+            var vessel = new Vessel
             {
-                Name = name.Trim(),
-                Status = string.IsNullOrWhiteSpace(status) ? "Planned" : status.Trim(),
-                Eta = eta,
-                Etd = etd,
-                CreatedByUserId = CurrentUserId()
+                CreatedByUserId = CurrentUserId(),
             };
 
-            if (file is not null)
+            ApplyUpsert(vessel, req);
+
+            if (instructionsFile is not null)
             {
                 try
                 {
-                    v.InstructionsPath = await SaveInstructionsAsync(file);
-                    v.InstructionsFileName = Path.GetFileName(file.FileName);
+                    vessel.InstructionsPath = await SaveInstructionsAsync(instructionsFile);
+                    vessel.InstructionsFileName = Path.GetFileName(instructionsFile.FileName);
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -207,9 +349,30 @@ namespace WorkflowBackend.Api.Controllers
                 }
             }
 
-            _db.Vessels.Add(v);
+            if (customsReleaseFile is not null)
+            {
+                try
+                {
+                    vessel.CustomsReleaseFilePath = await SaveCustomsReleaseAsync(customsReleaseFile);
+                    vessel.CustomsReleaseFileName = Path.GetFileName(customsReleaseFile.FileName);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(vessel.Status))
+                vessel.Status = "Planned";
+
+            if (string.IsNullOrWhiteSpace(vessel.TradeTerms))
+                vessel.TradeTerms = "FOB";
+
+            vessel.CustomsReleaseStatus ??= "pending";
+
+            _db.Vessels.Add(vessel);
             await _db.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetOne), new { id = v.Id }, ToResponse(v));
+            return CreatedAtAction(nameof(GetOne), new { id = vessel.Id }, ToResponse(vessel));
         }
 
         // ---------- UPDATE ----------
@@ -219,20 +382,29 @@ namespace WorkflowBackend.Api.Controllers
         [Consumes("application/json")]
         public async Task<ActionResult<VesselResponse>> UpdateJson(Guid id, [FromBody] VesselUpdateRequest req)
         {
-            if (!string.IsNullOrWhiteSpace(req.Status) && !AllowedStatuses.Contains(req.Status))
+            var normalizedStatus = NormalizeStatus(req.Status);
+            if (normalizedStatus is not null && !AllowedStatuses.Contains(normalizedStatus))
                 return BadRequest(new { message = "Invalid status." });
 
-            var v = await _db.Vessels.FindAsync(id);
-            if (v is null) return NotFound();
+            if (req.ContractId is Guid contractId && !await _db.Contracts.AnyAsync(c => c.Id == contractId))
+                return BadRequest(new { message = "Invalid contract." });
 
-            v.Name = req.Name.Trim();
-            if (!string.IsNullOrWhiteSpace(req.Status)) v.Status = req.Status.Trim();
-            v.Eta = req.Eta;
-            v.Etd = req.Etd;
-            v.UpdatedAt = DateTime.UtcNow;
+            var vessel = await _db.Vessels.FindAsync(id);
+            if (vessel is null) return NotFound();
+
+            ApplyUpsert(vessel, req);
+
+            if (string.IsNullOrWhiteSpace(vessel.Status))
+                vessel.Status = "Planned";
+
+            if (string.IsNullOrWhiteSpace(vessel.TradeTerms))
+                vessel.TradeTerms = "FOB";
+
+            vessel.CustomsReleaseStatus ??= "pending";
+            vessel.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
-            return ToResponse(v);
+            return ToResponse(vessel);
         }
 
         // Multipart update with optional new instructions file
@@ -240,29 +412,28 @@ namespace WorkflowBackend.Api.Controllers
         [Consumes("multipart/form-data")]
         public async Task<ActionResult<VesselResponse>> UpdateForm(
             Guid id,
-            [FromForm] string name,
-            [FromForm] string? status,
-            [FromForm] DateTime? eta,
-            [FromForm] DateTime? etd,
-            [FromForm(Name = "instructionsFile")] IFormFile? file)
+            [FromForm] VesselUpdateRequest req,
+            [FromForm(Name = "instructionsFile")] IFormFile? instructionsFile,
+            [FromForm(Name = "customsReleaseFile")] IFormFile? customsReleaseFile)
         {
-            if (!string.IsNullOrWhiteSpace(status) && !AllowedStatuses.Contains(status))
+            var normalizedStatus = NormalizeStatus(req.Status);
+            if (normalizedStatus is not null && !AllowedStatuses.Contains(normalizedStatus))
                 return BadRequest(new { message = "Invalid status." });
 
-            var v = await _db.Vessels.FindAsync(id);
-            if (v is null) return NotFound();
+            if (req.ContractId is Guid contractId && !await _db.Contracts.AnyAsync(c => c.Id == contractId))
+                return BadRequest(new { message = "Invalid contract." });
 
-            v.Name = name.Trim();
-            if (!string.IsNullOrWhiteSpace(status)) v.Status = status.Trim();
-            v.Eta = eta;
-            v.Etd = etd;
+            var vessel = await _db.Vessels.FindAsync(id);
+            if (vessel is null) return NotFound();
 
-            if (file is not null)
+            ApplyUpsert(vessel, req);
+
+            if (instructionsFile is not null)
             {
                 try
                 {
-                    v.InstructionsPath = await SaveInstructionsAsync(file);
-                    v.InstructionsFileName = Path.GetFileName(file.FileName);
+                    vessel.InstructionsPath = await SaveInstructionsAsync(instructionsFile);
+                    vessel.InstructionsFileName = Path.GetFileName(instructionsFile.FileName);
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -270,9 +441,29 @@ namespace WorkflowBackend.Api.Controllers
                 }
             }
 
-            v.UpdatedAt = DateTime.UtcNow;
+            if (customsReleaseFile is not null)
+            {
+                try
+                {
+                    vessel.CustomsReleaseFilePath = await SaveCustomsReleaseAsync(customsReleaseFile);
+                    vessel.CustomsReleaseFileName = Path.GetFileName(customsReleaseFile.FileName);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(vessel.Status))
+                vessel.Status = "Planned";
+
+            if (string.IsNullOrWhiteSpace(vessel.TradeTerms))
+                vessel.TradeTerms = "FOB";
+
+            vessel.CustomsReleaseStatus ??= "pending";
+            vessel.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
-            return ToResponse(v);
+            return ToResponse(vessel);
         }
 
         // ---------- DELETE ----------
@@ -423,7 +614,8 @@ namespace WorkflowBackend.Api.Controllers
         public async Task<ActionResult<VesselResponse>> ChangeStatus(Guid id, [FromBody] dynamic body)
         {
             string status = (string?)body?.status ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(status) || !AllowedStatuses.Contains(status))
+            var normalizedStatus = NormalizeStatus(status);
+            if (string.IsNullOrWhiteSpace(normalizedStatus) || !AllowedStatuses.Contains(normalizedStatus))
                 return BadRequest(new { message = "Invalid status." });
 
             var v = await _db.Vessels.FindAsync(id);
@@ -431,10 +623,10 @@ namespace WorkflowBackend.Api.Controllers
 
             var current = v.Status;
             var nexts = AllowedTransitions.TryGetValue(current, out var allowed) ? allowed : Array.Empty<string>();
-            if (!nexts.Contains(status, StringComparer.OrdinalIgnoreCase))
-                return BadRequest(new { message = $"Transition from '{current}' to '{status}' is not allowed." });
+            if (!nexts.Contains(normalizedStatus, StringComparer.OrdinalIgnoreCase))
+                return BadRequest(new { message = $"Transition from '{current}' to '{normalizedStatus}' is not allowed." });
 
-            v.Status = status;
+            v.Status = normalizedStatus;
             v.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
             return ToResponse(v);

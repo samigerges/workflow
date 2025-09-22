@@ -624,11 +624,53 @@ namespace WorkflowBackend.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("ActualQuantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime?>("ArrivalDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CargoType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("ContractId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CountryOfOrigin")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CustomsReleaseDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomsReleaseFileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("CustomsReleaseFilePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("CustomsReleaseNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("CustomsReleaseStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("DischargeEndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DischargeStartDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("Eta")
                         .HasColumnType("timestamp with time zone");
@@ -636,16 +678,47 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<DateTime?>("Etd")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("InspectionCompany")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("InspectionCost")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("InstructionsFileName")
                         .HasColumnType("text");
 
                     b.Property<string>("InstructionsPath")
                         .HasColumnType("text");
 
+                    b.Property<string>("InsuranceCompany")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("InsuranceCost")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("PortOfDischarge")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal?>("Quantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("ShippingCompany")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("ShippingCost")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("ShippingInstructions")
+                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -654,10 +727,16 @@ namespace WorkflowBackend.Api.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Planned");
 
+                    b.Property<string>("TradeTerms")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ContractId");
 
                     b.HasIndex("CreatedByUserId");
 
@@ -850,10 +929,17 @@ namespace WorkflowBackend.Api.Migrations
 
             modelBuilder.Entity("WorkflowBackend.Api.Models.Vessel", b =>
                 {
+                    b.HasOne("WorkflowBackend.Api.Models.Contract", "Contract")
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("WorkflowBackend.Api.Models.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Contract");
 
                     b.Navigation("CreatedBy");
                 });
