@@ -105,9 +105,24 @@ namespace WorkflowBackend.Api.Data
             // Vessel
             modelBuilder.Entity<Vessel>().Property(v => v.Name).HasMaxLength(200).IsRequired();
             modelBuilder.Entity<Vessel>().Property(v => v.Status).HasMaxLength(50).HasDefaultValue("Planned");
+            modelBuilder.Entity<Vessel>().Property(v => v.CargoType).HasMaxLength(100);
+            modelBuilder.Entity<Vessel>().Property(v => v.CountryOfOrigin).HasMaxLength(100);
+            modelBuilder.Entity<Vessel>().Property(v => v.PortOfDischarge).HasMaxLength(100);
+            modelBuilder.Entity<Vessel>().Property(v => v.TradeTerms).HasMaxLength(50);
+            modelBuilder.Entity<Vessel>().Property(v => v.InsuranceCompany).HasMaxLength(200);
+            modelBuilder.Entity<Vessel>().Property(v => v.InspectionCompany).HasMaxLength(200);
+            modelBuilder.Entity<Vessel>().Property(v => v.ShippingCompany).HasMaxLength(200);
+            modelBuilder.Entity<Vessel>().Property(v => v.ShippingInstructions).HasColumnType("text");
+            modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseNumber).HasMaxLength(100);
+            modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseStatus).HasMaxLength(50);
+            modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseFilePath).HasMaxLength(500);
+            modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseFileName).HasMaxLength(255);
             modelBuilder.Entity<Vessel>()
                 .HasOne(v => v.CreatedBy).WithMany()
                 .HasForeignKey(v => v.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Vessel>()
+                .HasOne(v => v.Contract).WithMany()
+                .HasForeignKey(v => v.ContractId).OnDelete(DeleteBehavior.SetNull);
 
             // LoadingPort
             modelBuilder.Entity<LoadingPort>().Property(p => p.PortName).HasMaxLength(200).IsRequired();

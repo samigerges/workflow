@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WorkflowBackend.Api.Models
 {
@@ -14,6 +15,55 @@ namespace WorkflowBackend.Api.Models
 
         public DateTime? Eta { get; set; } // estimated time of arrival
         public DateTime? Etd { get; set; } // estimated time of departure
+
+        public Guid? ContractId { get; set; }
+        public Contract? Contract { get; set; }
+
+        public decimal? Quantity { get; set; }
+
+        [MaxLength(100)]
+        public string? CargoType { get; set; }
+
+        [MaxLength(100)]
+        public string? CountryOfOrigin { get; set; }
+
+        [MaxLength(100)]
+        public string? PortOfDischarge { get; set; }
+
+        [MaxLength(50)]
+        public string? TradeTerms { get; set; }
+
+        [MaxLength(200)]
+        public string? InsuranceCompany { get; set; }
+
+        [MaxLength(200)]
+        public string? InspectionCompany { get; set; }
+
+        [MaxLength(200)]
+        public string? ShippingCompany { get; set; }
+
+        public decimal? InsuranceCost { get; set; }
+        public decimal? InspectionCost { get; set; }
+        public decimal? ShippingCost { get; set; }
+
+        [Column(TypeName = "text")]
+        public string? ShippingInstructions { get; set; }
+
+        public DateTime? ArrivalDate { get; set; }
+        public DateTime? DischargeStartDate { get; set; }
+        public DateTime? DischargeEndDate { get; set; }
+        public decimal? ActualQuantity { get; set; }
+
+        public DateTime? CustomsReleaseDate { get; set; }
+
+        [MaxLength(100)]
+        public string? CustomsReleaseNumber { get; set; }
+
+        [MaxLength(50)]
+        public string? CustomsReleaseStatus { get; set; }
+
+        public string? CustomsReleaseFilePath { get; set; }
+        public string? CustomsReleaseFileName { get; set; }
 
         public Guid? CreatedByUserId { get; set; }
         public User? CreatedBy { get; set; }

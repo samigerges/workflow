@@ -45,12 +45,12 @@ public class VesselsControllerTests
         db.LettersOfCredit.Add(lc);
         await db.SaveChangesAsync();
 
-        var createReq = new VesselCreateRequest(
-            Name: "تنليستنا",
-            Status: "nominated",
-            Eta: DateTime.Parse("2025-09-18T13:20:00"),
-            Etd: null
-        );
+        var createReq = new VesselCreateRequest
+        {
+            Name = "تنليستنا",
+            Status = "nominated",
+            Eta = DateTime.Parse("2025-09-18T13:20:00"),
+        };
 
         var createResult = await controller.CreateJson(createReq);
         var vesselId = ((VesselResponse)((Microsoft.AspNetCore.Mvc.CreatedAtActionResult)createResult.Result!).Value!).Id;
