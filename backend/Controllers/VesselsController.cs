@@ -39,7 +39,7 @@ namespace WorkflowBackend.Api.Controllers
 
         private Guid? CurrentUserId()
         {
-            var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var idStr = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return Guid.TryParse(idStr, out var id) ? id : null;
         }
 

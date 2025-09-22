@@ -91,7 +91,7 @@ namespace WorkflowBackend.Api.Controllers
         {
             if (!User.Identity?.IsAuthenticated ?? true) return Unauthorized();
 
-            var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var idStr = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!Guid.TryParse(idStr, out var id)) return Unauthorized();
 
             var user = await _db.Users.FindAsync(id);
