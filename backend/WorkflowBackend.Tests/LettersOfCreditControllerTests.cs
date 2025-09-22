@@ -160,6 +160,39 @@ public class LettersOfCreditControllerTests
         Assert.Equal(DateTimeKind.Utc, lc.ExpiryDate?.Kind);
     }
 
+    [Fact]
+    public async Task GetVesselsForLc_ReturnsLinkedVesselsWithQuantities()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+
+        var lc = new LetterOfCredit { Number = "LC-Link" };
+        var vessel = new Vessel { Name = "MV Test", Quantity = 125m };
+
+        context.LettersOfCredit.Add(lc);
+        context.Vessels.Add(vessel);
+        await context.SaveChangesAsync();
+
+        context.VesselLettersOfCredit.Add(new VesselLetterOfCredit
+        {
+            VesselId = vessel.Id,
+            LetterOfCreditId = lc.Id
+        });
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetVesselsForLc(lc.Id);
+
+        var allocations = Assert.IsAssignableFrom<IEnumerable<LetterOfCreditVesselAllocationResponse>>(result.Value);
+        var allocation = Assert.Single(allocations);
+
+        Assert.Equal(vessel.Id, allocation.VesselId);
+        Assert.Equal(lc.Id, allocation.LetterOfCreditId);
+        Assert.Equal(vessel.Quantity, allocation.Quantity);
+    }
+
     private static DbContextOptions<AppDbContext> CreateInMemoryOptions() =>
         new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
