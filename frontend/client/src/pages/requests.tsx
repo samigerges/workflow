@@ -18,6 +18,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, FileText, Edit, Trash, Settings, Vote, Eye, MessageSquare } from "lucide-react";
 
+const formatRequestPreview = (description?: string) => {
+  if (!description) return "No description";
+  return description.length > 60 ? `${description.slice(0, 60)}…` : description;
+};
+
+const getRequestLabel = (request?: any) => {
+  if (!request) return "Request";
+  const preview = formatRequestPreview(request.description);
+  return request.publicId ? `${request.publicId} - ${preview}` : preview;
+};
+
 export default function Requests() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -198,7 +209,7 @@ export default function Requests() {
                           : "Unknown"}
                       </Badge>
                     </p>
-                    <p className="text-sm font-medium">Request: {statusEditingRequest.title}</p>
+                    <p className="text-sm font-medium">Request: {getRequestLabel(statusEditingRequest)}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">New Status:</label>
@@ -242,7 +253,7 @@ export default function Requests() {
           <Dialog open={showVotingDialog} onOpenChange={setShowVotingDialog}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Document Voting - {votingRequest?.title}</DialogTitle>
+                <DialogTitle>Document Voting - {getRequestLabel(votingRequest)}</DialogTitle>
               </DialogHeader>
               {votingRequest && (
                 <DocumentVoting 

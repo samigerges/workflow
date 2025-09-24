@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -55,6 +55,8 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
     register,
     handleSubmit,
     getValues,
+    setValue,
+    watch,
     formState: { errors },
     control
   } = useForm<RequestFormData>({
@@ -67,7 +69,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
       pricePerTon: request?.pricePerTon ? Number(request.pricePerTon) :
                     request?.estimatedValue ? Number(request.estimatedValue) : undefined,
       quantity: request?.quantity ? Number(request.quantity) : undefined,
-      title: request?.title ?? "",
       priority: request?.priority ?? "medium",
       status: request?.status ?? "pending",
       uploadedFile: request?.uploadedFile ?? "",
@@ -75,15 +76,25 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
       paymentCurrency: request?.paymentCurrency ?? request?.currency ?? undefined,
       shippingMethod: request?.shippingMethod ?? undefined,
       letterOfGuarantee: request?.letterOfGuarantee ?? "",
+      wheatPercentage: request?.wheatPercentage ?? undefined,
     } : {
       priority: "medium",
       status: "pending",
       uploadedFile: "",
-      title: "",
       letterOfGuarantee: "",
-      paymentCurrency: undefined
+      paymentCurrency: undefined,
+      wheatPercentage: undefined
     }
   });
+
+  const cargoTypeValue = watch("cargoType");
+  const isWheat = (cargoTypeValue ?? "").toLowerCase() === "wheat";
+
+  useEffect(() => {
+    if (!isWheat) {
+      setValue("wheatPercentage", undefined, { shouldValidate: true });
+    }
+  }, [isWheat, setValue]);
 
   const createMutation = useMutation({
     mutationFn: async (payload: any) => {
@@ -138,8 +149,8 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
         formData.append("entityType", "request");
         formData.append("entityId", String(requestId));
         const documentTitle =
-          (typeof payload?.title === "string" && payload.title.trim())
-            ? payload.title
+          typeof payload?.description === "string" && payload.description.trim()
+            ? payload.description.trim().slice(0, 200)
             : selectedFile.name;
         formData.append("title", documentTitle);
 
@@ -242,19 +253,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           }
         }}>
           <div>
-            <Label htmlFor="title">Request Title *</Label>
-            <Input
-              id="title"
-              {...register("title")}
-              placeholder="Brief title for this import request"
-              className={errors.title ? "border-red-500" : ""}
-            />
-            {errors.title && (
-              <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>
-            )}
-          </div>
-
-          <div>
             <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
@@ -268,7 +266,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
             )}
           </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="cargoType">Cargo Type *</Label>
               <Controller
@@ -308,6 +306,22 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
                 <p className="text-sm text-red-500 mt-1">{errors.pricePerTon.message}</p>
               )}
             </div>
+            {isWheat && (
+              <div>
+                <Label htmlFor="wheatPercentage">Wheat Percentage *</Label>
+                <Input
+                  id="wheatPercentage"
+                  type="number"
+                  step="0.01"
+                  {...register("wheatPercentage", { valueAsNumber: true })}
+                  placeholder="e.g. 12.5"
+                  className={errors.wheatPercentage ? "border-red-500" : ""}
+                />
+                {errors.wheatPercentage && (
+                  <p className="text-sm text-red-500 mt-1">{errors.wheatPercentage.message}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

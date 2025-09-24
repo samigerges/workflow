@@ -14,6 +14,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import FileUpload from "@/components/ui/file-upload";
 
+const formatRequestPreview = (description?: string) => {
+  if (!description) return "No description";
+  return description.length > 60 ? `${description.slice(0, 60)}…` : description;
+};
+
 const settlementFormSchema = insertFinalSettlementSchema.extend({
   settlementDate: z.string(),
 });
@@ -168,7 +173,7 @@ export default function FinalSettlementForm({ onSuccess, onCancel, requests, set
                 <option value="">Select a request</option>
                 {requests.map((request) => (
                   <option key={request.id} value={request.id}>
-                    {(request.publicId ?? `REQ-${request.id.toString().padStart(3, '0')}`)} - {request.title}
+                    {(request.publicId ?? `REQ-${request.id.toString().padStart(3, '0')}`)} - {formatRequestPreview(request.description)}
                   </option>
                 ))}
               </select>

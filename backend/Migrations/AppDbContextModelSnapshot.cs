@@ -435,6 +435,10 @@ namespace WorkflowBackend.Api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal?>("WheatPercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<decimal?>("Quantity")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");

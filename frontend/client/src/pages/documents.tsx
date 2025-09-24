@@ -32,6 +32,11 @@ const DOCUMENT_TYPES = [
   { value: "other", label: "Other Document" },
 ];
 
+const formatRequestPreview = (description?: string) => {
+  if (!description) return "No description";
+  return description.length > 60 ? `${description.slice(0, 60)}…` : description;
+};
+
 export default function Documents() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -90,7 +95,15 @@ export default function Documents() {
         for (const request of requests) {
           try {
             const requestDocs = await apiRequest("GET", `/api/document-votes/request/${request.id}`).then(res => res.json());
-            allDocs.push(...(requestDocs as any[]).map(doc => ({ ...doc, sourceType: 'request', sourceTitle: request.title }))); 
+            allDocs.push(
+              ...(requestDocs as any[]).map((doc) => ({
+                ...doc,
+                sourceType: 'request',
+                sourceTitle: request.publicId
+                  ? `${request.publicId} - ${formatRequestPreview(request.description)}`
+                  : formatRequestPreview(request.description),
+              })),
+            );
           } catch (error) {
             console.error(`Failed to fetch documents for request ${request.id}`);
           }
@@ -362,7 +375,9 @@ export default function Documents() {
                           </SelectTrigger>
                           <SelectContent>
                             {(requests as any[]).map((request) => (
-                              <SelectItem key={request.id} value={request.id.toString()}>{request.title}</SelectItem>
+                              <SelectItem key={request.id} value={request.id.toString()}>
+                                {request.publicId ? `${request.publicId} - ${formatRequestPreview(request.description)}` : formatRequestPreview(request.description)}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

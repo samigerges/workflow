@@ -55,6 +55,7 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<Request>().Property(r => r.UnitOfMeasure).HasMaxLength(50);
             modelBuilder.Entity<Request>().Property(r => r.CargoType).HasMaxLength(100);
             modelBuilder.Entity<Request>().Property(r => r.PricePerTon).HasPrecision(18, 2);
+            modelBuilder.Entity<Request>().Property(r => r.WheatPercentage).HasPrecision(5, 2);
             modelBuilder.Entity<Request>().Property(r => r.SupplierName).HasMaxLength(200);
             modelBuilder.Entity<Request>().Property(r => r.CountryOfOrigin).HasMaxLength(100);
             modelBuilder.Entity<Request>().Property(r => r.PaymentMethod).HasMaxLength(100);

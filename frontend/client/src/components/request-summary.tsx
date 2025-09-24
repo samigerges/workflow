@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, Package, Truck, User, FileText, MapPin, ExternalLink, Building, MessageSquare, CheckCircle, XCircle, ShieldCheck } from "lucide-react";
+import { Calendar, DollarSign, Package, Truck, User, FileText, MapPin, ExternalLink, Building, MessageSquare, CheckCircle, XCircle, ShieldCheck, Percent } from "lucide-react";
 
 interface RequestSummaryProps {
   request: any;
@@ -173,6 +173,16 @@ export default function RequestSummary({ request, isOpen, onClose }: RequestSumm
                     <p className="text-gray-900">{request.cargoType ?? "-"}</p>
                   </div>
                 </div>
+
+                {typeof request.wheatPercentage === "number" && (
+                  <div className="flex items-start space-x-3">
+                    <Percent className="h-5 w-5 text-gray-500 mt-1" />
+                    <div>
+                      <p className="text-sm text-gray-500">Wheat Percentage</p>
+                      <p className="text-gray-900">{request.wheatPercentage.toFixed(2)}%</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Supplier */}
                 <div className="flex items-start space-x-3">
