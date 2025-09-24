@@ -132,6 +132,180 @@ public class ContractsControllerTests
     }
 
     [Fact]
+    public async Task CreateJson_AllowsLinkWhenRequestFieldsMatch()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        var requestId = Guid.NewGuid();
+
+        await using (var setupContext = new AppDbContext(options))
+        {
+            setupContext.Requests.Add(new Request
+            {
+                Id = requestId,
+                PublicId = "2025/W/1",
+                SequenceNumber = 1,
+                SupplierName = "Acme Corp",
+                Quantity = 100,
+                CargoType = "Wheat",
+                CountryOfOrigin = "USA",
+                PricePerTon = 50m,
+                PaymentMethod = "LC - 180 days",
+                ShippingMethod = "Sea",
+                StartDate = new DateTime(2025, 1, 1),
+                EndDate = new DateTime(2025, 2, 1)
+            });
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using var context = new AppDbContext(options);
+        var controller = CreateController(context);
+
+        var createRequest = new ContractCreateRequest(
+            Title: "Linked contract",
+            Description: null,
+            RequestId: requestId,
+            SupplierName: "Acme Corp",
+            Quantity: 100,
+            CargoType: "Wheat",
+            CountryOfOrigin: "USA",
+            PricePerTon: 50m,
+            PaymentMethod: "LC - 180 days",
+            ShippingMethod: "Sea",
+            ContractTerms: null,
+            StartDate: new DateTime(2025, 1, 1),
+            EndDate: new DateTime(2025, 2, 1),
+            ReviewNotes: null
+        );
+
+        var result = await controller.CreateJson(createRequest);
+
+        var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        var payload = Assert.IsType<ContractResponse>(created.Value);
+        Assert.Equal(requestId, payload.RequestId);
+        Assert.Equal("Linked contract", payload.Title);
+    }
+
+    [Fact]
+    public async Task CreateJson_ReturnsBadRequest_WhenRequestFieldsMismatch()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        var requestId = Guid.NewGuid();
+
+        await using (var setupContext = new AppDbContext(options))
+        {
+            setupContext.Requests.Add(new Request
+            {
+                Id = requestId,
+                PublicId = "2025/W/2",
+                SequenceNumber = 2,
+                SupplierName = "Acme Corp",
+                CargoType = "Wheat"
+            });
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using var context = new AppDbContext(options);
+        var controller = CreateController(context);
+
+        var createRequest = new ContractCreateRequest(
+            Title: "Mismatched contract",
+            Description: null,
+            RequestId: requestId,
+            SupplierName: "Different Supplier",
+            Quantity: null,
+            CargoType: "Wheat",
+            CountryOfOrigin: null,
+            PricePerTon: null,
+            PaymentMethod: null,
+            ShippingMethod: null,
+            ContractTerms: null,
+            StartDate: null,
+            EndDate: null,
+            ReviewNotes: null
+        );
+
+        var result = await controller.CreateJson(createRequest);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var payload = badRequest.Value;
+        var message = payload?.GetType().GetProperty("message")?.GetValue(payload) as string;
+
+        Assert.NotNull(message);
+        Assert.Contains("supplier name", message!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task UpdateJson_ReturnsBadRequest_WhenLinkedRequestFieldsMismatch()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        var requestId = Guid.NewGuid();
+        var contractId = Guid.NewGuid();
+
+        await using (var setupContext = new AppDbContext(options))
+        {
+            setupContext.Requests.Add(new Request
+            {
+                Id = requestId,
+                PublicId = "2025/W/3",
+                SequenceNumber = 3,
+                SupplierName = "Acme Corp",
+                CargoType = "Wheat"
+            });
+
+            setupContext.Contracts.Add(new Contract
+            {
+                Id = contractId,
+                PublicId = "2025/W/10",
+                SequenceNumber = 10,
+                Title = "Existing contract",
+                RequestId = requestId,
+                SupplierName = "Acme Corp",
+                CargoType = "Wheat"
+            });
+
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using var context = new AppDbContext(options);
+        var controller = CreateController(context);
+
+        var updateRequest = new ContractUpdateRequest(
+            Title: "Updated contract",
+            Description: null,
+            RequestId: requestId,
+            SupplierName: "Acme Corp",
+            Quantity: null,
+            CargoType: "Oil",
+            CountryOfOrigin: null,
+            PricePerTon: null,
+            PaymentMethod: null,
+            ShippingMethod: null,
+            ContractTerms: null,
+            StartDate: null,
+            EndDate: null,
+            ReviewNotes: null
+        );
+
+        var result = await controller.UpdateJson(contractId, updateRequest);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var payload = badRequest.Value;
+        var message = payload?.GetType().GetProperty("message")?.GetValue(payload) as string;
+
+        Assert.NotNull(message);
+        Assert.Contains("cargo type", message!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task CreateJson_ReturnsFriendlyError_WhenRelatedRequestDisappearsDuringSave()
     {
         await using var connection = new SqliteConnection("DataSource=:memory:");
