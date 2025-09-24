@@ -160,6 +160,8 @@ export const UNITS_OF_MEASURE = [
 export const CURRENCIES = [
   'USD',
   'EUR',
+  'EGP',
+  'AED',
   'SAR',
   'GBP',
   'JPY',

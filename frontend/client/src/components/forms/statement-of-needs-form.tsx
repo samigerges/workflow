@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { UNITS_OF_MEASURE, CARGO_TYPES, COUNTRIES } from "@/lib/constants";
+import { UNITS_OF_MEASURE, CARGO_TYPES, COUNTRIES, CURRENCIES } from "@/lib/constants";
 import { Upload, FileText } from "lucide-react";
 
 const PAYMENT_METHODS = [
@@ -56,7 +56,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
     handleSubmit,
     getValues,
     formState: { errors },
-    setValue,
     control
   } = useForm<RequestFormData>({
     resolver: zodResolver(requestFormSchema),
@@ -73,6 +72,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
       status: request?.status ?? "pending",
       uploadedFile: request?.uploadedFile ?? "",
       paymentMethod: request?.paymentMethod ?? undefined,
+      paymentCurrency: request?.paymentCurrency ?? request?.currency ?? undefined,
       shippingMethod: request?.shippingMethod ?? undefined,
       letterOfGuarantee: request?.letterOfGuarantee ?? "",
     } : {
@@ -80,7 +80,8 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
       status: "pending",
       uploadedFile: "",
       title: "",
-      letterOfGuarantee: ""
+      letterOfGuarantee: "",
+      paymentCurrency: undefined
     }
   });
 
@@ -254,13 +255,17 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           </div>
 
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
               {...register("description")}
               rows={4}
               placeholder="Detailed description of goods, specifications, and requirements"
+              className={errors.description ? "border-red-500" : ""}
             />
+            {errors.description && (
+              <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
+            )}
           </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -290,7 +295,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
               )}
             </div>
             <div>
-              <Label htmlFor="pricePerTon">Price per unit (USD) *</Label>
+              <Label htmlFor="pricePerTon">Price per unit *</Label>
               <Input
                 id="pricePerTon"
                 type="number"
@@ -360,7 +365,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
               )}
             </div>
             <div>
-              <Label htmlFor="countryOfOrigin">Country of Origin</Label>
+              <Label htmlFor="countryOfOrigin">Country of Origin *</Label>
               <Controller
                 control={control}
                 name="countryOfOrigin"
@@ -389,7 +394,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           {/* New row: Payment Method + Shipping Method */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="paymentMethod">Payment Method</Label>
+              <Label htmlFor="paymentMethod">Payment Method *</Label>
               <Controller
                 control={control}
                 name="paymentMethod"
@@ -415,7 +420,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
             </div>
 
             <div>
-              <Label htmlFor="shippingMethod">Shipping Method</Label>
+              <Label htmlFor="shippingMethod">Shipping Method *</Label>
               <Controller
                 control={control}
                 name="shippingMethod"
@@ -443,7 +448,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
 
           {/* Letter of Guarantee */}
           <div>
-            <Label htmlFor="letterOfGuarantee">Letter of Guarantee</Label>
+            <Label htmlFor="letterOfGuarantee">Letter of Guarantee *</Label>
             <Textarea
               id="letterOfGuarantee"
               {...register("letterOfGuarantee")}
@@ -456,9 +461,9 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <Label htmlFor="startDate">Start Date</Label>
+              <Label htmlFor="startDate">Start Date *</Label>
               <Input
                 id="startDate"
                 type="date"
@@ -472,7 +477,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
             </div>
 
             <div>
-              <Label htmlFor="endDate">End Date</Label>
+              <Label htmlFor="endDate">End Date *</Label>
               <Input
                 id="endDate"
                 type="date"
@@ -484,25 +489,30 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
                 <p className="text-sm text-red-500 mt-1">{errors.endDate.message}</p>
               )}
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="mt-4">
-              <label
-                htmlFor="currency"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Payment Currency
-              </label>
-              <select
-                id="currency"
-                name="currency"
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              >
-                <option value="USD">USD - US Dollar</option>
-                <option value="EGP">EGP - Egyptian Pound</option>
-                <option value="AED">AED - Emirati Dirham</option>
-              </select>
+            <div>
+              <Label htmlFor="paymentCurrency">Payment Currency *</Label>
+              <Controller
+                control={control}
+                name="paymentCurrency"
+                defaultValue={request?.paymentCurrency ?? request?.currency ?? undefined}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger className={errors.paymentCurrency ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select payment currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map((currency) => (
+                        <SelectItem key={currency} value={currency}>
+                          {currency}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.paymentCurrency && (
+                <p className="text-sm text-red-500 mt-1">{errors.paymentCurrency.message}</p>
+              )}
             </div>
           </div>
 
