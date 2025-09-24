@@ -6,9 +6,6 @@ namespace WorkflowBackend.Api.Models
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [Required, MaxLength(200)]
-        public string Title { get; set; } = string.Empty;
-
         [MaxLength(4000)]
         public string? Description { get; set; }
 

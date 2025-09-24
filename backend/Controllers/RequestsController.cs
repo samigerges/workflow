@@ -30,6 +30,17 @@ namespace WorkflowBackend.Api.Controllers
             "archived"
         };
 
+        private static readonly string[] PaymentMethodOptions =
+        {
+            "LC - 270 days",
+            "LC - 180 days",
+            "LC - 90 days",
+            "At sight"
+        };
+
+        private static readonly Dictionary<string, string> AllowedPaymentMethods =
+            PaymentMethodOptions.ToDictionary(x => x, x => x, StringComparer.OrdinalIgnoreCase);
+
         public RequestsController(AppDbContext db, ILogger<RequestsController> logger)
         {
             _db = db;
@@ -63,6 +74,29 @@ namespace WorkflowBackend.Api.Controllers
 
             normalized = status.Trim().ToLowerInvariant();
             return AllowedStatuses.Contains(normalized);
+        }
+
+        private static bool TryNormalizePaymentMethod(
+            string? paymentMethod,
+            out string? normalized,
+            out string? errorMessage)
+        {
+            normalized = null;
+            errorMessage = null;
+
+            if (string.IsNullOrWhiteSpace(paymentMethod))
+                return true;
+
+            var trimmed = paymentMethod.Trim();
+
+            if (AllowedPaymentMethods.TryGetValue(trimmed, out var canonical))
+            {
+                normalized = canonical;
+                return true;
+            }
+
+            errorMessage = $"Payment method must be one of: {string.Join(", ", PaymentMethodOptions)}.";
+            return false;
         }
 
         private static string ToVoteName(int value) => value switch
@@ -127,7 +161,6 @@ namespace WorkflowBackend.Api.Controllers
 
             return new RequestResponse(
                 r.Id,
-                r.Title,
                 r.Description,
                 status,
                 r.CreatedByUserId,
@@ -188,13 +221,11 @@ namespace WorkflowBackend.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<RequestResponse>> Create([FromBody] RequestCreateRequest req)
         {
-            var title = req.Title?.Trim();
-            if (string.IsNullOrWhiteSpace(title))
-                return BadRequest(new { message = "Title is required." });
+            if (!TryNormalizePaymentMethod(req.PaymentMethod, out var paymentMethod, out var paymentError))
+                return BadRequest(new { message = paymentError });
 
             var r = new Request
             {
-                Title = title,
                 Description = NormalizeString(req.Description),
                 Status = NormalizeStatusOrDefault(req.Status),
                 Quantity = req.Quantity,
@@ -203,7 +234,7 @@ namespace WorkflowBackend.Api.Controllers
                 PricePerTon = req.PricePerTon,
                 SupplierName = NormalizeString(req.SupplierName),
                 CountryOfOrigin = NormalizeString(req.CountryOfOrigin),
-                PaymentMethod = NormalizeString(req.PaymentMethod),
+                PaymentMethod = paymentMethod,
                 ShippingMethod = NormalizeString(req.ShippingMethod),
                 LetterOfGuarantee = NormalizeString(req.LetterOfGuarantee),
                 StartDate = req.StartDate?.Date,
@@ -228,15 +259,6 @@ namespace WorkflowBackend.Api.Controllers
             var r = await _db.Requests.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
             if (r is null) return NotFound();
 
-            if (req.Title is not null)
-            {
-                var title = req.Title.Trim();
-                if (string.IsNullOrWhiteSpace(title))
-                    return BadRequest(new { message = "Title is required." });
-
-                r.Title = title;
-            }
-
             if (req.Description is not null)
                 r.Description = NormalizeString(req.Description);
 
@@ -259,7 +281,12 @@ namespace WorkflowBackend.Api.Controllers
                 r.CountryOfOrigin = NormalizeString(req.CountryOfOrigin);
 
             if (req.PaymentMethod is not null)
-                r.PaymentMethod = NormalizeString(req.PaymentMethod);
+            {
+                if (!TryNormalizePaymentMethod(req.PaymentMethod, out var paymentMethod, out var paymentError))
+                    return BadRequest(new { message = paymentError });
+
+                r.PaymentMethod = paymentMethod;
+            }
 
             if (req.ShippingMethod is not null)
                 r.ShippingMethod = NormalizeString(req.ShippingMethod);

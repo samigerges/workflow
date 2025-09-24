@@ -4,9 +4,6 @@ namespace WorkflowBackend.Api.DTOs
 {
     public class RequestCreateRequest
     {
-        [Required, MaxLength(200)]
-        public string Title { get; init; } = string.Empty;
-
         [MaxLength(4000)]
         public string? Description { get; init; }
 
@@ -48,9 +45,6 @@ namespace WorkflowBackend.Api.DTOs
 
     public class RequestUpdateRequest
     {
-        [MaxLength(200)]
-        public string? Title { get; init; }
-
         [MaxLength(4000)]
         public string? Description { get; init; }
 
@@ -125,7 +119,6 @@ namespace WorkflowBackend.Api.DTOs
 
     public record RequestResponse(
         Guid Id,
-        string Title,
         string? Description,
         string Status,
         Guid? CreatedByUserId,

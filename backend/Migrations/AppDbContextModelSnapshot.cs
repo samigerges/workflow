@@ -425,11 +425,6 @@ namespace WorkflowBackend.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<string>("UnitOfMeasure")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
