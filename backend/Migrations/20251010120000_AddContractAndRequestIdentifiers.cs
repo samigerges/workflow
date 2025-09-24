@@ -43,24 +43,24 @@ namespace WorkflowBackend.Api.Migrations
             if (ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
             {
                 migrationBuilder.Sql(@"WITH ranked AS (
-    SELECT \"Id\", ROW_NUMBER() OVER (ORDER BY \"CreatedAt\", \"Id\") - 1 AS seq
-    FROM \"Contracts\"
+    SELECT ""Id"", ROW_NUMBER() OVER (ORDER BY ""CreatedAt"", ""Id"") - 1 AS seq
+    FROM ""Contracts""
 )
-UPDATE \"Contracts\" AS c
-SET \"SequenceNumber\" = ranked.seq,
-    \"PublicId\" = '2025/W/' || ranked.seq
+UPDATE ""Contracts"" AS c
+SET ""SequenceNumber"" = ranked.seq,
+    ""PublicId"" = '2025/W/' || ranked.seq
 FROM ranked
-WHERE c.\"Id\" = ranked.\"Id\";");
+WHERE c.""Id"" = ranked.""Id"";");
 
                 migrationBuilder.Sql(@"WITH ranked AS (
-    SELECT \"Id\", ROW_NUMBER() OVER (ORDER BY \"CreatedAt\", \"Id\") - 1 AS seq
-    FROM \"Requests\"
+    SELECT ""Id"", ROW_NUMBER() OVER (ORDER BY ""CreatedAt"", ""Id"") - 1 AS seq
+    FROM ""Requests""
 )
-UPDATE \"Requests\" AS r
-SET \"SequenceNumber\" = ranked.seq,
-    \"PublicId\" = '2025/W/' || ranked.seq
+UPDATE ""Requests"" AS r
+SET ""SequenceNumber"" = ranked.seq,
+    ""PublicId"" = '2025/W/' || ranked.seq
 FROM ranked
-WHERE r.\"Id\" = ranked.\"Id\";");
+WHERE r.""Id"" = ranked.""Id"";");
             }
             else if (ActiveProvider == "Microsoft.EntityFrameworkCore.SqlServer")
             {
@@ -87,27 +87,27 @@ INNER JOIN ranked ON r.[Id] = ranked.[Id];");
             else if (ActiveProvider == "Microsoft.EntityFrameworkCore.Sqlite")
             {
                 migrationBuilder.Sql(@"WITH ranked AS (
-    SELECT \"Id\", ROW_NUMBER() OVER (ORDER BY \"CreatedAt\", \"Id\") - 1 AS seq
-    FROM \"Contracts\"
+    SELECT ""Id"", ROW_NUMBER() OVER (ORDER BY ""CreatedAt"", ""Id"") - 1 AS seq
+    FROM ""Contracts""
 )
-UPDATE \"Contracts\"
-SET \"SequenceNumber\" = (
-        SELECT seq FROM ranked WHERE ranked.\"Id\" = \"Contracts\".\"Id\"
+UPDATE ""Contracts""
+SET ""SequenceNumber"" = (
+        SELECT seq FROM ranked WHERE ranked.""Id"" = ""Contracts"".""Id""
     ),
-    \"PublicId\" = '2025/W/' || (
-        SELECT seq FROM ranked WHERE ranked.\"Id\" = \"Contracts\".\"Id\"
+    ""PublicId"" = '2025/W/' || (
+        SELECT seq FROM ranked WHERE ranked.""Id"" = ""Contracts"".""Id""
     );");
 
                 migrationBuilder.Sql(@"WITH ranked AS (
-    SELECT \"Id\", ROW_NUMBER() OVER (ORDER BY \"CreatedAt\", \"Id\") - 1 AS seq
-    FROM \"Requests\"
+    SELECT ""Id"", ROW_NUMBER() OVER (ORDER BY ""CreatedAt"", ""Id"") - 1 AS seq
+    FROM ""Requests""
 )
-UPDATE \"Requests\"
-SET \"SequenceNumber\" = (
-        SELECT seq FROM ranked WHERE ranked.\"Id\" = \"Requests\".\"Id\"
+UPDATE ""Requests""
+SET ""SequenceNumber"" = (
+        SELECT seq FROM ranked WHERE ranked.""Id"" = ""Requests"".""Id""
     ),
-    \"PublicId\" = '2025/W/' || (
-        SELECT seq FROM ranked WHERE ranked.\"Id\" = \"Requests\".\"Id\"
+    ""PublicId"" = '2025/W/' || (
+        SELECT seq FROM ranked WHERE ranked.""Id"" = ""Requests"".""Id""
     );");
             }
 
