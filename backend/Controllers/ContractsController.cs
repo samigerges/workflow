@@ -72,8 +72,73 @@ namespace WorkflowBackend.Api.Controllers
                 ["file_path"] = ("File path", 500)
             };
 
-        private async Task<bool> RequestExistsAsync(Guid requestId) =>
-            await _db.Requests.AnyAsync(r => r.Id == requestId);
+        private async Task<ActionResult<ContractResponse>?> EnsureRequestCompatibilityAsync(Guid requestId, Contract contract)
+        {
+            var request = await _db.Requests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == requestId);
+            if (request is null)
+            {
+                return BadRequest(new { message = "The selected request could not be found." });
+            }
+
+            var mismatches = new List<string>();
+
+            if (!MatchesString(request.SupplierName, contract.SupplierName))
+                mismatches.Add("supplier name");
+
+            if (!MatchesDecimal(request.Quantity, contract.Quantity))
+                mismatches.Add("quantity");
+
+            if (!MatchesString(request.CargoType, contract.CargoType))
+                mismatches.Add("cargo type");
+
+            if (!MatchesString(request.CountryOfOrigin, contract.CountryOfOrigin))
+                mismatches.Add("country of origin");
+
+            if (!MatchesDecimal(request.PricePerTon, contract.PricePerTon))
+                mismatches.Add("price per ton");
+
+            if (!MatchesString(request.PaymentMethod, contract.PaymentMethod))
+                mismatches.Add("payment method");
+
+            if (!MatchesString(request.ShippingMethod, contract.ShippingMethod))
+                mismatches.Add("shipping method");
+
+            if (!MatchesDate(request.StartDate, contract.StartDate))
+                mismatches.Add("start date");
+
+            if (!MatchesDate(request.EndDate, contract.EndDate))
+                mismatches.Add("end date");
+
+            if (mismatches.Count > 0)
+            {
+                return BadRequest(new
+                {
+                    message = $"The contract cannot be linked to the selected request because the following fields differ: {string.Join(", ", mismatches)}. Please ensure the contract details match the request."
+                });
+            }
+
+            return null;
+        }
+
+        private static string? NormalizeComparisonString(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private static bool MatchesString(string? requestValue, string? contractValue)
+        {
+            var normalizedRequest = NormalizeComparisonString(requestValue);
+            if (normalizedRequest is null)
+                return true;
+
+            var normalizedContract = NormalizeComparisonString(contractValue);
+            return normalizedContract is not null &&
+                string.Equals(normalizedRequest, normalizedContract, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool MatchesDecimal(decimal? requestValue, decimal? contractValue) =>
+            requestValue is null || (contractValue is not null && contractValue.Value == requestValue.Value);
+
+        private static bool MatchesDate(DateTime? requestValue, DateTime? contractValue) =>
+            requestValue is null || (contractValue is not null && requestValue.Value.Date == contractValue.Value.Date);
 
         private async Task<(int Sequence, string PublicId)> GenerateNextContractIdentifierAsync()
         {
@@ -457,9 +522,6 @@ namespace WorkflowBackend.Api.Controllers
             if (string.IsNullOrWhiteSpace(req.Title))
                 return BadRequest(new { message = "Title is required." });
 
-            if (req.RequestId is Guid rid && !await RequestExistsAsync(rid))
-                return BadRequest(new { message = "The selected request could not be found." });
-
             var c = new Contract
             {
                 Title = req.Title.Trim(),
@@ -479,6 +541,12 @@ namespace WorkflowBackend.Api.Controllers
                 EndDate = ToUtc(req.EndDate),
                 ReviewNotes = string.IsNullOrWhiteSpace(req.ReviewNotes) ? null : req.ReviewNotes.Trim()
             };
+
+            if (c.RequestId is Guid requestIdToValidate)
+            {
+                if (await EnsureRequestCompatibilityAsync(requestIdToValidate, c) is { } requestValidation)
+                    return requestValidation;
+            }
 
             var (sequence, publicId) = await GenerateNextContractIdentifierAsync();
             c.SequenceNumber = sequence;
@@ -541,12 +609,15 @@ namespace WorkflowBackend.Api.Controllers
                 ReviewNotes = string.IsNullOrWhiteSpace(reviewNotes) ? null : reviewNotes.Trim()
             };
 
+            if (c.RequestId is Guid requestIdToValidate)
+            {
+                if (await EnsureRequestCompatibilityAsync(requestIdToValidate, c) is { } requestValidation)
+                    return requestValidation;
+            }
+
             var (sequence, publicId) = await GenerateNextContractIdentifierAsync();
             c.SequenceNumber = sequence;
             c.PublicId = publicId;
-
-            if (c.RequestId is Guid existingRequestId && !await RequestExistsAsync(existingRequestId))
-                return BadRequest(new { message = "The selected request could not be found." });
 
             if (file is not null)
             {
@@ -589,9 +660,6 @@ namespace WorkflowBackend.Api.Controllers
             if (string.IsNullOrWhiteSpace(req.Title))
                 return BadRequest(new { message = "Title is required." });
 
-            if (req.RequestId is Guid rid && !await RequestExistsAsync(rid))
-                return BadRequest(new { message = "The selected request could not be found." });
-
             c.Title = req.Title.Trim();
             c.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
             c.RequestId = req.RequestId;
@@ -607,6 +675,12 @@ namespace WorkflowBackend.Api.Controllers
             c.EndDate = ToUtc(req.EndDate);
             c.ReviewNotes = string.IsNullOrWhiteSpace(req.ReviewNotes) ? null : req.ReviewNotes.Trim();
             c.UpdatedAt = DateTime.UtcNow;
+
+            if (c.RequestId is Guid requestIdToValidate)
+            {
+                if (await EnsureRequestCompatibilityAsync(requestIdToValidate, c) is { } requestValidation)
+                    return requestValidation;
+            }
 
             try
             {
@@ -656,9 +730,6 @@ namespace WorkflowBackend.Api.Controllers
                 }
                 else if (Guid.TryParse(requestId, out var rid))
                 {
-                    if (!await RequestExistsAsync(rid))
-                        return BadRequest(new { message = "The selected request could not be found." });
-
                     c.RequestId = rid;
                 }
                 else
@@ -693,6 +764,13 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             c.UpdatedAt = DateTime.UtcNow;
+
+            if (c.RequestId is Guid requestIdToValidate)
+            {
+                if (await EnsureRequestCompatibilityAsync(requestIdToValidate, c) is { } requestValidation)
+                    return requestValidation;
+            }
+
             try
             {
                 await _db.SaveChangesAsync();
