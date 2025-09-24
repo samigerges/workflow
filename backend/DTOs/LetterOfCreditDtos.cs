@@ -6,24 +6,32 @@ namespace WorkflowBackend.Api.DTOs
         [param:Required, MaxLength(100)] string Number,
         [param:MaxLength(200)] string? IssuingBank,
         decimal? Amount,
+        decimal? Quantity,
+        decimal? PricePerUnit,
         [param:MaxLength(10)] string? Currency,
         DateTime? IssueDate,
+        DateTime? ShipmentPeriod,
         DateTime? ExpiryDate,
         [param:MaxLength(200)] string? Applicant,
         [param:MaxLength(200)] string? Beneficiary,
-        Guid? ContractId
+        Guid? ContractId,
+        [param:MaxLength(100)] string? CargoType
     );
 
     public record LetterOfCreditUpdateRequest(
         [param:Required, MaxLength(100)] string Number,
         [param:MaxLength(200)] string? IssuingBank,
         decimal? Amount,
+        decimal? Quantity,
+        decimal? PricePerUnit,
         [param:MaxLength(10)] string? Currency,
         DateTime? IssueDate,
+        DateTime? ShipmentPeriod,
         DateTime? ExpiryDate,
         [param:MaxLength(200)] string? Applicant,
         [param:MaxLength(200)] string? Beneficiary,
-        Guid? ContractId
+        Guid? ContractId,
+        [param:MaxLength(100)] string? CargoType
     );
 
     public record LetterOfCreditStatusChangeRequest([param:Required, MaxLength(50)] string Status);
@@ -33,8 +41,11 @@ namespace WorkflowBackend.Api.DTOs
         string Number,
         string? IssuingBank,
         decimal? Amount,
+        decimal? Quantity,
+        decimal? PricePerUnit,
         string? Currency,
         DateTime? IssueDate,
+        DateTime? ShipmentPeriod,
         DateTime? ExpiryDate,
         string? Applicant,
         string? Beneficiary,
@@ -44,7 +55,8 @@ namespace WorkflowBackend.Api.DTOs
         DateTime CreatedAt,
         DateTime UpdatedAt,
         string? FileUrl,
-        string? FileName
+        string? FileName,
+        string? CargoType
     );
 
     public record LetterOfCreditVesselAllocationResponse(

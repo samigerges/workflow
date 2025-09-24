@@ -147,6 +147,10 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
                       normalizedLc?.amount ?? null,
                       normalizedLc?.currency ?? null,
                     );
+                    const pricePerUnitLabel = formatLcCurrency(
+                      normalizedLc?.pricePerUnit ?? null,
+                      normalizedLc?.currency ?? null,
+                    );
                     return (
                       <div key={index} className="p-3 border rounded-lg">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -163,7 +167,11 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
                             <p className="text-gray-900">{vesselLC.quantity} tons</p>
                           </div>
                           <div>
-                            <span className="text-sm font-medium text-gray-500">LC Amount:</span>
+                            <span className="text-sm font-medium text-gray-500">Price per Unit:</span>
+                            <p className="text-gray-900">{pricePerUnitLabel}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-gray-500">Total Price:</span>
                             <p className="text-gray-900">{lcAmountLabel}</p>
                           </div>
                           <div>
@@ -399,6 +407,10 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
                       normalizedLc?.amount ?? null,
                       normalizedLc?.currency ?? null,
                     );
+                    const pricePerUnitLabel = formatLcCurrency(
+                      normalizedLc?.pricePerUnit ?? null,
+                      normalizedLc?.currency ?? null,
+                    );
                     return (
                       <div key={index} className="border rounded-lg p-4 bg-gray-50">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -432,7 +444,11 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
                             </Badge>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-900">LC Amount</h4>
+                            <h4 className="font-semibold text-gray-900">Price per Unit</h4>
+                            <p className="text-gray-700">{pricePerUnitLabel}</p>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">Total Price</h4>
                             <p className="text-gray-700">{lcAmountLabel}</p>
                           </div>
                         </div>

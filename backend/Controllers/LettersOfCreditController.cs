@@ -55,9 +55,26 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             return new LetterOfCreditResponse(
-                lc.Id, lc.Number, lc.IssuingBank, lc.Amount, lc.Currency, lc.IssueDate, lc.ExpiryDate,
-                lc.Applicant, lc.Beneficiary, lc.Status, lc.ContractId, lc.CreatedByUserId,
-                lc.CreatedAt, lc.UpdatedAt, url, lc.FileName
+                lc.Id,
+                lc.Number,
+                lc.IssuingBank,
+                lc.Amount,
+                lc.Quantity,
+                lc.PricePerUnit,
+                lc.Currency,
+                lc.IssueDate,
+                lc.ShipmentPeriod,
+                lc.ExpiryDate,
+                lc.Applicant,
+                lc.Beneficiary,
+                lc.Status,
+                lc.ContractId,
+                lc.CreatedByUserId,
+                lc.CreatedAt,
+                lc.UpdatedAt,
+                url,
+                lc.FileName,
+                lc.CargoType
             );
         }
 
@@ -123,9 +140,15 @@ namespace WorkflowBackend.Api.Controllers
             {
                 Number = req.Number.Trim(),
                 IssuingBank = string.IsNullOrWhiteSpace(req.IssuingBank) ? null : req.IssuingBank.Trim(),
-                Amount = req.Amount,
+                Quantity = req.Quantity,
+                PricePerUnit = req.PricePerUnit,
+                Amount = req.Amount ?? (req.Quantity.HasValue && req.PricePerUnit.HasValue
+                    ? req.Quantity.Value * req.PricePerUnit.Value
+                    : null),
                 Currency = string.IsNullOrWhiteSpace(req.Currency) ? null : req.Currency.Trim().ToUpperInvariant(),
+                CargoType = string.IsNullOrWhiteSpace(req.CargoType) ? null : req.CargoType.Trim(),
                 IssueDate = ToUtc(req.IssueDate),
+                ShipmentPeriod = ToUtc(req.ShipmentPeriod),
                 ExpiryDate = ToUtc(req.ExpiryDate),
                 Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim(),
                 Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim(),
@@ -147,8 +170,12 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] string number,
             [FromForm] string? issuingBank,
             [FromForm] decimal? amount,
+            [FromForm] decimal? quantity,
+            [FromForm] decimal? pricePerUnit,
             [FromForm] string? currency,
+            [FromForm] string? cargoType,
             [FromForm] DateTime? issueDate,
+            [FromForm] DateTime? shipmentPeriod,
             [FromForm] DateTime? expiryDate,
             [FromForm] string? applicant,
             [FromForm] string? beneficiary,
@@ -159,9 +186,15 @@ namespace WorkflowBackend.Api.Controllers
             {
                 Number = number.Trim(),
                 IssuingBank = string.IsNullOrWhiteSpace(issuingBank) ? null : issuingBank.Trim(),
-                Amount = amount,
+                Quantity = quantity,
+                PricePerUnit = pricePerUnit,
+                Amount = amount ?? (quantity.HasValue && pricePerUnit.HasValue
+                    ? quantity.Value * pricePerUnit.Value
+                    : null),
                 Currency = string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant(),
+                CargoType = string.IsNullOrWhiteSpace(cargoType) ? null : cargoType.Trim(),
                 IssueDate = ToUtc(issueDate),
+                ShipmentPeriod = ToUtc(shipmentPeriod),
                 ExpiryDate = ToUtc(expiryDate),
                 Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim(),
                 Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim(),
@@ -202,9 +235,15 @@ namespace WorkflowBackend.Api.Controllers
 
             lc.Number = req.Number.Trim();
             lc.IssuingBank = string.IsNullOrWhiteSpace(req.IssuingBank) ? null : req.IssuingBank.Trim();
-            lc.Amount = req.Amount;
+            lc.Quantity = req.Quantity;
+            lc.PricePerUnit = req.PricePerUnit;
+            lc.Amount = req.Amount ?? (req.Quantity.HasValue && req.PricePerUnit.HasValue
+                ? req.Quantity.Value * req.PricePerUnit.Value
+                : lc.Amount);
             lc.Currency = string.IsNullOrWhiteSpace(req.Currency) ? null : req.Currency.Trim().ToUpperInvariant();
+            lc.CargoType = string.IsNullOrWhiteSpace(req.CargoType) ? null : req.CargoType.Trim();
             lc.IssueDate = ToUtc(req.IssueDate);
+            lc.ShipmentPeriod = ToUtc(req.ShipmentPeriod);
             lc.ExpiryDate = ToUtc(req.ExpiryDate);
             lc.Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim();
@@ -223,8 +262,12 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] string number,
             [FromForm] string? issuingBank,
             [FromForm] decimal? amount,
+            [FromForm] decimal? quantity,
+            [FromForm] decimal? pricePerUnit,
             [FromForm] string? currency,
+            [FromForm] string? cargoType,
             [FromForm] DateTime? issueDate,
+            [FromForm] DateTime? shipmentPeriod,
             [FromForm] DateTime? expiryDate,
             [FromForm] string? applicant,
             [FromForm] string? beneficiary,
@@ -236,9 +279,15 @@ namespace WorkflowBackend.Api.Controllers
 
             lc.Number = number.Trim();
             lc.IssuingBank = string.IsNullOrWhiteSpace(issuingBank) ? null : issuingBank.Trim();
-            lc.Amount = amount;
+            lc.Quantity = quantity;
+            lc.PricePerUnit = pricePerUnit;
+            lc.Amount = amount ?? (quantity.HasValue && pricePerUnit.HasValue
+                ? quantity.Value * pricePerUnit.Value
+                : lc.Amount);
             lc.Currency = string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant();
+            lc.CargoType = string.IsNullOrWhiteSpace(cargoType) ? null : cargoType.Trim();
             lc.IssueDate = ToUtc(issueDate);
+            lc.ShipmentPeriod = ToUtc(shipmentPeriod);
             lc.ExpiryDate = ToUtc(expiryDate);
             lc.Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim();

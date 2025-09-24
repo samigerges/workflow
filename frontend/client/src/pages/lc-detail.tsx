@@ -60,21 +60,41 @@ export default function LCDetail() {
   const lcAnalytics = useMemo(() => {
     if (!lcData || !normalizedLc) return null;
 
-    const allocatedAmount = lcVessels.reduce(
+    const allocatedQuantity = lcVessels.reduce(
       (sum, vessel) => sum + (Number(vessel.quantity) || 0),
       0,
     );
-    const fallbackAmount = Number(lcData.quantity) || 0;
-    const totalAmount = normalizedLc.amount ?? fallbackAmount;
-    const remainingAmount = Math.max(0, totalAmount - allocatedAmount);
-    const utilizationRate = totalAmount > 0 ? (allocatedAmount / totalAmount) * 100 : 0;
+
+    const rawQuantity = Number(lcData.quantity);
+    const normalizedQuantity =
+      typeof normalizedLc.quantity === "number" && Number.isFinite(normalizedLc.quantity)
+        ? normalizedLc.quantity
+        : null;
+    const totalQuantity = Number.isFinite(rawQuantity)
+      ? rawQuantity
+      : normalizedQuantity ?? 0;
+
+    const pricePerUnit =
+      typeof normalizedLc.pricePerUnit === "number" && Number.isFinite(normalizedLc.pricePerUnit)
+        ? normalizedLc.pricePerUnit
+        : normalizedLc.amount && totalQuantity > 0
+        ? normalizedLc.amount / totalQuantity
+        : null;
+
+    const totalPrice =
+      normalizedLc.amount ?? (pricePerUnit !== null ? pricePerUnit * totalQuantity : null);
+
+    const remainingQuantity = Math.max(0, totalQuantity - allocatedQuantity);
+    const utilizationRate = totalQuantity > 0 ? (allocatedQuantity / totalQuantity) * 100 : 0;
 
     return {
       id: normalizedLc.id ?? lcData.id,
       lcNumber: normalizedLc.number,
-      totalAmount,
-      allocatedAmount,
-      remainingAmount,
+      totalQuantity,
+      allocatedQuantity,
+      remainingQuantity,
+      totalPrice,
+      pricePerUnit,
       utilizationRate,
       currency: normalizedLc.currency ?? "USD",
       status: normalizedLc.status,
@@ -159,41 +179,49 @@ export default function LCDetail() {
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Package className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-600">Total Amount</span>
+                  <span className="text-sm font-medium text-gray-600">Total Quantity</span>
                 </div>
                 <p className="text-xl font-bold text-blue-600">
-                  {formatLcCurrency(lcAnalytics.totalAmount, lcAnalytics.currency)}
+                  {lcAnalytics.totalQuantity.toLocaleString()} units
                 </p>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-600">Duration</span>
+                  <span className="text-sm font-medium text-gray-600">Price per Unit</span>
                 </div>
-                <p className="text-lg font-semibold text-gray-700">{lcAnalytics.duration}</p>
+                <p className="text-lg font-semibold text-gray-700">
+                  {lcAnalytics.pricePerUnit !== null
+                    ? formatLcCurrency(lcAnalytics.pricePerUnit, lcAnalytics.currency)
+                    : "N/A"}
+                </p>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <University className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-600">Issuing Bank</span>
+                  <DollarSign className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-600">Total Price</span>
                 </div>
-                <p className="text-lg font-semibold text-gray-700">{lcAnalytics.issuingBank || 'N/A'}</p>
+                <p className="text-xl font-bold text-blue-600">
+                  {lcAnalytics.totalPrice !== null
+                    ? formatLcCurrency(lcAnalytics.totalPrice, lcAnalytics.currency)
+                    : "N/A"}
+                </p>
               </div>
             </div>
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-600 font-medium">Allocated Amount</p>
+                <p className="text-sm text-blue-600 font-medium">Allocated Quantity</p>
                 <p className="text-2xl font-bold text-blue-700">
-                  {formatLcCurrency(lcAnalytics.allocatedAmount, lcAnalytics.currency)}
+                  {lcAnalytics.allocatedQuantity.toLocaleString()} units
                 </p>
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
-                <p className="text-sm text-green-600 font-medium">Remaining Amount</p>
+                <p className="text-sm text-green-600 font-medium">Remaining Quantity</p>
                 <p className="text-2xl font-bold text-green-700">
-                  {formatLcCurrency(lcAnalytics.remainingAmount, lcAnalytics.currency)}
+                  {lcAnalytics.remainingQuantity.toLocaleString()} units
                 </p>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg">

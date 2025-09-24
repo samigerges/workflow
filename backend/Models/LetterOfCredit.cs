@@ -12,12 +12,20 @@ namespace WorkflowBackend.Api.Models
         [MaxLength(200)]
         public string? IssuingBank { get; set; }
 
-        public decimal? Amount { get; set; }
+        public decimal? Amount { get; set; } // Represents the total LC price
+
+        public decimal? Quantity { get; set; }
+
+        public decimal? PricePerUnit { get; set; }
 
         [MaxLength(10)]
         public string? Currency { get; set; } // e.g., USD, EUR
 
+        [MaxLength(100)]
+        public string? CargoType { get; set; }
+
         public DateTime? IssueDate { get; set; }
+        public DateTime? ShipmentPeriod { get; set; }
         public DateTime? ExpiryDate { get; set; }
 
         [MaxLength(200)]

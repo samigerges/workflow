@@ -93,14 +93,6 @@ export default function LettersCredit() {
   // Ensure lettersOfCredit is an array
   const lcArray = Array.isArray(lettersOfCredit) ? lettersOfCredit : [];
 
-  const { data: contracts = [] } = useQuery({
-    queryKey: ["/api/contracts"],
-    retry: false,
-  });
-
-  // Ensure contracts is an array
-  const contractsArray = Array.isArray(contracts) ? contracts : [];
-
   const normalizedEntries = useMemo(
     () => lcArray.map((lc: any) => ({ raw: lc, normalized: normalizeLc(lc) })),
     [lcArray],
@@ -207,11 +199,9 @@ export default function LettersCredit() {
                   <DialogHeader>
                     <DialogTitle>Create New Letter of Credit</DialogTitle>
                   </DialogHeader>
-                  <LetterOfCreditForm 
+                  <LetterOfCreditForm
                     onSuccess={() => setShowCreateDialog(false)}
                     onCancel={() => setShowCreateDialog(false)}
-                    contracts={contractsArray}
-                    requests={[]}
                   />
                 </DialogContent>
               </Dialog>
@@ -224,7 +214,7 @@ export default function LettersCredit() {
                 <DialogTitle>Edit Letter of Credit</DialogTitle>
               </DialogHeader>
               {editingLC && (
-                <LetterOfCreditForm 
+                <LetterOfCreditForm
                   lc={editingLC}
                   onSuccess={() => {
                     setShowEditDialog(false);
@@ -234,8 +224,6 @@ export default function LettersCredit() {
                     setShowEditDialog(false);
                     setEditingLC(null);
                   }}
-                  contracts={contractsArray}
-                  requests={[]}
                 />
               )}
             </DialogContent>
@@ -331,11 +319,13 @@ export default function LettersCredit() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>LC Number</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Currency</TableHead>
+                      <TableHead>Cargo Type</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Price per Unit</TableHead>
+                      <TableHead>Total Price</TableHead>
                       <TableHead>Issuing Bank</TableHead>
-                      <TableHead>Applicant</TableHead>
                       <TableHead>Beneficiary</TableHead>
+                      <TableHead>Shipment Period</TableHead>
                       <TableHead>Issue Date</TableHead>
                       <TableHead>Expiry Date</TableHead>
                       <TableHead>Status</TableHead>
@@ -353,11 +343,19 @@ export default function LettersCredit() {
                       return (
                         <TableRow key={String(rowKey)} className={expired ? "bg-red-50" : ""}>
                           <TableCell className="font-medium">{normalized.number}</TableCell>
+                          <TableCell>{normalized.cargoType ?? "—"}</TableCell>
+                          <TableCell>
+                            {typeof normalized.quantity === "number"
+                              ? normalized.quantity.toLocaleString()
+                              : "—"}
+                          </TableCell>
+                          <TableCell>
+                            {formatLcCurrency(normalized.pricePerUnit, normalized.currency)}
+                          </TableCell>
                           <TableCell>{formatLcCurrency(normalized.amount, normalized.currency)}</TableCell>
-                          <TableCell>{normalized.currency ?? "—"}</TableCell>
                           <TableCell>{normalized.issuingBank ?? "—"}</TableCell>
-                          <TableCell>{normalized.applicant ?? "—"}</TableCell>
                           <TableCell>{normalized.beneficiary ?? "—"}</TableCell>
+                          <TableCell>{formatLcDate(normalized.shipmentPeriod)}</TableCell>
                           <TableCell>{formatLcDate(normalized.issueDate)}</TableCell>
                           <TableCell className={expired ? "text-red-600 font-medium" : ""}>
                             {formatLcDate(normalized.expiryDate)}

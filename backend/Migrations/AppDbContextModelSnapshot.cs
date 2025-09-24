@@ -207,6 +207,10 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<decimal?>("Amount")
                         .HasColumnType("numeric");
 
+                    b.Property<string>("CargoType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Applicant")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -217,6 +221,12 @@ namespace WorkflowBackend.Api.Migrations
 
                     b.Property<Guid?>("ContractId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal?>("PricePerUnit")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("Quantity")
+                        .HasColumnType("numeric");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -240,6 +250,9 @@ namespace WorkflowBackend.Api.Migrations
                         .HasColumnType("character varying(500)");
 
                     b.Property<DateTime?>("IssueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ShipmentPeriod")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("IssuingBank")
