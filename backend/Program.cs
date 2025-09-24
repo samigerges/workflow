@@ -80,7 +80,8 @@ Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "global-documents"));
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    await db.Database.MigrateAsync();
+    await SchemaUpgrader.EnsureRequestAndContractIdentifiersAsync(db);
 }
 
 // Seed dev data + Swagger
