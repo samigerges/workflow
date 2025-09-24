@@ -23,6 +23,11 @@ import {
 const CONTRACT_NARRATIVE_LIMIT = 20000;
 const REVIEW_NOTES_LIMIT = 20000;
 
+const formatRequestPreview = (description?: string) => {
+  if (!description) return "No description";
+  return description.length > 60 ? `${description.slice(0, 60)}…` : description;
+};
+
 function extractErrorMessage(error: unknown) {
   if (error instanceof Error) {
     const match = error.message.match(/^(\d{3}):\s*([\s\S]*)$/);
@@ -59,7 +64,6 @@ function extractErrorMessage(error: unknown) {
 
 // Create a more flexible schema for drafts - consistent with backend DTO
 const contractFormSchema = z.object({
-  title: z.string().min(1, "Title is required"),
   description: z
     .string()
     .max(
@@ -146,7 +150,23 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
   const createMutation = useMutation({
     mutationFn: async (data: ContractFormData) => {
       const formData = new FormData();
-      
+
+      const matchedRequest = data.requestId
+        ? requests.find((req) => req.id?.toString() === data.requestId)
+        : undefined;
+
+      const resolvedTitle =
+        contract?.title ??
+        (matchedRequest?.publicId
+          ? `Contract for ${matchedRequest.publicId}`
+          : data.supplierName
+            ? `${data.supplierName} Contract`
+            : data.cargoType
+              ? `${data.cargoType.charAt(0).toUpperCase()}${data.cargoType.slice(1)} Contract`
+              : "Contract");
+
+      formData.append("title", resolvedTitle);
+
       // Add form fields - ensure required fields are present
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
@@ -270,40 +290,10 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
     <Card>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            <div>
-              <Label htmlFor="title">Contract Title *</Label>
-              <Input
-                id="title"
-                {...register("title")}
-                placeholder="Contract title"
-                className={errors.title ? "border-red-500" : ""}
-              />
-              {errors.title && (
-                <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            {...register("description")}
-            rows={3}
-            placeholder="Contract description"
-            maxLength={CONTRACT_NARRATIVE_LIMIT}
-          />
-          <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
-          {errors.description && (
-            <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
-          )}
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="requestId">Related Request</Label>
-              <Select 
+              <Select
                 onValueChange={(value) => setValue("requestId", value)}
                 defaultValue={contract?.requestId?.toString()}
               >
@@ -314,7 +304,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                   <SelectItem value="none">No related request</SelectItem>
                   {requests.map((request) => (
                     <SelectItem key={request.id} value={request.id.toString()}>
-                      {(request.publicId ?? `REQ-${request.id.toString().padStart(3, '0')}`)} - {request.title}
+                      {(request.publicId ?? `REQ-${request.id.toString().padStart(3, '0')}`)} - {formatRequestPreview(request.description)}
                     </SelectItem>
                   ))}
                 </SelectContent>

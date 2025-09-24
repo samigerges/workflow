@@ -17,6 +17,8 @@ namespace WorkflowBackend.Api.DTOs
 
         public decimal? PricePerTon { get; init; }
 
+        public decimal? WheatPercentage { get; init; }
+
         [MaxLength(200)]
         public string? SupplierName { get; init; }
 
@@ -57,6 +59,8 @@ namespace WorkflowBackend.Api.DTOs
         public string? CargoType { get; init; }
 
         public decimal? PricePerTon { get; init; }
+
+        public decimal? WheatPercentage { get; init; }
 
         [MaxLength(200)]
         public string? SupplierName { get; init; }
@@ -132,6 +136,7 @@ namespace WorkflowBackend.Api.DTOs
         string? UnitOfMeasure,
         string? CargoType,
         decimal? PricePerTon,
+        decimal? WheatPercentage,
         string? SupplierName,
         string? CountryOfOrigin,
         string? PaymentMethod,

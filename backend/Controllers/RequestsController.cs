@@ -182,6 +182,7 @@ namespace WorkflowBackend.Api.Controllers
                 r.UnitOfMeasure,
                 r.CargoType,
                 r.PricePerTon,
+                r.WheatPercentage,
                 r.SupplierName,
                 r.CountryOfOrigin,
                 r.PaymentMethod,
@@ -234,6 +235,9 @@ namespace WorkflowBackend.Api.Controllers
             if (!TryNormalizePaymentMethod(req.PaymentMethod, out var paymentMethod, out var paymentError))
                 return BadRequest(new { message = paymentError });
 
+            if (req.WheatPercentage is < 0 or > 100)
+                return BadRequest(new { message = "Wheat percentage must be between 0 and 100." });
+
             var r = new Request
             {
                 Description = NormalizeString(req.Description),
@@ -242,6 +246,7 @@ namespace WorkflowBackend.Api.Controllers
                 UnitOfMeasure = NormalizeString(req.UnitOfMeasure),
                 CargoType = NormalizeString(req.CargoType),
                 PricePerTon = req.PricePerTon,
+                WheatPercentage = req.WheatPercentage,
                 SupplierName = NormalizeString(req.SupplierName),
                 CountryOfOrigin = NormalizeString(req.CountryOfOrigin),
                 PaymentMethod = paymentMethod,
@@ -252,6 +257,15 @@ namespace WorkflowBackend.Api.Controllers
                 UploadedFile = NormalizeString(req.UploadedFile),
                 CreatedByUserId = CurrentUserId()
             };
+
+            if (!string.Equals(r.CargoType, "wheat", StringComparison.OrdinalIgnoreCase))
+            {
+                r.WheatPercentage = null;
+            }
+            else if (r.WheatPercentage is null)
+            {
+                return BadRequest(new { message = "Wheat percentage is required when cargo type is wheat." });
+            }
 
             var (sequence, publicId) = await GenerateNextRequestIdentifierAsync();
             r.SequenceNumber = sequence;
@@ -273,6 +287,9 @@ namespace WorkflowBackend.Api.Controllers
             var r = await _db.Requests.Include(x => x.Votes).FirstOrDefaultAsync(x => x.Id == id);
             if (r is null) return NotFound();
 
+            if (req.WheatPercentage is < 0 or > 100)
+                return BadRequest(new { message = "Wheat percentage must be between 0 and 100." });
+
             if (req.Description is not null)
                 r.Description = NormalizeString(req.Description);
 
@@ -283,10 +300,19 @@ namespace WorkflowBackend.Api.Controllers
                 r.UnitOfMeasure = NormalizeString(req.UnitOfMeasure);
 
             if (req.CargoType is not null)
+            {
                 r.CargoType = NormalizeString(req.CargoType);
+                if (!string.Equals(r.CargoType, "wheat", StringComparison.OrdinalIgnoreCase))
+                    r.WheatPercentage = null;
+                else if (req.WheatPercentage is null && r.WheatPercentage is null)
+                    return BadRequest(new { message = "Wheat percentage is required when cargo type is wheat." });
+            }
 
             if (req.PricePerTon.HasValue)
                 r.PricePerTon = req.PricePerTon;
+
+            if (req.WheatPercentage.HasValue)
+                r.WheatPercentage = req.WheatPercentage;
 
             if (req.SupplierName is not null)
                 r.SupplierName = NormalizeString(req.SupplierName);

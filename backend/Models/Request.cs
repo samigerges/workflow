@@ -31,6 +31,8 @@ namespace WorkflowBackend.Api.Models
         [MaxLength(200)]
         public string? SupplierName { get; set; }
 
+        public decimal? WheatPercentage { get; set; }
+
         [MaxLength(100)]
         public string? CountryOfOrigin { get; set; }
 

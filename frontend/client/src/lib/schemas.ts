@@ -26,11 +26,8 @@ export type Need = z.infer<typeof insertNeedSchema> & {
 };
 
 // Schema for creating requests
-export const insertRequestSchema = z.object({
-  title: z
-    .string()
-    .min(1, "Title is required")
-    .max(200, "Title must be 200 characters or less"),
+export const insertRequestSchema = z
+  .object({
   description: z
     .string({ required_error: "Description is required" })
     .min(1, "Description is required")
@@ -65,6 +62,14 @@ export const insertRequestSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Price per unit must be greater than 0" });
       }
     }),
+  wheatPercentage: z.preprocess(
+    (val) => (typeof val === "number" && Number.isNaN(val) ? undefined : val),
+    z
+      .number({ invalid_type_error: "Wheat percentage must be between 0 and 100" })
+      .min(0, "Wheat percentage must be between 0 and 100")
+      .max(100, "Wheat percentage must be between 0 and 100")
+      .optional(),
+  ),
   supplierName: z
     .string({ required_error: "Supplier name is required" })
     .min(1, "Supplier name is required")
@@ -103,7 +108,24 @@ export const insertRequestSchema = z.object({
     }),
   status: z.string().max(50).optional(),
   uploadedFile: z.string().max(255).optional(),
-});
+})
+  .superRefine((data, ctx) => {
+    if (data.cargoType?.toLowerCase() === "wheat") {
+      if (data.wheatPercentage === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Wheat percentage is required when cargo type is wheat",
+          path: ["wheatPercentage"],
+        });
+      }
+    } else if (data.wheatPercentage !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Wheat percentage should only be provided for wheat cargo",
+        path: ["wheatPercentage"],
+      });
+    }
+  });
 
 // Schema for creating vessels
 export const insertVesselSchema = z.object({
