@@ -355,15 +355,26 @@ export default function Vessels() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vesselsArray.map((vessel: any) => (
-                      <TableRow key={vessel.id}>
-                        <TableCell className="font-medium">{vessel.vesselName || 'Unnamed Vessel'}</TableCell>
-                        <TableCell>CON-{vessel.contractId ? vessel.contractId.toString().padStart(3, '0') : '000'}</TableCell>
-                        <TableCell>
-                  <VesselLCDisplay vesselId={vessel.id} normalizedLcMap={normalizedLcMap} />
-                        </TableCell>
-                        <TableCell>{vessel.quantity || 0} tons</TableCell>
-                        <TableCell>
+                    {vesselsArray.map((vessel: any) => {
+                      const relatedContract = contractsArray.find(
+                        (contract: any) => contract.id === vessel.contractId,
+                      );
+
+                      return (
+                        <TableRow key={vessel.id}>
+                          <TableCell className="font-medium">{vessel.vesselName || 'Unnamed Vessel'}</TableCell>
+                          <TableCell>
+                            {relatedContract?.publicId ?? (
+                              vessel.contractId
+                                ? `CON-${vessel.contractId.toString().padStart(3, '0')}`
+                                : '—'
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <VesselLCDisplay vesselId={vessel.id} normalizedLcMap={normalizedLcMap} />
+                          </TableCell>
+                          <TableCell>{vessel.quantity || 0} tons</TableCell>
+                          <TableCell>
                           <div className="space-y-1">
                             <div className="flex items-center space-x-1 text-sm">
                               <MapPin size={12} className="text-secondary-500" />
@@ -467,8 +478,9 @@ export default function Vessels() {
                             </Button>
                           </div>
                         </TableCell>
-                      </TableRow>
-                    ))}
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               ) : (

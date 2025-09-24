@@ -61,6 +61,8 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<Request>().Property(r => r.ShippingMethod).HasMaxLength(100);
             modelBuilder.Entity<Request>().Property(r => r.LetterOfGuarantee).HasMaxLength(4000);
             modelBuilder.Entity<Request>().Property(r => r.UploadedFile).HasMaxLength(255);
+            modelBuilder.Entity<Request>().Property(r => r.PublicId).HasMaxLength(50).IsRequired();
+            modelBuilder.Entity<Request>().HasIndex(r => r.PublicId).IsUnique();
             modelBuilder.Entity<Request>()
                 .HasOne(r => r.CreatedBy).WithMany()
                 .HasForeignKey(r => r.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
@@ -78,6 +80,8 @@ namespace WorkflowBackend.Api.Data
             // Contract
             modelBuilder.Entity<Contract>().Property(c => c.Title).HasMaxLength(200).IsRequired();
             modelBuilder.Entity<Contract>().Property(c => c.Status).HasMaxLength(50).HasDefaultValue("Draft");
+            modelBuilder.Entity<Contract>().Property(c => c.PublicId).HasMaxLength(50).IsRequired();
+            modelBuilder.Entity<Contract>().HasIndex(c => c.PublicId).IsUnique();
             modelBuilder.Entity<Contract>()
                 .HasOne(c => c.Request).WithMany()
                 .HasForeignKey(c => c.RequestId).OnDelete(DeleteBehavior.SetNull);

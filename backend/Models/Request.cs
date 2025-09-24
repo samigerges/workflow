@@ -6,6 +6,12 @@ namespace WorkflowBackend.Api.Models
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 
+        [MaxLength(50)]
+        public string PublicId { get; set; } = string.Empty;
+
+        public int SequenceNumber { get; set; }
+            = 0;
+
         [MaxLength(4000)]
         public string? Description { get; set; }
 

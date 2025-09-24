@@ -272,6 +272,7 @@ export default function Requests() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Request ID</TableHead>
                       <TableHead>Supplier</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Cargo</TableHead>
@@ -288,6 +289,9 @@ export default function Requests() {
                   <TableBody>
                     {Array.isArray(requests) && requests.map((request: any) => (
                       <TableRow key={request.id}>
+                        <TableCell className="font-medium">
+                          {request.publicId ?? request.id}
+                        </TableCell>
                         <TableCell>
                           {request.supplierName || '-'}
                         </TableCell>

@@ -109,7 +109,9 @@ export default function RequestSummary({ request, isOpen, onClose }: RequestSumm
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Package className="h-5 w-5" />
-            <span>Contract Request Summary - REQ-{String(request.id ?? '').padStart(3, '0')}</span>
+            <span>
+              Contract Request Summary - {request.publicId ?? `REQ-${String(request.id ?? '').padStart(3, '0')}`}
+            </span>
           </DialogTitle>
         </DialogHeader>
 

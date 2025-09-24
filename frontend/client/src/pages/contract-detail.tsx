@@ -73,7 +73,9 @@ export default function ContractDetail() {
 
     return {
       id: contractData.id,
-      contractId: `CON-${contractData.id.toString().padStart(3, '0')}`,
+      contractId: contractData.publicId
+        ? contractData.publicId
+        : `CON-${contractData.id.toString().padStart(3, '0')}`,
       supplierName: contractData.supplierName || 'N/A',
       totalAmount,
       allocatedAmount,

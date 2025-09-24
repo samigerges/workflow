@@ -28,6 +28,14 @@ namespace WorkflowBackend.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("integer");
+
                     b.Property<string>("CargoType")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -107,6 +115,9 @@ namespace WorkflowBackend.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("PublicId")
+                        .IsUnique();
 
                     b.HasIndex("RequestId");
 
@@ -370,6 +381,14 @@ namespace WorkflowBackend.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("integer");
+
                     b.Property<string>("CargoType")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -439,6 +458,9 @@ namespace WorkflowBackend.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("PublicId")
+                        .IsUnique();
 
                     b.ToTable("Requests");
                 });

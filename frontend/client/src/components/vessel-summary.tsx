@@ -339,7 +339,13 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <h4 className="font-semibold text-gray-900">Contract ID</h4>
-                    <p className="text-gray-700">CON-{vessel.contractId.toString().padStart(3, '0')}</p>
+                    <p className="text-gray-700">
+                      {associatedContract?.publicId ?? (
+                        vessel.contractId != null
+                          ? `CON-${vessel.contractId.toString().padStart(3, '0')}`
+                          : '—'
+                      )}
+                    </p>
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900">Supplier</h4>

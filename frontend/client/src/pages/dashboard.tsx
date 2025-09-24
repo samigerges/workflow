@@ -182,7 +182,9 @@ export default function Dashboard() {
                       >
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
-                            <p className="font-bold text-secondary-900 text-base">CON-{contract.id.toString().padStart(3, '0')}</p>
+                            <p className="font-bold text-secondary-900 text-base">
+                              {contract.publicId ?? `CON-${contract.id.toString().padStart(3, '0')}`}
+                            </p>
                             <p className="text-sm font-bold text-primary-600 bg-primary-50 px-2 py-1 rounded-lg">
                               {parseFloat(contract.quantity || 0).toLocaleString()} tons
                             </p>

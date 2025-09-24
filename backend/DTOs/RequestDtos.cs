@@ -119,6 +119,8 @@ namespace WorkflowBackend.Api.DTOs
 
     public record RequestResponse(
         Guid Id,
+        string PublicId,
+        int SequenceNumber,
         string? Description,
         string Status,
         Guid? CreatedByUserId,

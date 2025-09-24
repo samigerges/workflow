@@ -56,6 +56,8 @@ namespace WorkflowBackend.Api.DTOs
 
     public record ContractResponse(
         Guid Id,
+        string PublicId,
+        int SequenceNumber,
         string Title,
         string? Description,
         string Status,
