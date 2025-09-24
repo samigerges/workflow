@@ -278,6 +278,7 @@ export default function Requests() {
                       <TableHead>Price per Unit</TableHead>
                       <TableHead>Payment Method</TableHead>
                       <TableHead>Shipping Method</TableHead>
+                      <TableHead>Letter of Guarantee</TableHead>
                       <TableHead>Country of Origin</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Recommend on Doc</TableHead>
@@ -304,6 +305,14 @@ export default function Requests() {
                         </TableCell>
                         <TableCell>
                           {request.shippingMethod || '-'}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <span
+                            className="block max-w-xs truncate text-sm text-secondary-700"
+                            title={request.letterOfGuarantee || '-'}
+                          >
+                            {request.letterOfGuarantee || '-'}
+                          </span>
                         </TableCell>
                         <TableCell>
                           {request.countryOfOrigin || '-'}

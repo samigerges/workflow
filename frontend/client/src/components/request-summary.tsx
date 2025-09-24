@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, DollarSign, Package, Truck, User, FileText, MapPin, ExternalLink, Building, MessageSquare, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, DollarSign, Package, Truck, User, FileText, MapPin, ExternalLink, Building, MessageSquare, CheckCircle, XCircle, ShieldCheck } from "lucide-react";
 
 interface RequestSummaryProps {
   request: any;
@@ -253,6 +253,16 @@ export default function RequestSummary({ request, isOpen, onClose }: RequestSumm
                   </div>
                 </div>
 
+                {/* Letter of Guarantee */}
+                <div className="flex items-start space-x-3 md:col-span-2">
+                  <ShieldCheck className="h-5 w-5 text-gray-500 mt-1" />
+                  <div>
+                    <p className="text-sm text-gray-500">Letter of Guarantee</p>
+                    <p className="text-gray-900 whitespace-pre-line break-words">
+                      {request.letterOfGuarantee?.trim() ? request.letterOfGuarantee : "-"}
+                    </p>
+                  </div>
+                </div>
 
                 {/* Document Status */}
                 <div className="flex items-start space-x-3">
