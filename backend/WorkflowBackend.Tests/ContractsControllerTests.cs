@@ -64,11 +64,15 @@ public class ContractsControllerTests
             var created = Assert.IsType<CreatedAtActionResult>(result.Result);
             var payload = Assert.IsType<ContractResponse>(created.Value);
 
+            Assert.Matches(@"^2025/W/\d+$", payload.PublicId);
+            Assert.Equal(0, payload.SequenceNumber);
             Assert.Equal("uploaded-contract.pdf", payload.FileName);
             Assert.NotNull(payload.FileUrl);
             Assert.Contains("/uploads/contracts/", payload.FileUrl!);
 
             var savedContract = await context.Contracts.SingleAsync();
+            Assert.Equal(payload.PublicId, savedContract.PublicId);
+            Assert.Equal(payload.SequenceNumber, savedContract.SequenceNumber);
             Assert.Equal("uploaded-contract.pdf", savedContract.FileName);
             Assert.False(string.IsNullOrWhiteSpace(savedContract.FilePath));
 
@@ -120,6 +124,8 @@ public class ContractsControllerTests
 
         var created = Assert.IsType<CreatedAtActionResult>(result.Result);
         var payload = Assert.IsType<ContractResponse>(created.Value);
+        Assert.Matches(@"^2025/W/\d+$", payload.PublicId);
+        Assert.Equal(0, payload.SequenceNumber);
         Assert.Equal(Contract.NarrativeMaxLength, payload.Description?.Length);
         Assert.Equal(Contract.NarrativeMaxLength, payload.ContractTerms?.Length);
         Assert.Equal(Contract.ReviewNotesMaxLength, payload.ReviewNotes?.Length);
@@ -140,7 +146,12 @@ public class ContractsControllerTests
         await using (var setupContext = new AppDbContext(options))
         {
             await setupContext.Database.EnsureCreatedAsync();
-            setupContext.Requests.Add(new Request { Id = requestId });
+            setupContext.Requests.Add(new Request
+            {
+                Id = requestId,
+                PublicId = "2025/W/0",
+                SequenceNumber = 0
+            });
             await setupContext.SaveChangesAsync();
         }
 

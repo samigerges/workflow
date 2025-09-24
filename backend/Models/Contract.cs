@@ -10,6 +10,12 @@ namespace WorkflowBackend.Api.Models
 
         public Guid Id { get; set; } = Guid.NewGuid();
 
+        [MaxLength(50)]
+        public string PublicId { get; set; } = string.Empty;
+
+        public int SequenceNumber { get; set; }
+            = 0; // incremented sequential identifier shared with requests
+
         [Required, MaxLength(200)]
         public string Title { get; set; } = string.Empty;
 

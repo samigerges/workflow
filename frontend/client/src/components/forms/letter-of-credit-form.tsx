@@ -304,13 +304,11 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
                   {contracts.map((contract) => {
                     const contractId = String(contract.id);
                     const supplierName = contract.supplierName ? ` - ${contract.supplierName}` : "";
-                    const title = contract.title
-                      ? contract.title
-                      : `Contract ${contractId.slice(0, 8)}`;
+                    const label = contract.publicId ?? (contract.title ?? `Contract ${contractId.slice(0, 8)}`);
 
                     return (
                       <SelectItem key={contractId} value={contractId}>
-                        {title}
+                        {label}
                         {supplierName}
                       </SelectItem>
                     );

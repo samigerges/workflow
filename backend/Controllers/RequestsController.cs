@@ -16,6 +16,7 @@ namespace WorkflowBackend.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly ILogger<RequestsController> _logger;
+        private const string RequestIdPrefix = "2025/W/";
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         {
             "draft",
@@ -51,6 +52,13 @@ namespace WorkflowBackend.Api.Controllers
         {
             var idStr = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return Guid.TryParse(idStr, out var id) ? id : null;
+        }
+
+        private async Task<(int Sequence, string PublicId)> GenerateNextRequestIdentifierAsync()
+        {
+            var current = await _db.Requests.MaxAsync(r => (int?)r.SequenceNumber) ?? -1;
+            var next = current + 1;
+            return (next, $"{RequestIdPrefix}{next}");
         }
 
         private static string? NormalizeString(string? value) =>
@@ -161,6 +169,8 @@ namespace WorkflowBackend.Api.Controllers
 
             return new RequestResponse(
                 r.Id,
+                r.PublicId,
+                r.SequenceNumber,
                 r.Description,
                 status,
                 r.CreatedByUserId,
@@ -242,6 +252,10 @@ namespace WorkflowBackend.Api.Controllers
                 UploadedFile = NormalizeString(req.UploadedFile),
                 CreatedByUserId = CurrentUserId()
             };
+
+            var (sequence, publicId) = await GenerateNextRequestIdentifierAsync();
+            r.SequenceNumber = sequence;
+            r.PublicId = publicId;
 
             _db.Requests.Add(r);
             await _db.SaveChangesAsync();

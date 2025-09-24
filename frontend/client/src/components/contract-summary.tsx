@@ -67,7 +67,9 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <FileText className="h-5 w-5" />
-            <span>Contract Summary - CON-{contract.id?.toString().padStart(3, '0')}</span>
+            <span>
+              Contract Summary - {contract.publicId ?? `CON-${contract.id?.toString().padStart(3, '0')}`}
+            </span>
           </DialogTitle>
         </DialogHeader>
 

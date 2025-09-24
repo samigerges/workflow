@@ -368,7 +368,7 @@ export default function Contracts() {
                       return (
                         <TableRow key={contract.id}>
                           <TableCell className="font-medium">
-                            CON-{contract.id.toString().padStart(3, '0')}
+                            {contract.publicId ?? `CON-${contract.id.toString().padStart(3, "0")}`}
                           </TableCell>
                           <TableCell>{contract.supplierName || '-'}</TableCell>
                           <TableCell>{cargoTypeLabel}</TableCell>

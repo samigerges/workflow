@@ -168,7 +168,7 @@ export default function FinalSettlementForm({ onSuccess, onCancel, requests, set
                 <option value="">Select a request</option>
                 {requests.map((request) => (
                   <option key={request.id} value={request.id}>
-                    REQ-{request.id.toString().padStart(3, '0')} - {request.title}
+                    {(request.publicId ?? `REQ-${request.id.toString().padStart(3, '0')}`)} - {request.title}
                   </option>
                 ))}
               </select>

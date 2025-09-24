@@ -24,6 +24,8 @@ namespace WorkflowBackend.Api.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<ContractsController> _logger;
 
+        private const string ContractIdPrefix = "2025/W/";
+
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         { "Draft", "Active", "Completed", "Cancelled", "Archived" };
 
@@ -72,6 +74,13 @@ namespace WorkflowBackend.Api.Controllers
 
         private async Task<bool> RequestExistsAsync(Guid requestId) =>
             await _db.Requests.AnyAsync(r => r.Id == requestId);
+
+        private async Task<(int Sequence, string PublicId)> GenerateNextContractIdentifierAsync()
+        {
+            var current = await _db.Contracts.MaxAsync(c => (int?)c.SequenceNumber) ?? -1;
+            var next = current + 1;
+            return (next, $"{ContractIdPrefix}{next}");
+        }
 
         private static DateTime? ToUtc(DateTime? value) =>
             value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : null;
@@ -371,7 +380,7 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             return new ContractResponse(
-                c.Id, c.Title, c.Description, c.Status, c.RequestId, c.CreatedByUserId,
+                c.Id, c.PublicId, c.SequenceNumber, c.Title, c.Description, c.Status, c.RequestId, c.CreatedByUserId,
                 c.CreatedAt, c.UpdatedAt, score, myVote, url, c.FileName,
                 c.SupplierName, c.Quantity, c.CargoType, c.CountryOfOrigin, c.PricePerTon,
                 c.PaymentMethod, c.ShippingMethod, c.ContractTerms, c.StartDate, c.EndDate, c.ReviewNotes
@@ -471,6 +480,10 @@ namespace WorkflowBackend.Api.Controllers
                 ReviewNotes = string.IsNullOrWhiteSpace(req.ReviewNotes) ? null : req.ReviewNotes.Trim()
             };
 
+            var (sequence, publicId) = await GenerateNextContractIdentifierAsync();
+            c.SequenceNumber = sequence;
+            c.PublicId = publicId;
+
             _db.Contracts.Add(c);
             try
             {
@@ -512,7 +525,7 @@ namespace WorkflowBackend.Api.Controllers
             {
                 Title = title.Trim(),
                 Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
-                 RequestId = Guid.TryParse(requestId, out var parsedRequestId) ? parsedRequestId : null,
+                RequestId = Guid.TryParse(requestId, out var parsedRequestId) ? parsedRequestId : null,
                 Status = "Draft",
                 CreatedByUserId = CurrentUserId(),
                 SupplierName = string.IsNullOrWhiteSpace(supplierName) ? null : supplierName.Trim(),
@@ -527,6 +540,10 @@ namespace WorkflowBackend.Api.Controllers
                 EndDate = ToUtc(endDate),
                 ReviewNotes = string.IsNullOrWhiteSpace(reviewNotes) ? null : reviewNotes.Trim()
             };
+
+            var (sequence, publicId) = await GenerateNextContractIdentifierAsync();
+            c.SequenceNumber = sequence;
+            c.PublicId = publicId;
 
             if (c.RequestId is Guid existingRequestId && !await RequestExistsAsync(existingRequestId))
                 return BadRequest(new { message = "The selected request could not be found." });

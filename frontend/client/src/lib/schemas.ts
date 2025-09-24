@@ -132,12 +132,16 @@ export const insertContractSchema = z.object({
 // Complete type definitions with database fields
 export type Request = z.infer<typeof insertRequestSchema> & {
   id: number;
+  publicId?: string;
+  sequenceNumber?: number;
   createdAt?: string;
   updatedAt?: string;
 };
 
 export type Contract = z.infer<typeof insertContractSchema> & {
   id: number;
+  publicId?: string;
+  sequenceNumber?: number;
   createdAt?: string;
   updatedAt?: string;
 };

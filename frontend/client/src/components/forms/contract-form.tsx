@@ -314,7 +314,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                   <SelectItem value="none">No related request</SelectItem>
                   {requests.map((request) => (
                     <SelectItem key={request.id} value={request.id.toString()}>
-                      REQ-{request.id.toString().padStart(3, '0')} - {request.title}
+                      {(request.publicId ?? `REQ-${request.id.toString().padStart(3, '0')}`)} - {request.title}
                     </SelectItem>
                   ))}
                 </SelectContent>

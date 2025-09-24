@@ -278,7 +278,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                 <SelectContent>
                   {contracts.map((contract) => (
                     <SelectItem key={contract.id} value={contract.id.toString()}>
-                      CON-{contract.id.toString().padStart(3, '0')} - {contract.supplierName}
+                      {(contract.publicId ?? `CON-${contract.id.toString().padStart(3, '0')}`)} - {contract.supplierName}
                     </SelectItem>
                   ))}
                 </SelectContent>

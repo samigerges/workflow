@@ -288,6 +288,7 @@ export default function Reports() {
       const remainingAmount = Math.max(0, totalAmount - allocatedAmount);
       return {
         id: contract.id,
+        publicId: contract.publicId,
         requestId: contract.requestId,
         supplierName: contract.supplierName ?? "Unknown Supplier",
         totalAmount,
@@ -766,7 +767,9 @@ export default function Reports() {
                           className="cursor-pointer hover:bg-gray-50 transition-colors"
                           onClick={() => setLocation(`/contract/${c.id}`)}
                         >
-                          <TableCell className="font-medium text-blue-600">{`CON-${String(c.id).padStart(3, "0")}`}</TableCell>
+                          <TableCell className="font-medium text-blue-600">
+                            {c.publicId ?? `CON-${String(c.id).padStart(3, "0")}`}
+                          </TableCell>
                           <TableCell>{c.supplierName}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{c.cargoType}</Badge>
