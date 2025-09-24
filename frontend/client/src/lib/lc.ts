@@ -2,13 +2,17 @@ export interface NormalizedLC {
   id: string | number | null;
   number: string;
   amount: number | null;
+  quantity: number | null;
+  pricePerUnit: number | null;
   currency: string | null;
   issuingBank: string | null;
+  cargoType: string | null;
   applicant: string | null;
   beneficiary: string | null;
   status: string;
   statusKey: string;
   issueDate: string | null;
+  shipmentPeriod: string | null;
   expiryDate: string | null;
   contractId: string | null;
   createdAt: string | null;
@@ -64,17 +68,22 @@ export function normalizeLc(raw: any): NormalizedLC {
     "LC";
 
   const amount = parseNumber(
-    raw?.amount ?? raw?.totalAmount ?? raw?.lcAmount ?? raw?.quantity ?? null,
+    raw?.amount ?? raw?.totalAmount ?? raw?.lcAmount ?? null,
   );
+
+  const quantity = parseNumber(raw?.quantity ?? raw?.lcQuantity ?? null);
+  const pricePerUnit = parseNumber(raw?.pricePerUnit ?? raw?.unitPrice ?? null);
 
   const currency = (safeString(raw?.currency) ?? safeString(raw?.currencyCode))?.toUpperCase() ?? null;
   const issuingBank = safeString(raw?.issuingBank) ?? safeString(raw?.issuing_bank);
+  const cargoType = safeString(raw?.cargoType) ?? safeString(raw?.cargo_type);
   const applicant = safeString(raw?.applicant) ?? safeString(raw?.applicantName);
   const beneficiary = safeString(raw?.beneficiary) ?? safeString(raw?.beneficiaryName);
   const status = safeString(raw?.status) ?? "Draft";
   const statusKey = status.toLowerCase();
 
   const issueDate = safeDateString(raw?.issueDate) ?? safeDateString(raw?.issuedDate);
+  const shipmentPeriod = safeDateString(raw?.shipmentPeriod) ?? safeDateString(raw?.shipmentPeriodDate);
   const expiryDate = safeDateString(raw?.expiryDate) ?? safeDateString(raw?.expirationDate);
   const createdAt = safeDateString(raw?.createdAt);
   const updatedAt = safeDateString(raw?.updatedAt);
@@ -90,13 +99,17 @@ export function normalizeLc(raw: any): NormalizedLC {
     id: raw?.id ?? null,
     number,
     amount,
+    quantity,
+    pricePerUnit,
     currency,
     issuingBank,
+    cargoType,
     applicant,
     beneficiary,
     status,
     statusKey,
     issueDate,
+    shipmentPeriod,
     expiryDate,
     contractId,
     createdAt,

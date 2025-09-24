@@ -8,25 +8,29 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import FileUpload from "@/components/ui/file-upload";
-import { CURRENCIES } from "@/lib/constants";
-import { normalizeLc } from "@/lib/lc";
+import { CARGO_TYPES, CURRENCIES } from "@/lib/constants";
+import { normalizeLc, formatLcCurrency } from "@/lib/lc";
 
 // Create a more flexible schema for drafts - matching backend DTO
 const lcFormSchema = z.object({
-  number: z.string().min(1, "LC Number is required"), // Changed from lcNumber to number
+  number: z.string().min(1, "LC Number is required"),
   issuingBank: z.string().optional(),
-  amount: z.coerce.number().min(0, "Amount cannot be negative").optional().or(z.literal("")), // Changed from quantity to amount
+  quantity: z.coerce
+    .number({ invalid_type_error: "Quantity is required" })
+    .gt(0, "Quantity must be greater than zero"),
+  pricePerUnit: z.coerce
+    .number({ invalid_type_error: "Price per unit is required" })
+    .gt(0, "Price per unit must be greater than zero"),
   currency: z.string().default("USD"),
+  cargoType: z.string().optional(),
   issueDate: z.string().optional(),
+  shipmentPeriod: z.string().optional(),
   expiryDate: z.string().optional(),
-  applicant: z.string().optional(), // Added missing field
-  beneficiary: z.string().optional(), // Added missing field
-  contractId: z.string().optional(), // Added missing field
+  beneficiary: z.string().optional(),
   status: z.string().default("draft"),
   createdBy: z.string().optional(),
 });
@@ -36,13 +40,10 @@ type LCFormData = z.infer<typeof lcFormSchema>;
 interface LetterOfCreditFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
-  requests: any[];
-  contracts: any[];
   lc?: any;
-  onDeleteRequest?: (requestId: number) => void;
 }
 
-export default function LetterOfCreditForm({ onSuccess, onCancel, requests, contracts, lc, onDeleteRequest }: LetterOfCreditFormProps) {
+export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOfCreditFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -62,26 +63,31 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
       ? {
           number: normalizedLc.number,
           issuingBank: normalizedLc.issuingBank ?? "",
-          amount: normalizedLc.amount ?? undefined,
+          quantity: normalizedLc.quantity ?? undefined,
+          pricePerUnit: normalizedLc.pricePerUnit ?? undefined,
           currency: normalizedLc.currency ?? "USD",
+          cargoType: normalizedLc.cargoType ?? "",
           issueDate: normalizedLc.issueDate
             ? new Date(normalizedLc.issueDate).toISOString().split("T")[0]
+            : "",
+          shipmentPeriod: normalizedLc.shipmentPeriod
+            ? new Date(normalizedLc.shipmentPeriod).toISOString().split("T")[0]
             : "",
           expiryDate: normalizedLc.expiryDate
             ? new Date(normalizedLc.expiryDate).toISOString().split("T")[0]
             : "",
-          applicant: normalizedLc.applicant ?? "",
           beneficiary: normalizedLc.beneficiary ?? "",
-          contractId: normalizedLc.contractId ?? "",
           status: normalizedLc.statusKey ?? "draft",
         }
       : {
           currency: "USD",
+          cargoType: "",
           status: "draft",
         },
   });
 
-  const watchedAmount = watch("amount");
+  const watchedQuantity = watch("quantity");
+  const watchedPricePerUnit = watch("pricePerUnit");
   const watchedCurrency = watch("currency");
 
   const createMutation = useMutation({
@@ -95,36 +101,52 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
         formData.append("issuingBank", data.issuingBank);
       }
 
-      const normalizedAmount =
-        typeof data.amount === "number" && !Number.isNaN(data.amount)
-          ? data.amount
+      const normalizedQuantity =
+        typeof data.quantity === "number" && Number.isFinite(data.quantity)
+          ? data.quantity
           : null;
-      if (normalizedAmount !== null) {
-        formData.append("amount", normalizedAmount.toString());
+      if (normalizedQuantity !== null) {
+        formData.append("quantity", normalizedQuantity.toString());
+      }
+
+      const normalizedPricePerUnit =
+        typeof data.pricePerUnit === "number" && Number.isFinite(data.pricePerUnit)
+          ? data.pricePerUnit
+          : null;
+      if (normalizedPricePerUnit !== null) {
+        formData.append("pricePerUnit", normalizedPricePerUnit.toString());
+      }
+
+      const totalPrice =
+        normalizedQuantity !== null && normalizedPricePerUnit !== null
+          ? normalizedQuantity * normalizedPricePerUnit
+          : null;
+      if (totalPrice !== null) {
+        formData.append("amount", totalPrice.toString());
       }
 
       if (data.currency) {
         formData.append("currency", data.currency);
       }
 
+      if (data.cargoType) {
+        formData.append("cargoType", data.cargoType);
+      }
+
       if (data.issueDate) {
         formData.append("issueDate", data.issueDate);
+      }
+
+      if (data.shipmentPeriod) {
+        formData.append("shipmentPeriod", data.shipmentPeriod);
       }
 
       if (data.expiryDate) {
         formData.append("expiryDate", data.expiryDate);
       }
 
-      if (data.applicant) {
-        formData.append("applicant", data.applicant);
-      }
-
       if (data.beneficiary) {
         formData.append("beneficiary", data.beneficiary);
-      }
-
-      if (data.contractId) {
-        formData.append("contractId", data.contractId);
       }
 
       // Add file if selected
@@ -226,40 +248,36 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
               </Select>
             </div>
             <div>
-              <Label htmlFor="amount">Amount *</Label>
+              <Label htmlFor="quantity">Quantity *</Label>
               <Input
-                id="amount"
+                id="quantity"
                 type="number"
-                {...register("amount", { valueAsNumber: true })}
-                placeholder="100000"
-                className={errors.amount ? "border-red-500" : ""}
+                step="0.01"
+                {...register("quantity", { valueAsNumber: true })}
+                placeholder="1000"
+                className={errors.quantity ? "border-red-500" : ""}
               />
-              {errors.amount && (
-                <p className="text-sm text-red-500 mt-1">{errors.amount.message}</p>
+              {errors.quantity && (
+                <p className="text-sm text-red-500 mt-1">{errors.quantity.message}</p>
               )}
             </div>
           </div>
 
-          {/* LC Amount Display */}
-          {typeof watchedAmount === "number" && !Number.isNaN(watchedAmount) && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-semibold text-blue-900 mb-2">LC Information</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-blue-700">Amount:</span>
-                  <p className="font-medium">
-                    {watchedAmount.toLocaleString()} {watchedCurrency || "USD"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-blue-700">Currency:</span>
-                  <p className="font-medium">{watchedCurrency || "USD"}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="pricePerUnit">Price per Unit *</Label>
+              <Input
+                id="pricePerUnit"
+                type="number"
+                step="0.01"
+                {...register("pricePerUnit", { valueAsNumber: true })}
+                placeholder="250"
+                className={errors.pricePerUnit ? "border-red-500" : ""}
+              />
+              {errors.pricePerUnit && (
+                <p className="text-sm text-red-500 mt-1">{errors.pricePerUnit.message}</p>
+              )}
+            </div>
             <div>
               <Label htmlFor="issuingBank">Issuing Bank *</Label>
               <Input
@@ -272,17 +290,75 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
                 <p className="text-sm text-red-500 mt-1">{errors.issuingBank.message}</p>
               )}
             </div>
-            <div>
-              <Label htmlFor="applicant">Applicant</Label>
-              <Input
-                id="applicant"
-                {...register("applicant")}
-                placeholder="Applicant name"
-              />
-            </div>
           </div>
 
+          {/* LC Pricing Summary */}
+          {(() => {
+            const quantityValue =
+              typeof watchedQuantity === "number" && Number.isFinite(watchedQuantity)
+                ? watchedQuantity
+                : null;
+            const priceValue =
+              typeof watchedPricePerUnit === "number" && Number.isFinite(watchedPricePerUnit)
+                ? watchedPricePerUnit
+                : null;
+            const totalValue =
+              quantityValue !== null && priceValue !== null ? quantityValue * priceValue : null;
+
+            if (quantityValue === null && priceValue === null && totalValue === null) {
+              return null;
+            }
+
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-900 mb-2">LC Pricing Summary</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-blue-700">Quantity:</span>
+                    <p className="font-medium">
+                      {quantityValue !== null ? quantityValue.toLocaleString() : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">Price per Unit:</span>
+                    <p className="font-medium">
+                      {priceValue !== null
+                        ? formatLcCurrency(priceValue, watchedCurrency || "USD")
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">Total Price:</span>
+                    <p className="font-medium">
+                      {totalValue !== null
+                        ? formatLcCurrency(totalValue, watchedCurrency || "USD")
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="cargoType">Cargo Type</Label>
+              <Select
+                onValueChange={(value) => setValue("cargoType", value)}
+                defaultValue={normalizedLc?.cargoType || undefined}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select cargo type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CARGO_TYPES.map((cargo) => (
+                    <SelectItem key={cargo.value} value={cargo.value}>
+                      {cargo.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label htmlFor="beneficiary">Beneficiary</Label>
               <Input
@@ -291,34 +367,9 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
                 placeholder="Beneficiary name"
               />
             </div>
-            <div>
-              <Label htmlFor="contractId">Related Contract</Label>
-              <Select
-                onValueChange={(value) => setValue("contractId", value)}
-                defaultValue={normalizedLc?.contractId || undefined}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a contract" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contracts.map((contract) => {
-                    const contractId = String(contract.id);
-                    const supplierName = contract.supplierName ? ` - ${contract.supplierName}` : "";
-                    const label = contract.publicId ?? (contract.title ?? `Contract ${contractId.slice(0, 8)}`);
-
-                    return (
-                      <SelectItem key={contractId} value={contractId}>
-                        {label}
-                        {supplierName}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <Label htmlFor="issueDate">Issue Date *</Label>
               <Input
@@ -329,6 +380,18 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, requests, cont
               />
               {errors.issueDate && (
                 <p className="text-sm text-red-500 mt-1">{errors.issueDate.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="shipmentPeriod">Shipment Period Date</Label>
+              <Input
+                id="shipmentPeriod"
+                type="date"
+                {...register("shipmentPeriod")}
+                className={errors.shipmentPeriod ? "border-red-500" : ""}
+              />
+              {errors.shipmentPeriod && (
+                <p className="text-sm text-red-500 mt-1">{errors.shipmentPeriod.message}</p>
               )}
             </div>
             <div>

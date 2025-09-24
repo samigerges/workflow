@@ -73,6 +73,7 @@ interface LetterOfCredit {
 
 interface Contract {
   id: string | number;
+  publicId?: string;
   requestId?: string | number;
   supplierName?: string;
   quantity?: number; // tons
@@ -252,20 +253,36 @@ export default function Reports() {
         const allocatedVessels = filteredVessels.filter((v) =>
           (raw?.vesselIds || []).map(String).includes(String(v.id)),
         );
-        const allocatedAmount = allocatedVessels.reduce(
+        const allocatedQuantity = allocatedVessels.reduce(
           (sum, v) => sum + asNumber(v.quantity, 0),
           0,
         );
-        const normalizedAmount = normalized.amount ?? null;
+        const normalizedQuantity =
+          typeof normalized.quantity === "number" && Number.isFinite(normalized.quantity)
+            ? normalized.quantity
+            : null;
         const fallbackQuantity = asNumber(raw?.quantity, 0);
-        const totalAmount = normalizedAmount ?? fallbackQuantity;
-        const remainingAmount = Math.max(0, totalAmount - allocatedAmount);
+        const totalQuantity = normalizedQuantity ?? fallbackQuantity;
+
+        const pricePerUnit =
+          typeof normalized.pricePerUnit === "number" && Number.isFinite(normalized.pricePerUnit)
+            ? normalized.pricePerUnit
+            : normalized.amount && totalQuantity > 0
+            ? normalized.amount / totalQuantity
+            : null;
+
+        const totalPrice =
+          normalized.amount ?? (pricePerUnit !== null ? pricePerUnit * totalQuantity : null);
+
+        const remainingQuantity = Math.max(0, totalQuantity - allocatedQuantity);
         return {
           id: normalized.id ?? raw?.id,
           lcNumber: normalized.number,
-          totalAmount,
-          allocatedAmount,
-          remainingAmount,
+          totalQuantity,
+          allocatedQuantity,
+          remainingQuantity,
+          totalPrice,
+          pricePerUnit,
           currency: normalized.currency ?? "USD",
           status: normalized.status,
           expiryDate: normalized.expiryDate,
@@ -452,7 +469,7 @@ export default function Reports() {
   }
   if (!isAuthenticated) return null;
 
-  const totalLCValue = lcAnalytics.reduce((s, lc) => s + lc.totalAmount, 0);
+  const totalLCValue = lcAnalytics.reduce((s, lc) => s + (lc.totalPrice ?? 0), 0);
   const dischargedTotal = filteredVessels.reduce(
     (acc, v) => acc + asNumber(v.quantityUnloaded, 0),
     0
@@ -690,15 +707,17 @@ export default function Reports() {
                     <TableRow>
                       <TableHead>LC Number</TableHead>
                       <TableHead>Issuing Bank</TableHead>
-                      <TableHead>Total Amount</TableHead>
-                      <TableHead>Allocated Amount</TableHead>
-                      <TableHead>Remaining Amount</TableHead>
+                      <TableHead>Price per Unit</TableHead>
+                      <TableHead>Total Quantity</TableHead>
+                      <TableHead>Allocated Quantity</TableHead>
+                      <TableHead>Remaining Quantity</TableHead>
+                      <TableHead>Total Price</TableHead>
                       <TableHead>Utilization</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {lcAnalytics.map((lc) => {
-                      const utilizationRate = lc.totalAmount > 0 ? (lc.allocatedAmount / lc.totalAmount) * 100 : 0;
+                      const utilizationRate = lc.totalQuantity > 0 ? (lc.allocatedQuantity / lc.totalQuantity) * 100 : 0;
                       return (
                         <TableRow
                           key={String(lc.id)}
@@ -707,13 +726,19 @@ export default function Reports() {
                         >
                           <TableCell className="font-medium text-blue-600">{lc.lcNumber}</TableCell>
                           <TableCell>{lc.issuingBank || "N/A"}</TableCell>
-                          <TableCell>{formatLcCurrency(lc.totalAmount, lc.currency)}</TableCell>
+                          <TableCell>
+                            {lc.pricePerUnit !== null
+                              ? formatLcCurrency(lc.pricePerUnit, lc.currency)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>{lc.totalQuantity.toLocaleString()} units</TableCell>
                           <TableCell className="text-blue-600">
-                            {formatLcCurrency(lc.allocatedAmount, lc.currency)}
+                            {lc.allocatedQuantity.toLocaleString()} units
                           </TableCell>
                           <TableCell className="text-green-600">
-                            {formatLcCurrency(lc.remainingAmount, lc.currency)}
+                            {lc.remainingQuantity.toLocaleString()} units
                           </TableCell>
+                          <TableCell>{formatLcCurrency(lc.totalPrice, lc.currency)}</TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <Progress value={utilizationRate} className="w-16" />

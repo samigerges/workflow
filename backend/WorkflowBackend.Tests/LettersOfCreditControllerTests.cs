@@ -32,12 +32,16 @@ public class LettersOfCreditControllerTests
             Number: "LC-001",
             IssuingBank: "Test Bank",
             Amount: 10_000m,
+            Quantity: 100m,
+            PricePerUnit: 100m,
             Currency: "usd",
             IssueDate: issueDate,
+            ShipmentPeriod: issueDate,
             ExpiryDate: expiryDate,
             Applicant: "Applicant",
             Beneficiary: "Beneficiary",
-            ContractId: null);
+            ContractId: null,
+            CargoType: "wheat");
 
         var result = await controller.CreateJson(request);
 
@@ -67,8 +71,12 @@ public class LettersOfCreditControllerTests
             number: "LC-002",
             issuingBank: "Another Bank",
             amount: 5_000m,
+            quantity: 50m,
+            pricePerUnit: 100m,
             currency: "eur",
+            cargoType: "oil",
             issueDate: issueDate,
+            shipmentPeriod: issueDate,
             expiryDate: expiryDate,
             applicant: null,
             beneficiary: null,
@@ -105,12 +113,16 @@ public class LettersOfCreditControllerTests
             Number: "LC-Existing",
             IssuingBank: null,
             Amount: null,
+            Quantity: 200m,
+            PricePerUnit: 50m,
             Currency: "gbp",
             IssueDate: issueDate,
+            ShipmentPeriod: issueDate,
             ExpiryDate: expiryDate,
             Applicant: null,
             Beneficiary: null,
-            ContractId: null);
+            ContractId: null,
+            CargoType: "rice");
 
         var result = await controller.UpdateJson(lc.Id, request);
 
@@ -143,8 +155,12 @@ public class LettersOfCreditControllerTests
             number: "LC-Form",
             issuingBank: null,
             amount: null,
+            quantity: 80m,
+            pricePerUnit: 125m,
             currency: "usd",
+            cargoType: "sugar",
             issueDate: issueDate,
+            shipmentPeriod: issueDate,
             expiryDate: expiryDate,
             applicant: null,
             beneficiary: null,

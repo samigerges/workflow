@@ -26,20 +26,24 @@ interface LCSummaryProps {
 function buildDetailItems(lc: NormalizedLC) {
   return [
     { label: "LC Number", value: lc.number },
-    { label: "Amount", value: formatLcCurrency(lc.amount, lc.currency) },
-    { label: "Currency", value: lc.currency ?? "—" },
+    { label: "Cargo Type", value: lc.cargoType ?? "—" },
+    {
+      label: "Quantity",
+      value: typeof lc.quantity === "number" ? lc.quantity.toLocaleString() : "—",
+    },
+    {
+      label: "Price per Unit",
+      value: formatLcCurrency(lc.pricePerUnit, lc.currency),
+    },
+    { label: "Total Price", value: formatLcCurrency(lc.amount, lc.currency) },
     { label: "Issuing Bank", value: lc.issuingBank ?? "—" },
-    { label: "Applicant", value: lc.applicant ?? "—" },
     { label: "Beneficiary", value: lc.beneficiary ?? "—" },
+    { label: "Shipment Period", value: formatLcDate(lc.shipmentPeriod) },
     { label: "Issue Date", value: formatLcDate(lc.issueDate) },
     {
       label: "Expiry Date",
       value: formatLcDate(lc.expiryDate),
       highlight: isLcExpired(lc.expiryDate),
-    },
-    {
-      label: "Linked Contract",
-      value: lc.contractId ? `Contract ${lc.contractId.slice(0, 8)}` : "—",
     },
   ];
 }
@@ -182,7 +186,7 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
                   <div className="text-xl font-bold text-green-900">{totalAllocatedQuantity} tons</div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm font-medium text-gray-600">LC Amount</div>
+                  <div className="text-sm font-medium text-gray-600">Total Price</div>
                   <div className="text-xl font-bold text-gray-900">
                     {formatLcCurrency(normalizedLc.amount, normalizedLc.currency)}
                   </div>
