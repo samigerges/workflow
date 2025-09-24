@@ -24,7 +24,11 @@ const vesselFormSchema = z.object({
   status: z.string().optional().nullable(),
   eta: z.string().optional().nullable(),
   etd: z.string().optional().nullable(),
-  contractId: z.number().int().positive().optional().nullable(),
+  contractId: z
+    .string()
+    .min(1, "Related contract is required")
+    .optional()
+    .nullable(),
   quantity: z.number().nonnegative().optional().nullable(),
   cargoType: z.string().optional().nullable(),
   countryOfOrigin: z.string().optional().nullable(),
@@ -95,7 +99,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
           eta: vessel.eta ? new Date(vessel.eta).toISOString().slice(0, 16) : "",
           contractId:
             vessel.contractId !== null && vessel.contractId !== undefined
-              ? Number(vessel.contractId)
+              ? String(vessel.contractId)
               : undefined,
           quantity:
             vessel.quantity !== null && vessel.quantity !== undefined
@@ -264,13 +268,12 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
               <Label htmlFor="contractId">Related Contract *</Label>
               <Select
                 onValueChange={(value) => {
-                  const parsed = Number(value);
                   setValue(
                     "contractId",
-                    Number.isNaN(parsed) ? undefined : parsed,
+                    value && value.length > 0 ? value : undefined,
                   );
                 }}
-                defaultValue={vessel?.contractId?.toString()}
+                defaultValue={vessel?.contractId ? String(vessel.contractId) : undefined}
               >
                 <SelectTrigger className={errors.contractId ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select a contract" />
