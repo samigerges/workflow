@@ -140,7 +140,7 @@ public class ContractsControllerTests
         await using (var setupContext = new AppDbContext(options))
         {
             await setupContext.Database.EnsureCreatedAsync();
-            setupContext.Requests.Add(new Request { Id = requestId, Title = "Source request" });
+            setupContext.Requests.Add(new Request { Id = requestId });
             await setupContext.SaveChangesAsync();
         }
 

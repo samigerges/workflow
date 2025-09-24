@@ -50,7 +50,6 @@ namespace WorkflowBackend.Api.Data
                 .HasForeignKey(n => n.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
 
             // Request
-            modelBuilder.Entity<Request>().Property(r => r.Title).HasMaxLength(200).IsRequired();
             modelBuilder.Entity<Request>().Property(r => r.Status).HasMaxLength(50).HasDefaultValue("pending");
             modelBuilder.Entity<Request>().Property(r => r.Quantity).HasPrecision(18, 2);
             modelBuilder.Entity<Request>().Property(r => r.UnitOfMeasure).HasMaxLength(50);
