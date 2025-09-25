@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -158,6 +158,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
     defaultValues: contract
       ? {
           ...contract,
+          requestId: contract.requestId ? contract.requestId.toString() : contract.requestId,
           quantity: contract.quantity ? parseInt(contract.quantity) : 0,
           wheatPercentage:
             contract?.wheatPercentage !== undefined &&
@@ -179,7 +180,130 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
   const hasExistingFile = Boolean(contract?.fileUrl || existingFileName);
 
   const cargoTypeValue = watch("cargoType");
+  const requestIdValue = watch("requestId");
+  const unitOfMeasureValue = watch("unitOfMeasure");
+  const countryOfOriginValue = watch("countryOfOrigin");
+  const paymentCurrencyValue = watch("paymentCurrency");
+  const paymentMethodValue = watch("paymentMethod");
+  const shippingMethodValue = watch("shippingMethod");
   const isWheat = (cargoTypeValue ?? "").toLowerCase() === "wheat";
+
+  const selectedRequest = useMemo(() => {
+    if (!requestIdValue || requestIdValue === "none") {
+      return undefined;
+    }
+
+    return requests.find((req) => {
+      const id = req?.id ?? req?.requestId;
+      return id !== undefined && id !== null && id.toString() === requestIdValue;
+    });
+  }, [requestIdValue, requests]);
+
+  const normalizeNumber = useCallback((value: unknown) => {
+    if (value === null || value === undefined || value === "") {
+      return undefined;
+    }
+
+    if (typeof value === "number" && !Number.isNaN(value)) {
+      return value;
+    }
+
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }, []);
+
+  const normalizeDate = useCallback((value: unknown) => {
+    if (!value) {
+      return "";
+    }
+
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? "" : value.toISOString().split("T")[0];
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return "";
+      }
+
+      const parsed = new Date(trimmed);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toISOString().split("T")[0];
+      }
+
+      return trimmed.length >= 10 ? trimmed.slice(0, 10) : trimmed;
+    }
+
+    return "";
+  }, []);
+
+  const copyRequestDataToForm = useCallback(
+    (requestData: any) => {
+      if (!requestData) {
+        return;
+      }
+
+      const normalizedFields: Partial<ContractFormData> = {
+        description: requestData.description ?? requestData.summary ?? "",
+        supplierName: requestData.supplierName ?? "",
+        cargoType: requestData.cargoType ?? undefined,
+        quantity: normalizeNumber(requestData.quantity),
+        unitOfMeasure: requestData.unitOfMeasure ?? undefined,
+        countryOfOrigin: requestData.countryOfOrigin ?? undefined,
+        pricePerTon:
+          normalizeNumber(
+            requestData.pricePerTon ?? requestData.unitPrice ?? requestData.estimatedUnitPrice ?? requestData.unit_cost,
+          ),
+        paymentCurrency: requestData.paymentCurrency ?? requestData.currency ?? undefined,
+        paymentMethod: requestData.paymentMethod ?? undefined,
+        shippingMethod: requestData.shippingMethod ?? undefined,
+        wheatPercentage: normalizeNumber(requestData.wheatPercentage),
+        letterOfGuarantee: requestData.letterOfGuarantee ?? "",
+        startDate: normalizeDate(requestData.startDate),
+        endDate: normalizeDate(requestData.endDate),
+      };
+
+      (Object.entries(normalizedFields) as [keyof ContractFormData, ContractFormData[keyof ContractFormData]][]).forEach(
+        ([field, value]) => {
+          setValue(field, value as never, {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true,
+          });
+        },
+      );
+    },
+    [normalizeDate, normalizeNumber, setValue],
+  );
+
+  const isInitialRequestSync = useRef(true);
+
+  useEffect(() => {
+    if (!selectedRequest) {
+      return;
+    }
+
+    const isInitial = isInitialRequestSync.current;
+    if (isInitial) {
+      isInitialRequestSync.current = false;
+
+      if (contract?.requestId && contract.requestId.toString() === requestIdValue) {
+        return;
+      }
+    }
+
+    copyRequestDataToForm(selectedRequest);
+  }, [contract?.requestId, copyRequestDataToForm, requestIdValue, selectedRequest]);
+
+  const handleManualCopyFromRequest = useCallback(() => {
+    if (!selectedRequest) {
+      return;
+    }
+
+    isInitialRequestSync.current = false;
+    copyRequestDataToForm(selectedRequest);
+  }, [copyRequestDataToForm, selectedRequest]);
 
   useEffect(() => {
     if (!isWheat) {
@@ -348,10 +472,19 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="requestId">Related Request</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="requestId">Related Request</Label>
+                {selectedRequest && (
+                  <Button type="button" variant="secondary" size="sm" onClick={handleManualCopyFromRequest}>
+                    Copy data from request
+                  </Button>
+                )}
+              </div>
               <Select
-                onValueChange={(value) => setValue("requestId", value)}
-                defaultValue={contract?.requestId?.toString()}
+                onValueChange={(value) =>
+                  setValue("requestId", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={requestIdValue ?? undefined}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a request (optional)" />
@@ -383,9 +516,9 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             </div>
             <div>
               <Label htmlFor="cargoType">Cargo Type *</Label>
-              <Select 
-                onValueChange={(value) => setValue("cargoType", value)}
-                defaultValue={contract?.cargoType}
+              <Select
+                onValueChange={(value) => setValue("cargoType", value, { shouldDirty: true, shouldTouch: true })}
+                value={cargoTypeValue ?? undefined}
               >
                 <SelectTrigger className={errors.cargoType ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select cargo type" />
@@ -402,9 +535,11 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             </div>
             <div>
               <Label htmlFor="countryOfOrigin">Country of Origin</Label>
-              <Select 
-                onValueChange={(value) => setValue("countryOfOrigin", value)}
-                defaultValue={contract?.countryOfOrigin}
+              <Select
+                onValueChange={(value) =>
+                  setValue("countryOfOrigin", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={countryOfOriginValue ?? undefined}
               >
                 <SelectTrigger className={errors.countryOfOrigin ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select country of origin" />
@@ -439,8 +574,10 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             <div>
               <Label htmlFor="unitOfMeasure">Unit of Measure</Label>
               <Select
-                onValueChange={(value) => setValue("unitOfMeasure", value)}
-                defaultValue={contract?.unitOfMeasure}
+                onValueChange={(value) =>
+                  setValue("unitOfMeasure", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={unitOfMeasureValue ?? undefined}
               >
                 <SelectTrigger className={errors.unitOfMeasure ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select unit of measure" />
@@ -494,8 +631,10 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             <div>
               <Label htmlFor="paymentCurrency">Payment Currency</Label>
               <Select
-                onValueChange={(value) => setValue("paymentCurrency", value)}
-                defaultValue={contract?.paymentCurrency}
+                onValueChange={(value) =>
+                  setValue("paymentCurrency", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={paymentCurrencyValue ?? undefined}
               >
                 <SelectTrigger className={errors.paymentCurrency ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select payment currency" />
@@ -518,8 +657,10 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             <div>
               <Label htmlFor="paymentMethod">Payment Method</Label>
               <Select
-                onValueChange={(value) => setValue("paymentMethod", value)}
-                defaultValue={contract?.paymentMethod}
+                onValueChange={(value) =>
+                  setValue("paymentMethod", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={paymentMethodValue ?? undefined}
               >
                 <SelectTrigger className={errors.paymentMethod ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select payment method" />
@@ -536,9 +677,11 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             </div>
             <div>
               <Label htmlFor="shippingMethod">Shipping Method</Label>
-              <Select 
-                onValueChange={(value) => setValue("shippingMethod", value)}
-                defaultValue={contract?.shippingMethod}
+              <Select
+                onValueChange={(value) =>
+                  setValue("shippingMethod", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={shippingMethodValue ?? undefined}
               >
                 <SelectTrigger className={errors.shippingMethod ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select shipping method" />
@@ -588,17 +731,17 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
 
           <div>
             <Label htmlFor="contractTerms">Contract Terms & Conditions</Label>
-          <Textarea
-            id="contractTerms"
-            {...register("contractTerms")}
-            rows={4}
-            placeholder="Key terms, payment conditions, delivery terms, etc."
-            maxLength={CONTRACT_NARRATIVE_LIMIT}
-          />
-          <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
-          {errors.contractTerms && (
-            <p className="text-sm text-red-500 mt-1">{errors.contractTerms.message}</p>
-          )}
+            <Textarea
+              id="contractTerms"
+              {...register("contractTerms")}
+              rows={4}
+              placeholder="Key terms, payment conditions, delivery terms, etc."
+              maxLength={CONTRACT_NARRATIVE_LIMIT}
+            />
+            <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+            {errors.contractTerms && (
+              <p className="text-sm text-red-500 mt-1">{errors.contractTerms.message}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
