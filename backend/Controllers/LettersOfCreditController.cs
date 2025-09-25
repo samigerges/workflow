@@ -49,21 +49,6 @@ namespace WorkflowBackend.Api.Controllers
         private static string? NormalizeString(string? value) =>
             string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-        private async Task<(string? supplierName, ActionResult<LetterOfCreditResponse>? error)> ResolveSupplierFromContractAsync(Guid? contractId)
-        {
-            if (contractId is null) return (null, null);
-
-            var contract = await _db.Contracts
-                .Where(c => c.Id == contractId.Value)
-                .Select(c => new { c.Id, c.SupplierName })
-                .SingleOrDefaultAsync();
-
-            if (contract is null)
-                return (null, BadRequest(new { message = "Linked contract not found." }));
-
-            return (NormalizeString(contract.SupplierName), null);
-        }
-
         private LetterOfCreditResponse ToResponse(LetterOfCredit lc)
         {
             string? url = null;
@@ -73,7 +58,7 @@ namespace WorkflowBackend.Api.Controllers
                 url = $"{req.Scheme}://{req.Host}/{lc.FilePath.Replace("\\", "/")}";
             }
 
-            var supplier = NormalizeString(lc.SupplierName) ?? NormalizeString(lc.Contract?.SupplierName);
+            var supplier = NormalizeString(lc.Contract?.SupplierName) ?? NormalizeString(lc.Beneficiary);
 
             return new LetterOfCreditResponse(
                 lc.Id,
@@ -183,17 +168,19 @@ namespace WorkflowBackend.Api.Controllers
                 CreatedByUserId = CurrentUserId()
             };
 
-            lc.SupplierName = NormalizeString(req.SupplierName);
-
             if (lc.ContractId is not null)
             {
-                var (supplierName, error) = await ResolveSupplierFromContractAsync(lc.ContractId);
-                if (error is not null) return error;
-                lc.SupplierName = supplierName;
+                var exists = await _db.Contracts.AnyAsync(c => c.Id == lc.ContractId.Value);
+                if (!exists) return BadRequest(new { message = "Linked contract not found." });
             }
 
             _db.LettersOfCredit.Add(lc);
             await _db.SaveChangesAsync();
+
+            if (lc.ContractId is not null)
+            {
+                await _db.Entry(lc).Reference(l => l.Contract).LoadAsync();
+            }
 
             return CreatedAtAction(nameof(GetOne), new { id = lc.Id }, ToResponse(lc));
         }
@@ -214,7 +201,6 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] DateTime? expiryDate,
             [FromForm] string? applicant,
             [FromForm] string? beneficiary,
-            [FromForm] string? supplierName,
             [FromForm] Guid? contractId,
             [FromForm(Name = "lcFile")] IFormFile? file)
         {
@@ -239,13 +225,10 @@ namespace WorkflowBackend.Api.Controllers
                 CreatedByUserId = CurrentUserId()
             };
 
-            lc.SupplierName = NormalizeString(supplierName);
-
             if (lc.ContractId is not null)
             {
-                var (resolvedSupplier, error) = await ResolveSupplierFromContractAsync(lc.ContractId);
-                if (error is not null) return error;
-                lc.SupplierName = resolvedSupplier;
+                var exists = await _db.Contracts.AnyAsync(c => c.Id == lc.ContractId.Value);
+                if (!exists) return BadRequest(new { message = "Linked contract not found." });
             }
 
             if (file is not null)
@@ -264,6 +247,11 @@ namespace WorkflowBackend.Api.Controllers
 
             _db.LettersOfCredit.Add(lc);
             await _db.SaveChangesAsync();
+
+            if (lc.ContractId is not null)
+            {
+                await _db.Entry(lc).Reference(l => l.Contract).LoadAsync();
+            }
 
             return CreatedAtAction(nameof(GetOne), new { id = lc.Id }, ToResponse(lc));
         }
@@ -293,17 +281,20 @@ namespace WorkflowBackend.Api.Controllers
             lc.Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim();
             lc.ContractId = req.ContractId;
-            lc.SupplierName = NormalizeString(req.SupplierName);
 
             if (lc.ContractId is not null)
             {
-                var (supplierName, error) = await ResolveSupplierFromContractAsync(lc.ContractId);
-                if (error is not null) return error;
-                lc.SupplierName = supplierName;
+                var exists = await _db.Contracts.AnyAsync(c => c.Id == lc.ContractId.Value);
+                if (!exists) return BadRequest(new { message = "Linked contract not found." });
             }
             lc.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
+
+            if (lc.ContractId is not null)
+            {
+                await _db.Entry(lc).Reference(l => l.Contract).LoadAsync();
+            }
             return ToResponse(lc);
         }
 
@@ -324,7 +315,6 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] DateTime? expiryDate,
             [FromForm] string? applicant,
             [FromForm] string? beneficiary,
-            [FromForm] string? supplierName,
             [FromForm] Guid? contractId,
             [FromForm(Name = "lcFile")] IFormFile? file)
         {
@@ -346,13 +336,11 @@ namespace WorkflowBackend.Api.Controllers
             lc.Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim();
             lc.ContractId = contractId;
-            lc.SupplierName = NormalizeString(supplierName);
 
             if (lc.ContractId is not null)
             {
-                var (resolvedSupplier, error) = await ResolveSupplierFromContractAsync(lc.ContractId);
-                if (error is not null) return error;
-                lc.SupplierName = resolvedSupplier;
+                var exists = await _db.Contracts.AnyAsync(c => c.Id == lc.ContractId.Value);
+                if (!exists) return BadRequest(new { message = "Linked contract not found." });
             }
 
             if (file is not null)
@@ -370,7 +358,13 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             lc.UpdatedAt = DateTime.UtcNow;
+
             await _db.SaveChangesAsync();
+
+            if (lc.ContractId is not null)
+            {
+                await _db.Entry(lc).Reference(l => l.Contract).LoadAsync();
+            }
 
             return ToResponse(lc);
         }

@@ -40,7 +40,6 @@ public class LettersOfCreditControllerTests
             ExpiryDate: expiryDate,
             Applicant: "Applicant",
             Beneficiary: "Beneficiary",
-            SupplierName: null,
             ContractId: null,
             CargoType: "wheat");
 
@@ -91,7 +90,6 @@ public class LettersOfCreditControllerTests
             ExpiryDate: expiryDate,
             Applicant: "Applicant",
             Beneficiary: "Beneficiary",
-            SupplierName: "Manual Supplier",
             ContractId: contract.Id,
             CargoType: "wheat");
 
@@ -101,9 +99,6 @@ public class LettersOfCreditControllerTests
         var payload = Assert.IsType<LetterOfCreditResponse>(created.Value);
 
         Assert.Equal("Acme Suppliers", payload.SupplierName);
-
-        var saved = await context.LettersOfCredit.SingleAsync();
-        Assert.Equal("Acme Suppliers", saved.SupplierName);
     }
 
     [Fact]
@@ -130,7 +125,6 @@ public class LettersOfCreditControllerTests
             expiryDate: expiryDate,
             applicant: null,
             beneficiary: null,
-            supplierName: null,
             contractId: null,
             file: null);
 
@@ -172,7 +166,6 @@ public class LettersOfCreditControllerTests
             ExpiryDate: expiryDate,
             Applicant: null,
             Beneficiary: null,
-            SupplierName: null,
             ContractId: null,
             CargoType: "rice");
 
@@ -214,8 +207,7 @@ public class LettersOfCreditControllerTests
         var lc = new LetterOfCredit
         {
             Number = "LC-Existing",
-            ContractId = contractA.Id,
-            SupplierName = contractA.SupplierName
+            ContractId = contractA.Id
         };
 
         context.LettersOfCredit.Add(lc);
@@ -236,7 +228,6 @@ public class LettersOfCreditControllerTests
             ExpiryDate: expiryDate,
             Applicant: null,
             Beneficiary: null,
-            SupplierName: "Should be ignored",
             ContractId: contractB.Id,
             CargoType: "rice");
 
@@ -245,7 +236,7 @@ public class LettersOfCreditControllerTests
         var payload = Assert.IsType<LetterOfCreditResponse>(result.Value);
 
         Assert.Equal("Supplier B", payload.SupplierName);
-        Assert.Equal("Supplier B", lc.SupplierName);
+        Assert.Equal(contractB.Id, lc.ContractId);
     }
 
     [Fact]
@@ -277,7 +268,6 @@ public class LettersOfCreditControllerTests
             expiryDate: expiryDate,
             applicant: null,
             beneficiary: null,
-            supplierName: null,
             contractId: null,
             file: null);
 

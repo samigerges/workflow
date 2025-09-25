@@ -255,10 +255,6 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<DateTime?>("ShipmentPeriod")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("SupplierName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<string>("IssuingBank")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
