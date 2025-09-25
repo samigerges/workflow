@@ -20,13 +20,16 @@ import {
   formatLcDate,
   isLcExpired,
   daysUntilLcExpiry,
+  type NormalizedLC,
 } from "@/lib/lc";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+type FlowKey = NormalizedLC["flowKey"];
+
 interface JourneySegment {
-  value: "gasc_to_upf" | "upf_to_supplier";
+  value: FlowKey;
   label: string;
   description: string;
   statuses: string[] | null;
@@ -67,7 +70,7 @@ export default function LettersCredit() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [journeyFilter, setJourneyFilter] = useState<JourneySegment["value"]>("gasc_to_upf");
+  const [journeyFilter, setJourneyFilter] = useState<FlowKey>("gasc_to_upf");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
@@ -144,8 +147,18 @@ export default function LettersCredit() {
     }
   }, [availableStatusOptions, statusFilter]);
 
+  const canonicalFlow = journeyFilter === "upf_to_supplier" ? "UPF_TO_SUPPLIER" : "GASC_TO_UPF";
+
+  const lcQueryParams = useMemo(() => {
+    const params: Record<string, string> = { flow: canonicalFlow };
+    if (statusFilter !== "all") {
+      params.status = statusFilter;
+    }
+    return params;
+  }, [canonicalFlow, statusFilter]);
+
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery({
-    queryKey: ["/api/letters-of-credit", statusFilter !== "all" ? { status: statusFilter } : {}],
+    queryKey: ["/api/letters-of-credit", lcQueryParams],
     retry: false,
   });
 
@@ -157,15 +170,10 @@ export default function LettersCredit() {
     [lcArray],
   );
 
-  const journeyEntries = useMemo(() => {
-    const journey = JOURNEY_SEGMENTS.find((segment) => segment.value === journeyFilter);
-    if (!journey || !journey.statuses) {
-      return normalizedEntries;
-    }
-
-    const statusSet = new Set(journey.statuses);
-    return normalizedEntries.filter((entry) => statusSet.has(entry.normalized.statusKey));
-  }, [journeyFilter, normalizedEntries]);
+  const journeyEntries = useMemo(
+    () => normalizedEntries.filter((entry) => entry.normalized.flowKey === journeyFilter),
+    [journeyFilter, normalizedEntries],
+  );
 
   const journeyNormalizedLCs = useMemo(
     () => journeyEntries.map((entry) => entry.normalized),
@@ -183,10 +191,7 @@ export default function LettersCredit() {
   const journeySummaries = useMemo(
     () =>
       JOURNEY_SEGMENTS.map((segment) => {
-        const statusSet = segment.statuses ? new Set(segment.statuses) : null;
-        const entries = statusSet
-          ? normalizedEntries.filter((entry) => statusSet.has(entry.normalized.statusKey))
-          : normalizedEntries;
+        const entries = normalizedEntries.filter((entry) => entry.normalized.flowKey === segment.value);
         const statusLabels = (segment.statuses ?? []).map(
           (status) => status.charAt(0).toUpperCase() + status.slice(1),
         );
@@ -376,8 +381,9 @@ export default function LettersCredit() {
                   <DialogTitle>Create New Letter of Credit</DialogTitle>
                 </DialogHeader>
                 <LetterOfCreditForm
-                  onSuccess={() => {
+                  onSuccess={(flowKey) => {
                     setSuppressJourneySelection(true);
+                    setJourneyFilter(flowKey);
                     setShowCreateDialog(false);
                   }}
                   onCancel={() => setShowCreateDialog(false)}
@@ -396,9 +402,10 @@ export default function LettersCredit() {
             {editingLC && (
               <LetterOfCreditForm
                 lc={editingLC}
-                onSuccess={() => {
+                onSuccess={(flowKey) => {
                   setShowEditDialog(false);
                   setEditingLC(null);
+                  setJourneyFilter(flowKey);
                 }}
                 onCancel={() => {
                   setShowEditDialog(false);

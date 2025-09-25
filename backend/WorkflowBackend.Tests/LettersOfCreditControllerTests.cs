@@ -50,10 +50,12 @@ public class LettersOfCreditControllerTests
 
         Assert.Equal(DateTimeKind.Utc, payload.IssueDate?.Kind);
         Assert.Equal(DateTimeKind.Utc, payload.ExpiryDate?.Kind);
+        Assert.Equal("GASC_TO_UPF", payload.Flow);
 
         var saved = await context.LettersOfCredit.SingleAsync();
         Assert.Equal(DateTimeKind.Utc, saved.IssueDate?.Kind);
         Assert.Equal(DateTimeKind.Utc, saved.ExpiryDate?.Kind);
+        Assert.Equal("GASC_TO_UPF", saved.Flow);
     }
 
     [Fact]
@@ -99,6 +101,7 @@ public class LettersOfCreditControllerTests
         var payload = Assert.IsType<LetterOfCreditResponse>(created.Value);
 
         Assert.Equal("Acme Suppliers", payload.SupplierName);
+        Assert.Equal("GASC_TO_UPF", payload.Flow);
     }
 
     [Fact]
@@ -126,6 +129,7 @@ public class LettersOfCreditControllerTests
             applicant: null,
             beneficiary: null,
             contractId: null,
+            flow: "GASC_TO_UPF",
             file: null);
 
         var created = Assert.IsType<CreatedAtActionResult>(result.Result);
@@ -133,10 +137,12 @@ public class LettersOfCreditControllerTests
 
         Assert.Equal(DateTimeKind.Utc, payload.IssueDate?.Kind);
         Assert.Equal(DateTimeKind.Utc, payload.ExpiryDate?.Kind);
+        Assert.Equal("GASC_TO_UPF", payload.Flow);
 
         var saved = await context.LettersOfCredit.SingleAsync();
         Assert.Equal(DateTimeKind.Utc, saved.IssueDate?.Kind);
         Assert.Equal(DateTimeKind.Utc, saved.ExpiryDate?.Kind);
+        Assert.Equal("GASC_TO_UPF", saved.Flow);
     }
 
     [Fact]
@@ -167,7 +173,8 @@ public class LettersOfCreditControllerTests
             Applicant: null,
             Beneficiary: null,
             ContractId: null,
-            CargoType: "rice");
+            CargoType: "rice",
+            Flow: "UPF_TO_SUPPLIER");
 
         var result = await controller.UpdateJson(lc.Id, request);
 
@@ -178,6 +185,8 @@ public class LettersOfCreditControllerTests
 
         Assert.Equal(DateTimeKind.Utc, lc.IssueDate?.Kind);
         Assert.Equal(DateTimeKind.Utc, lc.ExpiryDate?.Kind);
+        Assert.Equal("UPF_TO_SUPPLIER", lc.Flow);
+        Assert.Equal("UPF_TO_SUPPLIER", payload.Flow);
     }
 
     [Fact]
@@ -229,7 +238,8 @@ public class LettersOfCreditControllerTests
             Applicant: null,
             Beneficiary: null,
             ContractId: contractB.Id,
-            CargoType: "rice");
+            CargoType: "rice",
+            Flow: "UPF_TO_SUPPLIER");
 
         var result = await controller.UpdateJson(lc.Id, request);
 
@@ -237,6 +247,8 @@ public class LettersOfCreditControllerTests
 
         Assert.Equal("Supplier B", payload.SupplierName);
         Assert.Equal(contractB.Id, lc.ContractId);
+        Assert.Equal("UPF_TO_SUPPLIER", payload.Flow);
+        Assert.Equal("UPF_TO_SUPPLIER", lc.Flow);
     }
 
     [Fact]
@@ -269,6 +281,7 @@ public class LettersOfCreditControllerTests
             applicant: null,
             beneficiary: null,
             contractId: null,
+            flow: "UPF_TO_SUPPLIER",
             file: null);
 
         var payload = Assert.IsType<LetterOfCreditResponse>(result.Value);
@@ -278,6 +291,8 @@ public class LettersOfCreditControllerTests
 
         Assert.Equal(DateTimeKind.Utc, lc.IssueDate?.Kind);
         Assert.Equal(DateTimeKind.Utc, lc.ExpiryDate?.Kind);
+        Assert.Equal("UPF_TO_SUPPLIER", payload.Flow);
+        Assert.Equal("UPF_TO_SUPPLIER", lc.Flow);
     }
 
     [Fact]
