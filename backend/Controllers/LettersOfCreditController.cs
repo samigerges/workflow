@@ -49,7 +49,7 @@ namespace WorkflowBackend.Api.Controllers
         private static string? NormalizeString(string? value) =>
             string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-        private async Task<(string? supplierName, IActionResult? error)> ResolveSupplierFromContractAsync(Guid? contractId)
+        private async Task<(string? supplierName, ActionResult<LetterOfCreditResponse>? error)> ResolveSupplierFromContractAsync(Guid? contractId)
         {
             if (contractId is null) return (null, null);
 
