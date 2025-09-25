@@ -456,6 +456,7 @@ export default function Reports() {
 
   const uniqueLCs = useMemo(() => {
     return normalizedLcEntries
+      .filter(({ normalized }) => normalized.flowKey === "upf_to_supplier")
       .map(({ raw, normalized }) => {
         const idValue = raw?.id ?? normalized.id;
         if (idValue === null || idValue === undefined) return null;
