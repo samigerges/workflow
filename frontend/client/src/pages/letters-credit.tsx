@@ -136,7 +136,10 @@ export default function LettersCredit() {
   }, [availableStatusOptions, statusFilter]);
 
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery({
-    queryKey: ["/api/letters-of-credit", statusFilter !== "all" ? { status: statusFilter } : {}],
+    queryKey: [
+      "/api/letters-of-credit",
+      statusFilter !== "all" ? { status: formatLcStatusLabel(statusFilter) } : {},
+    ],
     retry: false,
   });
 
