@@ -39,6 +39,10 @@ function buildDetailItems(lc: NormalizedLC) {
     { label: "Issuing Bank", value: lc.issuingBank ?? "—" },
     { label: "Beneficiary", value: lc.beneficiary ?? "—" },
     { label: "Supplier", value: lc.supplierName ?? "—" },
+    {
+      label: "Journey",
+      value: lc.flowKey === "gasc_to_upf" ? "LC GASC → UPF" : "UPF → Supplier",
+    },
     { label: "Shipment Period", value: formatLcDate(lc.shipmentPeriod) },
     { label: "Issue Date", value: formatLcDate(lc.issueDate) },
     {

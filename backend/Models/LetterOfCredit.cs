@@ -37,6 +37,9 @@ namespace WorkflowBackend.Api.Models
         [MaxLength(50)]
         public string Status { get; set; } = "Draft"; // Draft, Issued, Amended, Utilized, Expired, Cancelled, Archived
 
+        [MaxLength(30)]
+        public string Flow { get; set; } = "GASC_TO_UPF"; // GASC_TO_UPF, UPF_TO_SUPPLIER
+
         // Optional link to Contract
         public Guid? ContractId { get; set; }
         public Contract? Contract { get; set; }

@@ -98,6 +98,7 @@ export default function LCDetail() {
       utilizationRate,
       currency: normalizedLc.currency ?? "USD",
       status: normalizedLc.status,
+      flowKey: normalizedLc.flowKey,
       expiryDate: normalizedLc.expiryDate,
       issuingBank: normalizedLc.issuingBank,
       issueDate: normalizedLc.issueDate,
@@ -174,6 +175,15 @@ export default function LCDetail() {
                   <span className="text-sm font-medium text-gray-600">LC Number</span>
                 </div>
                 <p className="text-xl font-bold text-gray-900">{lcAnalytics.lcNumber}</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Badge className="bg-indigo-100 text-indigo-700">Journey</Badge>
+                </div>
+                <p className="text-lg font-semibold text-indigo-900">
+                  {lcAnalytics.flowKey === "gasc_to_upf" ? "LC GASC → UPF" : "UPF → Supplier"}
+                </p>
               </div>
 
               <div className="space-y-2">

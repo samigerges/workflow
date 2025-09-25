@@ -10,6 +10,8 @@ export interface NormalizedLC {
   applicant: string | null;
   beneficiary: string | null;
   supplierName: string | null;
+  flow: string;
+  flowKey: "gasc_to_upf" | "upf_to_supplier";
   status: string;
   statusKey: string;
   issueDate: string | null;
@@ -61,6 +63,9 @@ const fallbackNumberFromId = (id: unknown): string | null => {
 };
 
 export function normalizeLc(raw: any): NormalizedLC {
+  const allowedFlows = new Set(["GASC_TO_UPF", "UPF_TO_SUPPLIER"]);
+  const defaultFlow = "GASC_TO_UPF";
+
   const number =
     safeString(raw?.number) ??
     safeString(raw?.lcNumber) ??
@@ -83,6 +88,17 @@ export function normalizeLc(raw: any): NormalizedLC {
   const supplierName = safeString(raw?.supplierName) ?? safeString(raw?.supplier_name);
   const status = safeString(raw?.status) ?? "Draft";
   const statusKey = status.toLowerCase();
+
+  const rawFlow =
+    safeString(raw?.flow) ??
+    safeString(raw?.lcFlow) ??
+    safeString(raw?.Flow);
+  const normalizedFlow = (() => {
+    if (!rawFlow) return defaultFlow;
+    const candidate = rawFlow.replace(/[\s-]+/g, "_").toUpperCase();
+    return allowedFlows.has(candidate) ? candidate : defaultFlow;
+  })();
+  const flowKey = normalizedFlow.toLowerCase() as NormalizedLC["flowKey"];
 
   const issueDate = safeDateString(raw?.issueDate) ?? safeDateString(raw?.issuedDate);
   const shipmentPeriod = safeDateString(raw?.shipmentPeriod) ?? safeDateString(raw?.shipmentPeriodDate);
@@ -109,6 +125,8 @@ export function normalizeLc(raw: any): NormalizedLC {
     applicant,
     beneficiary,
     supplierName,
+    flow: normalizedFlow,
+    flowKey,
     status,
     statusKey,
     issueDate,

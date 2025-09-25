@@ -16,6 +16,13 @@ import { CARGO_TYPES, CURRENCIES } from "@/lib/constants";
 import { normalizeLc, formatLcCurrency } from "@/lib/lc";
 
 // Create a more flexible schema for drafts - matching backend DTO
+const FLOW_VALUES = ["gasc_to_upf", "upf_to_supplier"] as const;
+const FLOW_OPTIONS = [
+  { value: FLOW_VALUES[0], label: "LC GASC → UPF" },
+  { value: FLOW_VALUES[1], label: "UPF → Supplier" },
+] as const;
+type FlowKey = (typeof FLOW_VALUES)[number];
+
 const lcFormSchema = z.object({
   number: z.string().min(1, "LC Number is required"),
   issuingBank: z.string().optional(),
@@ -31,6 +38,7 @@ const lcFormSchema = z.object({
   shipmentPeriod: z.string().optional(),
   expiryDate: z.string().optional(),
   beneficiary: z.string().optional(),
+  flow: z.enum(FLOW_VALUES).default("gasc_to_upf"),
   status: z.string().default("draft"),
   createdBy: z.string().optional(),
 });
@@ -38,7 +46,7 @@ const lcFormSchema = z.object({
 type LCFormData = z.infer<typeof lcFormSchema>;
 
 interface LetterOfCreditFormProps {
-  onSuccess?: () => void;
+  onSuccess?: (flowKey: FlowKey) => void;
   onCancel?: () => void;
   lc?: any;
 }
@@ -77,11 +85,13 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
             ? new Date(normalizedLc.expiryDate).toISOString().split("T")[0]
             : "",
           beneficiary: normalizedLc.beneficiary ?? "",
+          flow: normalizedLc.flowKey,
           status: normalizedLc.statusKey ?? "draft",
         }
       : {
           currency: "USD",
           cargoType: "",
+          flow: "gasc_to_upf",
           status: "draft",
         },
   });
@@ -89,6 +99,7 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
   const watchedQuantity = watch("quantity");
   const watchedPricePerUnit = watch("pricePerUnit");
   const watchedCurrency = watch("currency");
+  const watchedFlow = watch("flow");
 
   const createMutation = useMutation({
     mutationFn: async (data: LCFormData) => {
@@ -149,6 +160,9 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
         formData.append("beneficiary", data.beneficiary);
       }
 
+      const normalizedFlow = data.flow === "upf_to_supplier" ? "UPF_TO_SUPPLIER" : "GASC_TO_UPF";
+      formData.append("flow", normalizedFlow);
+
       // Add file if selected
       if (selectedFiles.length > 0) {
         formData.append("lcFile", selectedFiles[0]);
@@ -162,7 +176,7 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
       const response = await apiRequest(method, url, formData);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       setSelectedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -170,7 +184,16 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
         title: "Success",
         description: lc ? "Letter of Credit updated successfully" : "Letter of Credit created successfully",
       });
-      onSuccess?.();
+      if (result) {
+        try {
+          const normalizedResult = normalizeLc(result);
+          onSuccess?.(normalizedResult.flowKey);
+        } catch {
+          onSuccess?.(watchedFlow ?? "gasc_to_upf");
+        }
+      } else {
+        onSuccess?.(watchedFlow ?? "gasc_to_upf");
+      }
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -226,6 +249,27 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
               />
               {errors.number && (
                 <p className="text-sm text-red-500 mt-1">{errors.number.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="flow">Journey *</Label>
+              <Select
+                value={watchedFlow ?? "gasc_to_upf"}
+                onValueChange={(value: FlowKey) => setValue("flow", value, { shouldValidate: true })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FLOW_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.flow && (
+                <p className="text-sm text-red-500 mt-1">{errors.flow.message}</p>
               )}
             </div>
           </div>

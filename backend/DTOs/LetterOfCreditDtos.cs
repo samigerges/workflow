@@ -15,7 +15,8 @@ namespace WorkflowBackend.Api.DTOs
         [param:MaxLength(200)] string? Applicant,
         [param:MaxLength(200)] string? Beneficiary,
         Guid? ContractId,
-        [param:MaxLength(100)] string? CargoType
+        [param:MaxLength(100)] string? CargoType,
+        [param:MaxLength(30)] string? Flow = null
     );
 
     public record LetterOfCreditUpdateRequest(
@@ -31,7 +32,8 @@ namespace WorkflowBackend.Api.DTOs
         [param:MaxLength(200)] string? Applicant,
         [param:MaxLength(200)] string? Beneficiary,
         Guid? ContractId,
-        [param:MaxLength(100)] string? CargoType
+        [param:MaxLength(100)] string? CargoType,
+        [param:MaxLength(30)] string? Flow = null
     );
 
     public record LetterOfCreditStatusChangeRequest([param:Required, MaxLength(50)] string Status);
@@ -57,7 +59,8 @@ namespace WorkflowBackend.Api.DTOs
         DateTime UpdatedAt,
         string? FileUrl,
         string? FileName,
-        string? CargoType
+        string? CargoType,
+        string Flow
     );
 
     public record LetterOfCreditVesselAllocationResponse(

@@ -17,6 +17,8 @@ namespace WorkflowBackend.Api.Controllers
         private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
 
+        private const string DefaultFlow = "GASC_TO_UPF";
+
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         { "Draft", "Issued", "Amended", "Utilized", "Expired", "Cancelled", "Archived" };
 
@@ -29,6 +31,12 @@ namespace WorkflowBackend.Api.Controllers
             ["Expired"]   = new[] { "Archived" },
             ["Cancelled"] = new[] { "Archived" },
             ["Archived"]  = Array.Empty<string>()
+        };
+
+        private static readonly HashSet<string> AllowedFlows = new(StringComparer.OrdinalIgnoreCase)
+        {
+            DefaultFlow,
+            "UPF_TO_SUPPLIER"
         };
 
         public LettersOfCreditController(AppDbContext db, IWebHostEnvironment env)
@@ -48,6 +56,29 @@ namespace WorkflowBackend.Api.Controllers
 
         private static string? NormalizeString(string? value) =>
             string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private static bool TryNormalizeFlow(string? input, string fallback, out string normalized)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                normalized = fallback;
+                return AllowedFlows.Contains(fallback);
+            }
+
+            var candidate = input.Trim()
+                .Replace("-", "_", StringComparison.Ordinal)
+                .Replace(" ", "_", StringComparison.Ordinal)
+                .ToUpperInvariant();
+
+            if (AllowedFlows.Contains(candidate))
+            {
+                normalized = candidate;
+                return true;
+            }
+
+            normalized = fallback;
+            return false;
+        }
 
         private LetterOfCreditResponse ToResponse(LetterOfCredit lc)
         {
@@ -81,7 +112,8 @@ namespace WorkflowBackend.Api.Controllers
                 lc.UpdatedAt,
                 url,
                 lc.FileName,
-                lc.CargoType
+                lc.CargoType,
+                lc.Flow
             );
         }
 
@@ -113,7 +145,7 @@ namespace WorkflowBackend.Api.Controllers
 
         // GET /api/letters-of-credit
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<LetterOfCreditResponse>>> GetAll([FromQuery] string? status, [FromQuery] Guid? contractId)
+        public async Task<ActionResult<IEnumerable<LetterOfCreditResponse>>> GetAll([FromQuery] string? status, [FromQuery] Guid? contractId, [FromQuery] string? flow)
         {
             var q = _db.LettersOfCredit
                 .Include(l => l.Contract)
@@ -124,6 +156,14 @@ namespace WorkflowBackend.Api.Controllers
 
             if (contractId is not null)
                 q = q.Where(l => l.ContractId == contractId);
+
+            if (!string.IsNullOrWhiteSpace(flow))
+            {
+                if (!TryNormalizeFlow(flow, DefaultFlow, out var normalizedFlow))
+                    return BadRequest(new { message = $"Unsupported flow '{flow}'." });
+
+                q = q.Where(l => l.Flow == normalizedFlow);
+            }
 
             var items = await q.OrderByDescending(l => l.CreatedAt).ToListAsync();
             return items.Select(ToResponse).ToList();
@@ -147,6 +187,9 @@ namespace WorkflowBackend.Api.Controllers
         [Consumes("application/json")]
         public async Task<ActionResult<LetterOfCreditResponse>> CreateJson([FromBody] LetterOfCreditCreateRequest req)
         {
+            if (!TryNormalizeFlow(req.Flow, DefaultFlow, out var normalizedFlow))
+                return BadRequest(new { message = $"Unsupported flow '{req.Flow}'." });
+
             var lc = new LetterOfCredit
             {
                 Number = req.Number.Trim(),
@@ -165,7 +208,8 @@ namespace WorkflowBackend.Api.Controllers
                 Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim(),
                 ContractId = req.ContractId,
                 Status = "Draft",
-                CreatedByUserId = CurrentUserId()
+                CreatedByUserId = CurrentUserId(),
+                Flow = normalizedFlow
             };
 
             if (lc.ContractId is not null)
@@ -202,8 +246,12 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] string? applicant,
             [FromForm] string? beneficiary,
             [FromForm] Guid? contractId,
+            [FromForm] string? flow,
             [FromForm(Name = "lcFile")] IFormFile? file)
         {
+            if (!TryNormalizeFlow(flow, DefaultFlow, out var normalizedFlow))
+                return BadRequest(new { message = $"Unsupported flow '{flow}'." });
+
             var lc = new LetterOfCredit
             {
                 Number = number.Trim(),
@@ -222,7 +270,8 @@ namespace WorkflowBackend.Api.Controllers
                 Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim(),
                 ContractId = contractId,
                 Status = "Draft",
-                CreatedByUserId = CurrentUserId()
+                CreatedByUserId = CurrentUserId(),
+                Flow = normalizedFlow
             };
 
             if (lc.ContractId is not null)
@@ -266,6 +315,10 @@ namespace WorkflowBackend.Api.Controllers
             var lc = await _db.LettersOfCredit.FindAsync(id);
             if (lc is null) return NotFound();
 
+            var fallbackFlow = string.IsNullOrWhiteSpace(lc.Flow) ? DefaultFlow : lc.Flow;
+            if (!TryNormalizeFlow(req.Flow, fallbackFlow, out var normalizedFlow))
+                return BadRequest(new { message = $"Unsupported flow '{req.Flow}'." });
+
             lc.Number = req.Number.Trim();
             lc.IssuingBank = string.IsNullOrWhiteSpace(req.IssuingBank) ? null : req.IssuingBank.Trim();
             lc.Quantity = req.Quantity;
@@ -281,6 +334,7 @@ namespace WorkflowBackend.Api.Controllers
             lc.Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim();
             lc.ContractId = req.ContractId;
+            lc.Flow = normalizedFlow;
 
             if (lc.ContractId is not null)
             {
@@ -316,10 +370,15 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] string? applicant,
             [FromForm] string? beneficiary,
             [FromForm] Guid? contractId,
+            [FromForm] string? flow,
             [FromForm(Name = "lcFile")] IFormFile? file)
         {
             var lc = await _db.LettersOfCredit.FindAsync(id);
             if (lc is null) return NotFound();
+
+            var fallbackFlow = string.IsNullOrWhiteSpace(lc.Flow) ? DefaultFlow : lc.Flow;
+            if (!TryNormalizeFlow(flow, fallbackFlow, out var normalizedFlow))
+                return BadRequest(new { message = $"Unsupported flow '{flow}'." });
 
             lc.Number = number.Trim();
             lc.IssuingBank = string.IsNullOrWhiteSpace(issuingBank) ? null : issuingBank.Trim();
@@ -336,6 +395,7 @@ namespace WorkflowBackend.Api.Controllers
             lc.Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim();
             lc.ContractId = contractId;
+            lc.Flow = normalizedFlow;
 
             if (lc.ContractId is not null)
             {

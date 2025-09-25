@@ -98,6 +98,7 @@ namespace WorkflowBackend.Api.Data
             // LetterOfCredit
             modelBuilder.Entity<LetterOfCredit>().Property(l => l.Number).HasMaxLength(100).IsRequired();
             modelBuilder.Entity<LetterOfCredit>().Property(l => l.Status).HasMaxLength(50).HasDefaultValue("Draft");
+            modelBuilder.Entity<LetterOfCredit>().Property(l => l.Flow).HasMaxLength(30).HasDefaultValue("GASC_TO_UPF");
             modelBuilder.Entity<LetterOfCredit>().Property(l => l.Currency).HasMaxLength(10);
             modelBuilder.Entity<LetterOfCredit>()
                 .HasOne(l => l.Contract).WithMany()
