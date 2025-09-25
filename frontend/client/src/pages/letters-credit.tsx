@@ -32,7 +32,6 @@ interface JourneySegment {
   value: FlowKey;
   label: string;
   description: string;
-  statuses: string[] | null;
   icon: LucideIcon;
 }
 
@@ -41,14 +40,12 @@ const JOURNEY_SEGMENTS: JourneySegment[] = [
     value: "gasc_to_upf",
     label: "LC GASC → UPF",
     description: "Covers issuance and internal approvals before supplier engagement.",
-    statuses: ["draft", "issued", "amended"],
     icon: Building2,
   },
   {
     value: "upf_to_supplier",
     label: "UPF → Suppliers",
     description: "Tracks fulfillment, utilization, and supplier-facing activities.",
-    statuses: ["utilized", "expired", "cancelled", "archived"],
     icon: Factory,
   },
 ];
@@ -56,6 +53,7 @@ const JOURNEY_SEGMENTS: JourneySegment[] = [
 const STATUS_OPTIONS = [
   "Draft",
   "Issued",
+  "Active",
   "Amended",
   "Utilized",
   "Expired",
@@ -63,13 +61,10 @@ const STATUS_OPTIONS = [
   "Archived",
 ] as const;
 
-const STATUS_FILTER_OPTIONS = ["all", ...STATUS_OPTIONS.map((status) => status.toLowerCase())] as const;
-
 export default function LettersCredit() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [journeyFilter, setJourneyFilter] = useState<FlowKey>("gasc_to_upf");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -132,30 +127,14 @@ export default function LettersCredit() {
     [journeyFilter],
   );
 
-  const availableStatusOptions = useMemo(() => {
-    if (!selectedJourney || !selectedJourney.statuses) {
-      return STATUS_FILTER_OPTIONS as readonly string[];
-    }
-
-    return ["all", ...selectedJourney.statuses] as const;
-  }, [selectedJourney]);
-
-  useEffect(() => {
-    if (statusFilter === "all") return;
-    if (!availableStatusOptions.includes(statusFilter)) {
-      setStatusFilter("all");
-    }
-  }, [availableStatusOptions, statusFilter]);
+  const journeyLabel = selectedJourney?.label ?? JOURNEY_SEGMENTS[0].label;
 
   const canonicalFlow = journeyFilter === "upf_to_supplier" ? "UPF_TO_SUPPLIER" : "GASC_TO_UPF";
 
   const lcQueryParams = useMemo(() => {
     const params: Record<string, string> = { flow: canonicalFlow };
-    if (statusFilter !== "all") {
-      params.status = statusFilter;
-    }
     return params;
-  }, [canonicalFlow, statusFilter]);
+  }, [canonicalFlow]);
 
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery({
     queryKey: ["/api/letters-of-credit", lcQueryParams],
@@ -180,14 +159,6 @@ export default function LettersCredit() {
     [journeyEntries],
   );
 
-  const filteredEntries = useMemo(
-    () =>
-      statusFilter === "all"
-        ? journeyEntries
-        : journeyEntries.filter((entry) => entry.normalized.statusKey === statusFilter),
-    [journeyEntries, statusFilter],
-  );
-
   const issuedCount = journeyNormalizedLCs.filter((lc) => lc.statusKey === "issued").length;
   const documentsCount = journeyNormalizedLCs.filter((lc) => Boolean(lc.fileUrl)).length;
   const linkedContractsCount = journeyNormalizedLCs.reduce((set, lc) => {
@@ -200,19 +171,9 @@ export default function LettersCredit() {
     const days = daysUntilLcExpiry(lc.expiryDate);
     return typeof days === "number" && days > 0 && days <= 5;
   }).length;
-  const statusFilterLabel = statusFilter === "all"
-    ? "All"
-    : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
-  const journeyLabel = selectedJourney?.label ?? JOURNEY_SEGMENTS[0].label;
-  const emptyStateDescription = (() => {
-    if (normalizedEntries.length === 0) {
-      return "Get started by creating your first letter of credit.";
-    }
-    if (statusFilter === "all") {
-      return `No letters of credit found for ${journeyLabel}.`;
-    }
-    return `No LCs with status "${statusFilterLabel}" in ${journeyLabel}.`;
-  })();
+  const emptyStateDescription = normalizedEntries.length === 0
+    ? "Get started by creating your first letter of credit."
+    : `No letters of credit found for ${journeyLabel}.`;
 
   const handleStatusChange = async (lcId: string | number, newStatus: string) => {
     try {
@@ -291,20 +252,6 @@ export default function LettersCredit() {
           {/* Header Actions */}
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div className="flex w-full flex-col gap-2 sm:w-auto">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableStatusOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option === "all"
-                        ? "All Statuses"
-                        : option.charAt(0).toUpperCase() + option.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <span className="text-xs text-secondary-500">
                 Viewing: <span className="font-semibold text-secondary-700">{journeyLabel}</span>
               </span>
@@ -443,7 +390,7 @@ export default function LettersCredit() {
                     <div key={i} className="h-16 bg-secondary-100 rounded-lg animate-pulse" />
                   ))}
                 </div>
-              ) : filteredEntries.length > 0 ? (
+              ) : journeyEntries.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -463,7 +410,7 @@ export default function LettersCredit() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredEntries.map(({ raw, normalized }, index) => {
+                    {journeyEntries.map(({ raw, normalized }, index) => {
                       const rowKey = normalized.id ?? raw?.id ?? index;
                       const expired = isLcExpired(normalized.expiryDate);
                       const statusValue = normalized.status || "Draft";
