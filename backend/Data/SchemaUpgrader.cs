@@ -84,6 +84,7 @@ BEGIN
         ALTER TABLE "Contracts"
         ADD COLUMN "PublicId" character varying(50) NOT NULL DEFAULT '';
     END IF;
+
 END $$;
 """,
                 cancellationToken);
@@ -208,6 +209,7 @@ BEGIN
     ALTER TABLE [Contracts]
     ADD [PublicId] NVARCHAR(50) NOT NULL CONSTRAINT DF_Contracts_PublicId DEFAULT '';
 END;
+
 """,
                 cancellationToken);
 

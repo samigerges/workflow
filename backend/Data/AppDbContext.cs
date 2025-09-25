@@ -99,7 +99,6 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<LetterOfCredit>().Property(l => l.Number).HasMaxLength(100).IsRequired();
             modelBuilder.Entity<LetterOfCredit>().Property(l => l.Status).HasMaxLength(50).HasDefaultValue("Draft");
             modelBuilder.Entity<LetterOfCredit>().Property(l => l.Currency).HasMaxLength(10);
-            modelBuilder.Entity<LetterOfCredit>().Property(l => l.SupplierName).HasMaxLength(200);
             modelBuilder.Entity<LetterOfCredit>()
                 .HasOne(l => l.Contract).WithMany()
                 .HasForeignKey(l => l.ContractId).OnDelete(DeleteBehavior.SetNull);
