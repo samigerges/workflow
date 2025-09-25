@@ -34,6 +34,9 @@ namespace WorkflowBackend.Api.Models
         [MaxLength(200)]
         public string? Beneficiary { get; set; } // seller
 
+        [MaxLength(200)]
+        public string? SupplierName { get; set; }
+
         [MaxLength(50)]
         public string Status { get; set; } = "Draft"; // Draft, Issued, Amended, Utilized, Expired, Cancelled, Archived
 

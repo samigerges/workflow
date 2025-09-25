@@ -14,6 +14,7 @@ namespace WorkflowBackend.Api.DTOs
         DateTime? ExpiryDate,
         [param:MaxLength(200)] string? Applicant,
         [param:MaxLength(200)] string? Beneficiary,
+        [param:MaxLength(200)] string? SupplierName,
         Guid? ContractId,
         [param:MaxLength(100)] string? CargoType
     );
@@ -30,6 +31,7 @@ namespace WorkflowBackend.Api.DTOs
         DateTime? ExpiryDate,
         [param:MaxLength(200)] string? Applicant,
         [param:MaxLength(200)] string? Beneficiary,
+        [param:MaxLength(200)] string? SupplierName,
         Guid? ContractId,
         [param:MaxLength(100)] string? CargoType
     );
@@ -49,6 +51,7 @@ namespace WorkflowBackend.Api.DTOs
         DateTime? ExpiryDate,
         string? Applicant,
         string? Beneficiary,
+        string? SupplierName,
         string Status,
         Guid? ContractId,
         Guid? CreatedByUserId,

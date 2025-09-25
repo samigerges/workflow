@@ -40,6 +40,7 @@ public class LettersOfCreditControllerTests
             ExpiryDate: expiryDate,
             Applicant: "Applicant",
             Beneficiary: "Beneficiary",
+            SupplierName: null,
             ContractId: null,
             CargoType: "wheat");
 
@@ -54,6 +55,55 @@ public class LettersOfCreditControllerTests
         var saved = await context.LettersOfCredit.SingleAsync();
         Assert.Equal(DateTimeKind.Utc, saved.IssueDate?.Kind);
         Assert.Equal(DateTimeKind.Utc, saved.ExpiryDate?.Kind);
+    }
+
+    [Fact]
+    public async Task CreateJson_WithContract_PopulatesSupplierFromContract()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Test Contract",
+            PublicId = "CON-001",
+            SupplierName = "Acme Suppliers"
+        };
+
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var issueDate = new DateTime(2024, 10, 5, 0, 0, 0, DateTimeKind.Unspecified);
+        var expiryDate = new DateTime(2025, 2, 15);
+
+        var request = new LetterOfCreditCreateRequest(
+            Number: "LC-001",
+            IssuingBank: "Test Bank",
+            Amount: 10_000m,
+            Quantity: 100m,
+            PricePerUnit: 100m,
+            Currency: "usd",
+            IssueDate: issueDate,
+            ShipmentPeriod: issueDate,
+            ExpiryDate: expiryDate,
+            Applicant: "Applicant",
+            Beneficiary: "Beneficiary",
+            SupplierName: "Manual Supplier",
+            ContractId: contract.Id,
+            CargoType: "wheat");
+
+        var result = await controller.CreateJson(request);
+
+        var created = Assert.IsType<CreatedAtActionResult>(result.Result);
+        var payload = Assert.IsType<LetterOfCreditResponse>(created.Value);
+
+        Assert.Equal("Acme Suppliers", payload.SupplierName);
+
+        var saved = await context.LettersOfCredit.SingleAsync();
+        Assert.Equal("Acme Suppliers", saved.SupplierName);
     }
 
     [Fact]
@@ -80,6 +130,7 @@ public class LettersOfCreditControllerTests
             expiryDate: expiryDate,
             applicant: null,
             beneficiary: null,
+            supplierName: null,
             contractId: null,
             file: null);
 
@@ -121,6 +172,7 @@ public class LettersOfCreditControllerTests
             ExpiryDate: expiryDate,
             Applicant: null,
             Beneficiary: null,
+            SupplierName: null,
             ContractId: null,
             CargoType: "rice");
 
@@ -133,6 +185,67 @@ public class LettersOfCreditControllerTests
 
         Assert.Equal(DateTimeKind.Utc, lc.IssueDate?.Kind);
         Assert.Equal(DateTimeKind.Utc, lc.ExpiryDate?.Kind);
+    }
+
+    [Fact]
+    public async Task UpdateJson_WithContract_RefreshesSupplierName()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+        var controller = CreateController(context);
+
+        var contractA = new Contract
+        {
+            Title = "Contract A",
+            PublicId = "CON-A",
+            SupplierName = "Supplier A"
+        };
+
+        var contractB = new Contract
+        {
+            Title = "Contract B",
+            PublicId = "CON-B",
+            SupplierName = "Supplier B"
+        };
+
+        context.Contracts.AddRange(contractA, contractB);
+
+        var lc = new LetterOfCredit
+        {
+            Number = "LC-Existing",
+            ContractId = contractA.Id,
+            SupplierName = contractA.SupplierName
+        };
+
+        context.LettersOfCredit.Add(lc);
+        await context.SaveChangesAsync();
+
+        var issueDate = new DateTime(2026, 1, 1);
+        var expiryDate = new DateTime(2026, 12, 31);
+
+        var request = new LetterOfCreditUpdateRequest(
+            Number: "LC-Existing",
+            IssuingBank: null,
+            Amount: null,
+            Quantity: 200m,
+            PricePerUnit: 50m,
+            Currency: "gbp",
+            IssueDate: issueDate,
+            ShipmentPeriod: issueDate,
+            ExpiryDate: expiryDate,
+            Applicant: null,
+            Beneficiary: null,
+            SupplierName: "Should be ignored",
+            ContractId: contractB.Id,
+            CargoType: "rice");
+
+        var result = await controller.UpdateJson(lc.Id, request);
+
+        var payload = Assert.IsType<LetterOfCreditResponse>(result.Value);
+
+        Assert.Equal("Supplier B", payload.SupplierName);
+        Assert.Equal("Supplier B", lc.SupplierName);
     }
 
     [Fact]
@@ -164,6 +277,7 @@ public class LettersOfCreditControllerTests
             expiryDate: expiryDate,
             applicant: null,
             beneficiary: null,
+            supplierName: null,
             contractId: null,
             file: null);
 

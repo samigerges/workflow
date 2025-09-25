@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Linq;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
 using WorkflowBackend.Api.Models;
@@ -45,6 +46,24 @@ namespace WorkflowBackend.Api.Controllers
         private static DateTime? ToUtc(DateTime? value) =>
             value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : null;
 
+        private static string? NormalizeString(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private async Task<(string? supplierName, IActionResult? error)> ResolveSupplierFromContractAsync(Guid? contractId)
+        {
+            if (contractId is null) return (null, null);
+
+            var contract = await _db.Contracts
+                .Where(c => c.Id == contractId.Value)
+                .Select(c => new { c.Id, c.SupplierName })
+                .SingleOrDefaultAsync();
+
+            if (contract is null)
+                return (null, BadRequest(new { message = "Linked contract not found." }));
+
+            return (NormalizeString(contract.SupplierName), null);
+        }
+
         private LetterOfCreditResponse ToResponse(LetterOfCredit lc)
         {
             string? url = null;
@@ -53,6 +72,8 @@ namespace WorkflowBackend.Api.Controllers
                 var req = HttpContext.Request;
                 url = $"{req.Scheme}://{req.Host}/{lc.FilePath.Replace("\\", "/")}";
             }
+
+            var supplier = NormalizeString(lc.SupplierName) ?? NormalizeString(lc.Contract?.SupplierName);
 
             return new LetterOfCreditResponse(
                 lc.Id,
@@ -67,6 +88,7 @@ namespace WorkflowBackend.Api.Controllers
                 lc.ExpiryDate,
                 lc.Applicant,
                 lc.Beneficiary,
+                supplier,
                 lc.Status,
                 lc.ContractId,
                 lc.CreatedByUserId,
@@ -108,7 +130,9 @@ namespace WorkflowBackend.Api.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<LetterOfCreditResponse>>> GetAll([FromQuery] string? status, [FromQuery] Guid? contractId)
         {
-            var q = _db.LettersOfCredit.AsQueryable();
+            var q = _db.LettersOfCredit
+                .Include(l => l.Contract)
+                .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(status))
                 q = q.Where(l => l.Status == status);
@@ -124,7 +148,9 @@ namespace WorkflowBackend.Api.Controllers
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<LetterOfCreditResponse>> GetOne(Guid id)
         {
-            var lc = await _db.LettersOfCredit.FindAsync(id);
+            var lc = await _db.LettersOfCredit
+                .Include(l => l.Contract)
+                .FirstOrDefaultAsync(l => l.Id == id);
             if (lc is null) return NotFound();
             return ToResponse(lc);
         }
@@ -157,6 +183,15 @@ namespace WorkflowBackend.Api.Controllers
                 CreatedByUserId = CurrentUserId()
             };
 
+            lc.SupplierName = NormalizeString(req.SupplierName);
+
+            if (lc.ContractId is not null)
+            {
+                var (supplierName, error) = await ResolveSupplierFromContractAsync(lc.ContractId);
+                if (error is not null) return error;
+                lc.SupplierName = supplierName;
+            }
+
             _db.LettersOfCredit.Add(lc);
             await _db.SaveChangesAsync();
 
@@ -179,6 +214,7 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] DateTime? expiryDate,
             [FromForm] string? applicant,
             [FromForm] string? beneficiary,
+            [FromForm] string? supplierName,
             [FromForm] Guid? contractId,
             [FromForm(Name = "lcFile")] IFormFile? file)
         {
@@ -202,6 +238,15 @@ namespace WorkflowBackend.Api.Controllers
                 Status = "Draft",
                 CreatedByUserId = CurrentUserId()
             };
+
+            lc.SupplierName = NormalizeString(supplierName);
+
+            if (lc.ContractId is not null)
+            {
+                var (resolvedSupplier, error) = await ResolveSupplierFromContractAsync(lc.ContractId);
+                if (error is not null) return error;
+                lc.SupplierName = resolvedSupplier;
+            }
 
             if (file is not null)
             {
@@ -248,6 +293,14 @@ namespace WorkflowBackend.Api.Controllers
             lc.Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim();
             lc.ContractId = req.ContractId;
+            lc.SupplierName = NormalizeString(req.SupplierName);
+
+            if (lc.ContractId is not null)
+            {
+                var (supplierName, error) = await ResolveSupplierFromContractAsync(lc.ContractId);
+                if (error is not null) return error;
+                lc.SupplierName = supplierName;
+            }
             lc.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -271,6 +324,7 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] DateTime? expiryDate,
             [FromForm] string? applicant,
             [FromForm] string? beneficiary,
+            [FromForm] string? supplierName,
             [FromForm] Guid? contractId,
             [FromForm(Name = "lcFile")] IFormFile? file)
         {
@@ -292,6 +346,14 @@ namespace WorkflowBackend.Api.Controllers
             lc.Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim();
             lc.Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim();
             lc.ContractId = contractId;
+            lc.SupplierName = NormalizeString(supplierName);
+
+            if (lc.ContractId is not null)
+            {
+                var (resolvedSupplier, error) = await ResolveSupplierFromContractAsync(lc.ContractId);
+                if (error is not null) return error;
+                lc.SupplierName = resolvedSupplier;
+            }
 
             if (file is not null)
             {
