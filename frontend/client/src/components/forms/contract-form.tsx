@@ -454,51 +454,33 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
     <Card>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              {...register("description")}
-              rows={4}
-              placeholder="Detailed description of goods, specifications, and requirements"
-              maxLength={CONTRACT_NARRATIVE_LIMIT}
-              className={errors.description ? "border-red-500" : ""}
-            />
-            <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
-            {errors.description && (
-              <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="requestId">Related Request</Label>
-                {selectedRequest && (
-                  <Button type="button" variant="secondary" size="sm" onClick={handleManualCopyFromRequest}>
-                    Copy data from request
-                  </Button>
-                )}
-              </div>
-              <Select
-                onValueChange={(value) =>
-                  setValue("requestId", value, { shouldDirty: true, shouldTouch: true })
-                }
-                value={requestIdValue ?? undefined}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a request (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No related request</SelectItem>
-                  {requests.map((request) => (
-                    <SelectItem key={request.id} value={request.id.toString()}>
-                      {(request.publicId ?? `REQ-${request.id.toString().padStart(3, '0')}`)} - {formatRequestPreview(request.description)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="requestId">Related Request</Label>
+              {selectedRequest && (
+                <Button type="button" variant="secondary" size="sm" onClick={handleManualCopyFromRequest}>
+                  Copy data from request
+                </Button>
+              )}
             </div>
+            <Select
+              onValueChange={(value) =>
+                setValue("requestId", value, { shouldDirty: true, shouldTouch: true })
+              }
+              value={requestIdValue ?? undefined}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a request (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No related request</SelectItem>
+                {requests.map((request) => (
+                  <SelectItem key={request.id} value={request.id.toString()}>
+                    {(request.publicId ?? `REQ-${request.id.toString().padStart(3, '0')}`)} - {formatRequestPreview(request.description)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -512,25 +494,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
               />
               {errors.supplierName && (
                 <p className="text-sm text-red-500 mt-1">{errors.supplierName.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="cargoType">Cargo Type *</Label>
-              <Select
-                onValueChange={(value) => setValue("cargoType", value, { shouldDirty: true, shouldTouch: true })}
-                value={cargoTypeValue ?? undefined}
-              >
-                <SelectTrigger className={errors.cargoType ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select cargo type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CARGO_TYPES.map((cargo) => (
-                    <SelectItem key={cargo.value} value={cargo.value}>{cargo.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.cargoType && (
-                <p className="text-sm text-red-500 mt-1">{errors.cargoType.message}</p>
               )}
             </div>
             <div>
@@ -558,6 +521,25 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
+              <Label htmlFor="cargoType">Cargo Type *</Label>
+              <Select
+                onValueChange={(value) => setValue("cargoType", value, { shouldDirty: true, shouldTouch: true })}
+                value={cargoTypeValue ?? undefined}
+              >
+                <SelectTrigger className={errors.cargoType ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select cargo type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CARGO_TYPES.map((cargo) => (
+                    <SelectItem key={cargo.value} value={cargo.value}>{cargo.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.cargoType && (
+                <p className="text-sm text-red-500 mt-1">{errors.cargoType.message}</p>
+              )}
+            </div>
+            <div>
               <Label htmlFor="quantity">Quantity *</Label>
               <Input
                 id="quantity"
@@ -569,29 +551,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
               />
               {errors.quantity && (
                 <p className="text-sm text-red-500 mt-1">{errors.quantity.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="unitOfMeasure">Unit of Measure</Label>
-              <Select
-                onValueChange={(value) =>
-                  setValue("unitOfMeasure", value, { shouldDirty: true, shouldTouch: true })
-                }
-                value={unitOfMeasureValue ?? undefined}
-              >
-                <SelectTrigger className={errors.unitOfMeasure ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select unit of measure" />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNITS_OF_MEASURE.map((unit) => (
-                    <SelectItem key={unit} value={unit}>
-                      {unit}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.unitOfMeasure && (
-                <p className="text-sm text-red-500 mt-1">{errors.unitOfMeasure.message}</p>
               )}
             </div>
           </div>
@@ -615,6 +574,29 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
+              <Label htmlFor="unitOfMeasure">Unit of Measure</Label>
+              <Select
+                onValueChange={(value) =>
+                  setValue("unitOfMeasure", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={unitOfMeasureValue ?? undefined}
+              >
+                <SelectTrigger className={errors.unitOfMeasure ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select unit of measure" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNITS_OF_MEASURE.map((unit) => (
+                    <SelectItem key={unit} value={unit}>
+                      {unit}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.unitOfMeasure && (
+                <p className="text-sm text-red-500 mt-1">{errors.unitOfMeasure.message}</p>
+              )}
+            </div>
+            <div>
               <Label htmlFor="pricePerTon">Price per Ton (USD)</Label>
               <Input
                 id="pricePerTon"
@@ -628,6 +610,9 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 <p className="text-sm text-red-500 mt-1">{errors.pricePerTon.message}</p>
               )}
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="paymentCurrency">Payment Currency</Label>
               <Select
@@ -651,9 +636,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 <p className="text-sm text-red-500 mt-1">{errors.paymentCurrency.message}</p>
               )}
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="paymentMethod">Payment Method</Label>
               <Select
@@ -675,27 +657,43 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 <p className="text-sm text-red-500 mt-1">{errors.paymentMethod.message}</p>
               )}
             </div>
-            <div>
-              <Label htmlFor="shippingMethod">Shipping Method</Label>
-              <Select
-                onValueChange={(value) =>
-                  setValue("shippingMethod", value, { shouldDirty: true, shouldTouch: true })
-                }
-                value={shippingMethodValue ?? undefined}
-              >
-                <SelectTrigger className={errors.shippingMethod ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select shipping method" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONTRACT_SHIPPING_METHODS.map((method) => (
-                    <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.shippingMethod && (
-                <p className="text-sm text-red-500 mt-1">{errors.shippingMethod.message}</p>
-              )}
-            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="shippingMethod">Shipping Method</Label>
+            <Select
+              onValueChange={(value) =>
+                setValue("shippingMethod", value, { shouldDirty: true, shouldTouch: true })
+              }
+              value={shippingMethodValue ?? undefined}
+            >
+              <SelectTrigger className={errors.shippingMethod ? "border-red-500" : ""}>
+                <SelectValue placeholder="Select shipping method" />
+              </SelectTrigger>
+              <SelectContent>
+                {CONTRACT_SHIPPING_METHODS.map((method) => (
+                  <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.shippingMethod && (
+              <p className="text-sm text-red-500 mt-1">{errors.shippingMethod.message}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="contractTerms">Contract Terms & Conditions</Label>
+            <Textarea
+              id="contractTerms"
+              {...register("contractTerms")}
+              rows={4}
+              placeholder="Key terms, payment conditions, delivery terms, etc."
+              maxLength={CONTRACT_NARRATIVE_LIMIT}
+            />
+            <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+            {errors.contractTerms && (
+              <p className="text-sm text-red-500 mt-1">{errors.contractTerms.message}</p>
+            )}
           </div>
 
           <div>
@@ -713,34 +711,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
             </p>
             {errors.letterOfGuarantee && (
               <p className="text-sm text-red-500 mt-1">{errors.letterOfGuarantee.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label>Contract Document *</Label>
-            <FileUpload
-              accept=".pdf,.doc,.docx"
-              onFileSelect={setSelectedFiles}
-              existingFile={existingFileName}
-              description="PDF, DOC, DOCX up to 10MB (Required)"
-            />
-            {selectedFiles.length === 0 && !hasExistingFile && (
-              <p className="text-sm text-red-500 mt-1">Contract document is required</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="contractTerms">Contract Terms & Conditions</Label>
-            <Textarea
-              id="contractTerms"
-              {...register("contractTerms")}
-              rows={4}
-              placeholder="Key terms, payment conditions, delivery terms, etc."
-              maxLength={CONTRACT_NARRATIVE_LIMIT}
-            />
-            <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
-            {errors.contractTerms && (
-              <p className="text-sm text-red-500 mt-1">{errors.contractTerms.message}</p>
             )}
           </div>
 
@@ -766,18 +736,47 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
           </div>
 
           <div>
+            <Label>Contract Document *</Label>
+            <FileUpload
+              accept=".pdf,.doc,.docx"
+              onFileSelect={setSelectedFiles}
+              existingFile={existingFileName}
+              description="PDF, DOC, DOCX up to 10MB (Required)"
+            />
+            {selectedFiles.length === 0 && !hasExistingFile && (
+              <p className="text-sm text-red-500 mt-1">Contract document is required</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="description">Additional Notes</Label>
+            <Textarea
+              id="description"
+              {...register("description")}
+              rows={4}
+              placeholder="Any additional requirements or context for this contract"
+              maxLength={CONTRACT_NARRATIVE_LIMIT}
+              className={errors.description ? "border-red-500" : ""}
+            />
+            <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+            {errors.description && (
+              <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
+            )}
+          </div>
+
+          <div>
             <Label htmlFor="reviewNotes">Review Notes</Label>
-          <Textarea
-            id="reviewNotes"
-            {...register("reviewNotes")}
-            rows={3}
-            placeholder="Administrative notes and comments"
-            maxLength={REVIEW_NOTES_LIMIT}
-          />
-          <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
-          {errors.reviewNotes && (
-            <p className="text-sm text-red-500 mt-1">{errors.reviewNotes.message}</p>
-          )}
+            <Textarea
+              id="reviewNotes"
+              {...register("reviewNotes")}
+              rows={3}
+              placeholder="Administrative notes and comments"
+              maxLength={REVIEW_NOTES_LIMIT}
+            />
+            <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+            {errors.reviewNotes && (
+              <p className="text-sm text-red-500 mt-1">{errors.reviewNotes.message}</p>
+            )}
           </div>
 
           <div className="flex justify-between">
