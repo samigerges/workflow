@@ -58,6 +58,16 @@ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = current_schema()
+          AND table_name = 'Requests'
+          AND column_name = 'WheatPercentage'
+    ) THEN
+        ALTER TABLE "Requests"
+        ADD COLUMN "WheatPercentage" numeric(5,2);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
           AND table_name = 'Contracts'
           AND column_name = 'SequenceNumber'
     ) THEN
@@ -181,6 +191,12 @@ BEGIN
     ADD [PublicId] NVARCHAR(50) NOT NULL CONSTRAINT DF_Requests_PublicId DEFAULT '';
 END;
 
+IF COL_LENGTH('Requests', 'WheatPercentage') IS NULL
+BEGIN
+    ALTER TABLE [Requests]
+    ADD [WheatPercentage] DECIMAL(5,2) NULL;
+END;
+
 IF COL_LENGTH('Contracts', 'SequenceNumber') IS NULL
 BEGIN
     ALTER TABLE [Contracts]
@@ -268,6 +284,7 @@ END;
                 """
 ALTER TABLE "Requests" ADD COLUMN IF NOT EXISTS "SequenceNumber" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "Requests" ADD COLUMN IF NOT EXISTS "PublicId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Requests" ADD COLUMN IF NOT EXISTS "WheatPercentage" REAL;
 ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "SequenceNumber" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "PublicId" TEXT NOT NULL DEFAULT '';
 """,
