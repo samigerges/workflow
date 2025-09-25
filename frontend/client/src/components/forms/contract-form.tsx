@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,11 +17,14 @@ import {
   CARGO_TYPES,
   CONTRACT_PAYMENT_METHODS,
   CONTRACT_SHIPPING_METHODS,
+  CURRENCIES,
   COUNTRIES,
+  UNITS_OF_MEASURE,
 } from "@/lib/constants";
 
 const CONTRACT_NARRATIVE_LIMIT = 20000;
 const REVIEW_NOTES_LIMIT = 20000;
+const LETTER_OF_GUARANTEE_LIMIT = 4000;
 
 const formatRequestPreview = (description?: string) => {
   if (!description) return "No description";
@@ -74,11 +77,20 @@ const contractFormSchema = z.object({
   requestId: z.string().optional(), // Made optional since it's not always required
   supplierName: z.string().min(1, "Supplier name is required"),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1").optional().or(z.literal("")),
+  unitOfMeasure: z.string().optional(),
   cargoType: z.string().min(1, "Cargo type is required"),
   countryOfOrigin: z.string().optional(),
   pricePerTon: z.coerce.number().positive("Price per ton must be positive").optional(),
+  paymentCurrency: z.string().optional(),
   paymentMethod: z.string().optional(),
   shippingMethod: z.string().optional(),
+  wheatPercentage: z
+    .coerce
+    .number({ invalid_type_error: "Wheat percentage must be between 0 and 100" })
+    .min(0, "Wheat percentage must be between 0 and 100")
+    .max(100, "Wheat percentage must be between 0 and 100")
+    .optional()
+    .or(z.literal("")),
   contractTerms: z
     .string()
     .max(
@@ -88,6 +100,13 @@ const contractFormSchema = z.object({
     .optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  letterOfGuarantee: z
+    .string()
+    .max(
+      LETTER_OF_GUARANTEE_LIMIT,
+      `Letter of guarantee must be at most ${LETTER_OF_GUARANTEE_LIMIT} characters`,
+    )
+    .optional(),
   reviewNotes: z
     .string()
     .max(
@@ -136,16 +155,37 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
     watch
   } = useForm<ContractFormData>({
     resolver: zodResolver(contractFormSchema),
-    defaultValues: contract ? {
-      ...contract,
-      quantity: contract.quantity ? parseInt(contract.quantity) : 0,
-      startDate: contract.startDate ? new Date(contract.startDate).toISOString().split('T')[0] : '',
-      endDate: contract.endDate ? new Date(contract.endDate).toISOString().split('T')[0] : '',
-    } : {}
+    defaultValues: contract
+      ? {
+          ...contract,
+          quantity: contract.quantity ? parseInt(contract.quantity) : 0,
+          wheatPercentage:
+            contract?.wheatPercentage !== undefined &&
+            contract?.wheatPercentage !== null &&
+            contract.wheatPercentage !== ""
+              ? Number.parseFloat(contract.wheatPercentage)
+              : undefined,
+          startDate: contract.startDate
+            ? new Date(contract.startDate).toISOString().split("T")[0]
+            : "",
+          endDate: contract.endDate
+            ? new Date(contract.endDate).toISOString().split("T")[0]
+            : "",
+        }
+      : {}
   });
 
   const existingFileName = contract?.fileName ?? contract?.uploadedFile ?? undefined;
   const hasExistingFile = Boolean(contract?.fileUrl || existingFileName);
+
+  const cargoTypeValue = watch("cargoType");
+  const isWheat = (cargoTypeValue ?? "").toLowerCase() === "wheat";
+
+  useEffect(() => {
+    if (!isWheat) {
+      setValue("wheatPercentage", undefined, { shouldValidate: true });
+    }
+  }, [isWheat, setValue]);
 
   const createMutation = useMutation({
     mutationFn: async (data: ContractFormData) => {
@@ -290,6 +330,22 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
     <Card>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              {...register("description")}
+              rows={4}
+              placeholder="Detailed description of goods, specifications, and requirements"
+              maxLength={CONTRACT_NARRATIVE_LIMIT}
+              className={errors.description ? "border-red-500" : ""}
+            />
+            <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+            {errors.description && (
+              <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="requestId">Related Request</Label>
@@ -364,7 +420,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
               )}
             </div>
           </div>
-          
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -382,6 +437,47 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
               )}
             </div>
             <div>
+              <Label htmlFor="unitOfMeasure">Unit of Measure</Label>
+              <Select
+                onValueChange={(value) => setValue("unitOfMeasure", value)}
+                defaultValue={contract?.unitOfMeasure}
+              >
+                <SelectTrigger className={errors.unitOfMeasure ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select unit of measure" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNITS_OF_MEASURE.map((unit) => (
+                    <SelectItem key={unit} value={unit}>
+                      {unit}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.unitOfMeasure && (
+                <p className="text-sm text-red-500 mt-1">{errors.unitOfMeasure.message}</p>
+              )}
+            </div>
+          </div>
+
+          {isWheat && (
+            <div>
+              <Label htmlFor="wheatPercentage">Wheat Percentage</Label>
+              <Input
+                id="wheatPercentage"
+                type="number"
+                step="0.01"
+                {...register("wheatPercentage", { valueAsNumber: true })}
+                placeholder="e.g. 12.5"
+                className={errors.wheatPercentage ? "border-red-500" : ""}
+              />
+              {errors.wheatPercentage && (
+                <p className="text-sm text-red-500 mt-1">{errors.wheatPercentage.message}</p>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
               <Label htmlFor="pricePerTon">Price per Ton (USD)</Label>
               <Input
                 id="pricePerTon"
@@ -395,12 +491,33 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 <p className="text-sm text-red-500 mt-1">{errors.pricePerTon.message}</p>
               )}
             </div>
+            <div>
+              <Label htmlFor="paymentCurrency">Payment Currency</Label>
+              <Select
+                onValueChange={(value) => setValue("paymentCurrency", value)}
+                defaultValue={contract?.paymentCurrency}
+              >
+                <SelectTrigger className={errors.paymentCurrency ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select payment currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency} value={currency}>
+                      {currency}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.paymentCurrency && (
+                <p className="text-sm text-red-500 mt-1">{errors.paymentCurrency.message}</p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="paymentMethod">Payment Method</Label>
-              <Select 
+              <Select
                 onValueChange={(value) => setValue("paymentMethod", value)}
                 defaultValue={contract?.paymentMethod}
               >
@@ -436,6 +553,24 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 <p className="text-sm text-red-500 mt-1">{errors.shippingMethod.message}</p>
               )}
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="letterOfGuarantee">Letter of Guarantee</Label>
+            <Textarea
+              id="letterOfGuarantee"
+              {...register("letterOfGuarantee")}
+              rows={3}
+              placeholder="Enter letter of guarantee details or requirements"
+              maxLength={LETTER_OF_GUARANTEE_LIMIT}
+              className={errors.letterOfGuarantee ? "border-red-500" : ""}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Maximum {LETTER_OF_GUARANTEE_LIMIT.toLocaleString()} characters
+            </p>
+            {errors.letterOfGuarantee && (
+              <p className="text-sm text-red-500 mt-1">{errors.letterOfGuarantee.message}</p>
+            )}
           </div>
 
           <div>
