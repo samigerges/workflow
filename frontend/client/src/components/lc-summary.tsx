@@ -38,6 +38,7 @@ function buildDetailItems(lc: NormalizedLC) {
     { label: "Total Price", value: formatLcCurrency(lc.amount, lc.currency) },
     { label: "Issuing Bank", value: lc.issuingBank ?? "—" },
     { label: "Beneficiary", value: lc.beneficiary ?? "—" },
+    { label: "Supplier", value: lc.supplierName ?? "—" },
     { label: "Shipment Period", value: formatLcDate(lc.shipmentPeriod) },
     { label: "Issue Date", value: formatLcDate(lc.issueDate) },
     {

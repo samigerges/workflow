@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -31,6 +31,8 @@ const lcFormSchema = z.object({
   shipmentPeriod: z.string().optional(),
   expiryDate: z.string().optional(),
   beneficiary: z.string().optional(),
+  supplierName: z.string().optional(),
+  contractId: z.string().optional(),
   status: z.string().default("draft"),
   createdBy: z.string().optional(),
 });
@@ -48,6 +50,12 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
   const queryClient = useQueryClient();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
+
+  const { data: contractsData } = useQuery({
+    queryKey: ["/api/contracts"],
+  });
+
+  const contracts = useMemo(() => (Array.isArray(contractsData) ? contractsData : []), [contractsData]);
 
   const normalizedLc = useMemo(() => (lc ? normalizeLc(lc) : null), [lc]);
 
@@ -77,18 +85,42 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
             ? new Date(normalizedLc.expiryDate).toISOString().split("T")[0]
             : "",
           beneficiary: normalizedLc.beneficiary ?? "",
+          supplierName: normalizedLc.supplierName ?? "",
+          contractId: normalizedLc.contractId ?? undefined,
           status: normalizedLc.statusKey ?? "draft",
         }
       : {
           currency: "USD",
           cargoType: "",
+          supplierName: "",
           status: "draft",
         },
   });
 
+  useEffect(() => {
+    register("contractId");
+  }, [register]);
+
   const watchedQuantity = watch("quantity");
   const watchedPricePerUnit = watch("pricePerUnit");
   const watchedCurrency = watch("currency");
+  const watchedContractId = watch("contractId");
+  const watchedSupplierName = watch("supplierName");
+
+  useEffect(() => {
+    if (!watchedContractId) {
+      return;
+    }
+
+    const matchingContract = contracts.find(
+      (contract: any) => String(contract.id) === String(watchedContractId),
+    );
+
+    const normalizedSupplier = matchingContract?.supplierName ?? "";
+    if (normalizedSupplier !== (watchedSupplierName ?? "")) {
+      setValue("supplierName", normalizedSupplier);
+    }
+  }, [contracts, watchedContractId, watchedSupplierName, setValue]);
 
   const createMutation = useMutation({
     mutationFn: async (data: LCFormData) => {
@@ -147,6 +179,14 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
 
       if (data.beneficiary) {
         formData.append("beneficiary", data.beneficiary);
+      }
+
+      if (data.contractId) {
+        formData.append("contractId", data.contractId);
+      }
+
+      if (data.supplierName) {
+        formData.append("supplierName", data.supplierName);
       }
 
       // Add file if selected
@@ -215,7 +255,7 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
     <Card>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="number">LC Number *</Label>
               <Input
@@ -228,9 +268,52 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
                 <p className="text-sm text-red-500 mt-1">{errors.number.message}</p>
               )}
             </div>
+            <div>
+              <Label htmlFor="contractId">Related Contract</Label>
+              <Select
+                onValueChange={(value) => {
+                  if (!value || value === "__none__") {
+                    setValue("contractId", undefined);
+                    setValue("supplierName", "");
+                    return;
+                  }
+
+                  setValue("contractId", value);
+
+                  const matching = contracts.find(
+                    (contract: any) => String(contract.id) === value,
+                  );
+                  setValue("supplierName", matching?.supplierName ?? "");
+                }}
+                defaultValue={normalizedLc?.contractId ?? undefined}
+              >
+                <SelectTrigger className={errors.contractId ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select a contract" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No contract</SelectItem>
+                  {contracts
+                    .filter((contract: any) => contract?.id)
+                    .map((contract: any) => (
+                      <SelectItem key={contract.id} value={contract.id.toString()}>
+                        {contract.publicId ?? `CON-${String(contract.id).slice(-4)}`} – {contract.supplierName ?? "Unknown"}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="supplierName">Supplier</Label>
+              <Input
+                id="supplierName"
+                {...register("supplierName")}
+                placeholder="Select a contract to populate supplier"
+                readOnly
+              />
+            </div>
             <div>
               <Label htmlFor="currency">Currency</Label>
               <Select
@@ -247,6 +330,9 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="quantity">Quantity *</Label>
               <Input

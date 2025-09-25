@@ -506,6 +506,7 @@ export default function LettersCredit() {
                       <TableHead>Total Price</TableHead>
                       <TableHead>Issuing Bank</TableHead>
                       <TableHead>Beneficiary</TableHead>
+                      <TableHead>Supplier</TableHead>
                       <TableHead>Shipment Period</TableHead>
                       <TableHead>Issue Date</TableHead>
                       <TableHead>Expiry Date</TableHead>
@@ -536,6 +537,7 @@ export default function LettersCredit() {
                           <TableCell>{formatLcCurrency(normalized.amount, normalized.currency)}</TableCell>
                           <TableCell>{normalized.issuingBank ?? "—"}</TableCell>
                           <TableCell>{normalized.beneficiary ?? "—"}</TableCell>
+                          <TableCell>{normalized.supplierName ?? "—"}</TableCell>
                           <TableCell>{formatLcDate(normalized.shipmentPeriod)}</TableCell>
                           <TableCell>{formatLcDate(normalized.issueDate)}</TableCell>
                           <TableCell className={expired ? "text-red-600 font-medium" : ""}>

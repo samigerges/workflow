@@ -9,6 +9,7 @@ export interface NormalizedLC {
   cargoType: string | null;
   applicant: string | null;
   beneficiary: string | null;
+  supplierName: string | null;
   status: string;
   statusKey: string;
   issueDate: string | null;
@@ -79,6 +80,7 @@ export function normalizeLc(raw: any): NormalizedLC {
   const cargoType = safeString(raw?.cargoType) ?? safeString(raw?.cargo_type);
   const applicant = safeString(raw?.applicant) ?? safeString(raw?.applicantName);
   const beneficiary = safeString(raw?.beneficiary) ?? safeString(raw?.beneficiaryName);
+  const supplierName = safeString(raw?.supplierName) ?? safeString(raw?.supplier_name);
   const status = safeString(raw?.status) ?? "Draft";
   const statusKey = status.toLowerCase();
 
@@ -106,6 +108,7 @@ export function normalizeLc(raw: any): NormalizedLC {
     cargoType,
     applicant,
     beneficiary,
+    supplierName,
     status,
     statusKey,
     issueDate,
