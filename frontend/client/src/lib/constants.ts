@@ -121,8 +121,10 @@ export const CARGO_TYPES = [
 ];
 
 export const CONTRACT_PAYMENT_METHODS = [
-  { value: "lc", label: "Letter of Credit (LC)" },
-  { value: "At sight", label: "At sight" },
+  { value: "LC - 270 days", label: "LC - 270 days" },
+  { value: "LC - 180 days", label: "LC - 180 days" },
+  { value: "LC - 90 days", label: "LC - 90 days" },
+  { value: "At sight", label: "At sight" }
 ];
 
 export const CONTRACT_SHIPPING_METHODS = [

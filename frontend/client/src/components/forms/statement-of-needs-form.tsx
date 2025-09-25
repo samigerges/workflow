@@ -13,14 +13,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { UNITS_OF_MEASURE, CARGO_TYPES, COUNTRIES, CURRENCIES } from "@/lib/constants";
+import {
+  UNITS_OF_MEASURE,
+  CARGO_TYPES,
+  COUNTRIES,
+  CURRENCIES,
+  CONTRACT_PAYMENT_METHODS
+} from "@/lib/constants";
 import { Upload, FileText } from "lucide-react";
-
-const PAYMENT_METHODS = [
-  { value: "lc", label: "Letter of Credit (LC)" },
-  { value: "At sight", label: "At sight" }
-]
- 
 
 const SHIPPING_METHODS = [
   { value: "fob", label: "FOB" },
@@ -419,7 +419,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
                       <SelectValue placeholder="Select payment method" />
                     </SelectTrigger>
                     <SelectContent>
-                      {PAYMENT_METHODS.map((pm) => (
+                      {CONTRACT_PAYMENT_METHODS.map((pm) => (
                         <SelectItem key={pm.value} value={pm.value}>
                           {pm.label}
                         </SelectItem>
