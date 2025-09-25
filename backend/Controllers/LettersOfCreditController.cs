@@ -20,13 +20,14 @@ namespace WorkflowBackend.Api.Controllers
         private const string DefaultFlow = "GASC_TO_UPF";
 
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
-        { "Draft", "Issued", "Amended", "Utilized", "Expired", "Cancelled", "Archived" };
+        { "Draft", "Issued", "Active", "Amended", "Utilized", "Expired", "Cancelled", "Archived" };
 
         private static readonly Dictionary<string, string[]> AllowedTransitions = new(StringComparer.OrdinalIgnoreCase)
         {
             ["Draft"]     = new[] { "Issued", "Cancelled", "Archived" },
-            ["Issued"]    = new[] { "Amended", "Utilized", "Expired", "Cancelled", "Archived" },
-            ["Amended"]   = new[] { "Issued", "Utilized", "Expired", "Cancelled", "Archived" },
+            ["Issued"]    = new[] { "Active", "Amended", "Utilized", "Expired", "Cancelled", "Archived" },
+            ["Active"]    = new[] { "Amended", "Utilized", "Expired", "Cancelled", "Archived" },
+            ["Amended"]   = new[] { "Issued", "Active", "Utilized", "Expired", "Cancelled", "Archived" },
             ["Utilized"]  = new[] { "Archived" },
             ["Expired"]   = new[] { "Archived" },
             ["Cancelled"] = new[] { "Archived" },
@@ -56,6 +57,46 @@ namespace WorkflowBackend.Api.Controllers
 
         private static string? NormalizeString(string? value) =>
             string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private static bool CanAutoExpire(string status) =>
+            !string.Equals(status, "Cancelled", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(status, "Archived", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(status, "Utilized", StringComparison.OrdinalIgnoreCase);
+
+        private static bool TryMarkExpired(LetterOfCredit lc, DateTime referenceTimeUtc)
+        {
+            if (lc.ExpiryDate.HasValue
+                && lc.ExpiryDate.Value < referenceTimeUtc
+                && !string.Equals(lc.Status, "Expired", StringComparison.OrdinalIgnoreCase)
+                && CanAutoExpire(lc.Status))
+            {
+                lc.Status = "Expired";
+                lc.UpdatedAt = referenceTimeUtc;
+                return true;
+            }
+
+            return false;
+        }
+
+        private async Task ApplyAutomaticExpiryAsync(DateTime referenceTimeUtc)
+        {
+            var candidates = await _db.LettersOfCredit
+                .Where(l => l.ExpiryDate.HasValue
+                    && l.ExpiryDate.Value < referenceTimeUtc
+                    && !string.Equals(l.Status, "Expired", StringComparison.OrdinalIgnoreCase)
+                    && CanAutoExpire(l.Status))
+                .ToListAsync();
+
+            if (candidates.Count == 0) return;
+
+            foreach (var lc in candidates)
+            {
+                lc.Status = "Expired";
+                lc.UpdatedAt = referenceTimeUtc;
+            }
+
+            await _db.SaveChangesAsync();
+        }
 
         private static bool TryNormalizeFlow(string? input, string fallback, out string normalized)
         {
@@ -151,6 +192,8 @@ namespace WorkflowBackend.Api.Controllers
                 .Include(l => l.Contract)
                 .AsQueryable();
 
+            await ApplyAutomaticExpiryAsync(DateTime.UtcNow);
+
             if (!string.IsNullOrWhiteSpace(status))
                 q = q.Where(l => l.Status == status);
 
@@ -177,6 +220,11 @@ namespace WorkflowBackend.Api.Controllers
                 .Include(l => l.Contract)
                 .FirstOrDefaultAsync(l => l.Id == id);
             if (lc is null) return NotFound();
+
+            if (TryMarkExpired(lc, DateTime.UtcNow))
+            {
+                await _db.SaveChangesAsync();
+            }
             return ToResponse(lc);
         }
 
@@ -207,7 +255,7 @@ namespace WorkflowBackend.Api.Controllers
                 Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim(),
                 Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim(),
                 ContractId = req.ContractId,
-                Status = "Draft",
+                Status = "Issued",
                 CreatedByUserId = CurrentUserId(),
                 Flow = normalizedFlow
             };
@@ -269,7 +317,7 @@ namespace WorkflowBackend.Api.Controllers
                 Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim(),
                 Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim(),
                 ContractId = contractId,
-                Status = "Draft",
+                Status = "Issued",
                 CreatedByUserId = CurrentUserId(),
                 Flow = normalizedFlow
             };

@@ -582,11 +582,12 @@ namespace WorkflowBackend.Api.Controllers
         [HttpPost("{id:guid}/letters-of-credit")]
         public async Task<IActionResult> LinkLc(Guid id, [FromBody] VesselLcLinkRequest body)
         {
-            var existsVessel = await _db.Vessels.AnyAsync(v => v.Id == id);
-            var existsLc = await _db.LettersOfCredit.AnyAsync(l => l.Id == body.LetterOfCreditId);
-            if (!existsVessel || !existsLc) return NotFound();
+            var vessel = await _db.Vessels.FindAsync(id);
+            var lc = await _db.LettersOfCredit.FindAsync(body.LetterOfCreditId);
+            if (vessel is null || lc is null) return NotFound();
 
             var exists = await _db.VesselLettersOfCredit.AnyAsync(x => x.VesselId == id && x.LetterOfCreditId == body.LetterOfCreditId);
+            var shouldSave = false;
             if (!exists)
             {
                 _db.VesselLettersOfCredit.Add(new VesselLetterOfCredit
@@ -594,6 +595,33 @@ namespace WorkflowBackend.Api.Controllers
                     VesselId = id,
                     LetterOfCreditId = body.LetterOfCreditId
                 });
+                shouldSave = true;
+            }
+
+            var now = DateTime.UtcNow;
+            var expired = false;
+            if (lc.ExpiryDate.HasValue
+                && lc.ExpiryDate.Value < now
+                && !string.Equals(lc.Status, "Expired", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(lc.Status, "Cancelled", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(lc.Status, "Archived", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(lc.Status, "Utilized", StringComparison.OrdinalIgnoreCase))
+            {
+                lc.Status = "Expired";
+                lc.UpdatedAt = now;
+                expired = true;
+                shouldSave = true;
+            }
+
+            if (!expired && !string.Equals(lc.Status, "Active", StringComparison.OrdinalIgnoreCase))
+            {
+                lc.Status = "Active";
+                lc.UpdatedAt = now;
+                shouldSave = true;
+            }
+
+            if (shouldSave)
+            {
                 await _db.SaveChangesAsync();
             }
             return NoContent();
