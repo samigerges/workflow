@@ -13,9 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import FileUpload from "@/components/ui/file-upload";
 import { CARGO_TYPES, CURRENCIES } from "@/lib/constants";
-import { normalizeLc, formatLcCurrency } from "@/lib/lc";
+import {
+  normalizeLc,
+  formatLcCurrency,
+  LC_STATUS_KEYS,
+  formatLcStatusLabel,
+  type LcStatusKey,
+} from "@/lib/lc";
 
 // Create a more flexible schema for drafts - matching backend DTO
+const lcStatusEnum = z.enum(LC_STATUS_KEYS);
+
 const lcFormSchema = z.object({
   number: z.string().min(1, "LC Number is required"),
   issuingBank: z.string().optional(),
@@ -31,7 +39,7 @@ const lcFormSchema = z.object({
   shipmentPeriod: z.string().optional(),
   expiryDate: z.string().optional(),
   beneficiary: z.string().optional(),
-  status: z.string().default("draft"),
+  status: lcStatusEnum.default("draft"),
   createdBy: z.string().optional(),
 });
 
@@ -41,15 +49,43 @@ interface LetterOfCreditFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   lc?: any;
+  initialStatus?: LcStatusKey;
+  statusOptions?: readonly LcStatusKey[];
 }
 
-export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOfCreditFormProps) {
+export default function LetterOfCreditForm({
+  onSuccess,
+  onCancel,
+  lc,
+  initialStatus = "draft",
+  statusOptions,
+}: LetterOfCreditFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState<string>("");
 
   const normalizedLc = useMemo(() => (lc ? normalizeLc(lc) : null), [lc]);
+
+  const availableStatusOptions = useMemo(() => {
+    const baseOptions = statusOptions && statusOptions.length > 0
+      ? [...statusOptions]
+      : [...LC_STATUS_KEYS];
+
+    const enrichedOptions = new Set<LcStatusKey>(
+      baseOptions.map((status) => status as LcStatusKey),
+    );
+
+    if (initialStatus) {
+      enrichedOptions.add(initialStatus);
+    }
+
+    if (normalizedLc?.statusKey) {
+      enrichedOptions.add(normalizedLc.statusKey as LcStatusKey);
+    }
+
+    return Array.from(enrichedOptions);
+  }, [statusOptions, initialStatus, normalizedLc?.statusKey]);
 
   const {
     register,
@@ -77,18 +113,19 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
             ? new Date(normalizedLc.expiryDate).toISOString().split("T")[0]
             : "",
           beneficiary: normalizedLc.beneficiary ?? "",
-          status: normalizedLc.statusKey ?? "draft",
+          status: (normalizedLc.statusKey as LcStatusKey) ?? initialStatus ?? "draft",
         }
       : {
           currency: "USD",
           cargoType: "",
-          status: "draft",
+          status: initialStatus ?? "draft",
         },
   });
 
   const watchedQuantity = watch("quantity");
   const watchedPricePerUnit = watch("pricePerUnit");
   const watchedCurrency = watch("currency");
+  const watchedStatus = watch("status");
 
   const createMutation = useMutation({
     mutationFn: async (data: LCFormData) => {
@@ -147,6 +184,10 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
 
       if (data.beneficiary) {
         formData.append("beneficiary", data.beneficiary);
+      }
+
+      if (data.status) {
+        formData.append("status", formatLcStatusLabel(data.status));
       }
 
       // Add file if selected
@@ -289,12 +330,36 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
               {errors.issuingBank && (
                 <p className="text-sm text-red-500 mt-1">{errors.issuingBank.message}</p>
               )}
-            </div>
           </div>
+        </div>
 
-          {/* LC Pricing Summary */}
-          {(() => {
-            const quantityValue =
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <Label htmlFor="status">LC Status</Label>
+            <Select
+              value={watchedStatus ?? initialStatus ?? "draft"}
+              onValueChange={(value) => setValue("status", value as LcStatusKey, { shouldDirty: true })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select LC status" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableStatusOptions.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {formatLcStatusLabel(status)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.status && (
+              <p className="text-sm text-red-500 mt-1">{errors.status.message}</p>
+            )}
+          </div>
+        </div>
+
+        {/* LC Pricing Summary */}
+        {(() => {
+          const quantityValue =
               typeof watchedQuantity === "number" && Number.isFinite(watchedQuantity)
                 ? watchedQuantity
                 : null;
@@ -443,7 +508,7 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
               onClick={() => {
                 console.log("LC Save Draft clicked");
                 console.log("LC Form errors:", errors);
-                setValue("status", "draft");
+                setValue("status", "draft", { shouldDirty: true });
                 handleSubmit(onSubmit)();
               }}
               disabled={createMutation.isPending}

@@ -119,6 +119,29 @@ export function normalizeLc(raw: any): NormalizedLC {
   };
 }
 
+export const LC_STATUS_OPTIONS = [
+  { key: "draft", label: "Draft" },
+  { key: "issued", label: "Issued" },
+  { key: "amended", label: "Amended" },
+  { key: "utilized", label: "Utilized" },
+  { key: "expired", label: "Expired" },
+  { key: "cancelled", label: "Cancelled" },
+  { key: "archived", label: "Archived" },
+] as const;
+
+export type LcStatusKey = (typeof LC_STATUS_OPTIONS)[number]["key"];
+
+export const LC_STATUS_KEYS = LC_STATUS_OPTIONS.map((status) => status.key) as [
+  LcStatusKey,
+  ...LcStatusKey[],
+];
+
+export function formatLcStatusLabel(statusKey: string): string {
+  const normalizedKey = statusKey.toLowerCase();
+  const match = LC_STATUS_OPTIONS.find((status) => status.key === normalizedKey);
+  return match?.label ?? statusKey;
+}
+
 export function formatLcCurrency(amount: number | null, currency: string | null): string {
   if (amount === null) return "—";
 
