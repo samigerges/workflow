@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, University, Edit, Eye, Trash } from "lucide-react";
+import { Plus, University, Edit, Eye, Trash, LayoutDashboard, Building2, Factory } from "lucide-react";
 import StatusBadge from "@/components/ui/status-badge";
 import {
   normalizeLc,
@@ -21,6 +21,41 @@ import {
   isLcExpired,
   daysUntilLcExpiry,
 } from "@/lib/lc";
+import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+interface JourneySegment {
+  value: "all" | "gasc_to_upf" | "upf_to_supplier";
+  label: string;
+  description: string;
+  statuses: string[] | null;
+  icon: LucideIcon;
+}
+
+const JOURNEY_SEGMENTS: JourneySegment[] = [
+  {
+    value: "all",
+    label: "All LC Journeys",
+    description: "View every letter of credit across both workflows.",
+    statuses: null,
+    icon: LayoutDashboard,
+  },
+  {
+    value: "gasc_to_upf",
+    label: "LC GASC → UPF",
+    description: "Covers issuance and internal approvals before supplier engagement.",
+    statuses: ["draft", "issued", "amended"],
+    icon: Building2,
+  },
+  {
+    value: "upf_to_supplier",
+    label: "UPF → Supplier",
+    description: "Tracks fulfillment, utilization, and supplier-facing activities.",
+    statuses: ["utilized", "expired", "cancelled", "archived"],
+    icon: Factory,
+  },
+];
 
 const STATUS_OPTIONS = [
   "Draft",
@@ -39,6 +74,7 @@ export default function LettersCredit() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [journeyFilter, setJourneyFilter] = useState<JourneySegment["value"]>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
@@ -85,6 +121,26 @@ export default function LettersCredit() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
+  const selectedJourney = useMemo(
+    () => JOURNEY_SEGMENTS.find((segment) => segment.value === journeyFilter) ?? JOURNEY_SEGMENTS[0],
+    [journeyFilter],
+  );
+
+  const availableStatusOptions = useMemo(() => {
+    if (!selectedJourney || selectedJourney.value === "all" || !selectedJourney.statuses) {
+      return STATUS_FILTER_OPTIONS as readonly string[];
+    }
+
+    return ["all", ...selectedJourney.statuses] as const;
+  }, [selectedJourney]);
+
+  useEffect(() => {
+    if (statusFilter === "all") return;
+    if (!availableStatusOptions.includes(statusFilter)) {
+      setStatusFilter("all");
+    }
+  }, [availableStatusOptions, statusFilter]);
+
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery({
     queryKey: ["/api/letters-of-credit", statusFilter !== "all" ? { status: statusFilter } : {}],
     retry: false,
@@ -98,36 +154,79 @@ export default function LettersCredit() {
     [lcArray],
   );
 
-  const normalizedLCs = useMemo(
-    () => normalizedEntries.map((entry) => entry.normalized),
-    [normalizedEntries],
+  const journeyEntries = useMemo(() => {
+    if (journeyFilter === "all") {
+      return normalizedEntries;
+    }
+
+    const journey = JOURNEY_SEGMENTS.find((segment) => segment.value === journeyFilter);
+    if (!journey || !journey.statuses) {
+      return normalizedEntries;
+    }
+
+    const statusSet = new Set(journey.statuses);
+    return normalizedEntries.filter((entry) => statusSet.has(entry.normalized.statusKey));
+  }, [journeyFilter, normalizedEntries]);
+
+  const journeyNormalizedLCs = useMemo(
+    () => journeyEntries.map((entry) => entry.normalized),
+    [journeyEntries],
   );
 
   const filteredEntries = useMemo(
     () =>
       statusFilter === "all"
-        ? normalizedEntries
-        : normalizedEntries.filter(
-            (entry) => entry.normalized.statusKey === statusFilter,
-          ),
-    [normalizedEntries, statusFilter],
+        ? journeyEntries
+        : journeyEntries.filter((entry) => entry.normalized.statusKey === statusFilter),
+    [journeyEntries, statusFilter],
   );
 
-  const issuedCount = normalizedLCs.filter((lc) => lc.statusKey === "issued").length;
-  const documentsCount = normalizedLCs.filter((lc) => Boolean(lc.fileUrl)).length;
-  const linkedContractsCount = normalizedLCs.reduce((set, lc) => {
+  const journeySummaries = useMemo(
+    () =>
+      JOURNEY_SEGMENTS.map((segment) => {
+        const statusSet = segment.statuses ? new Set(segment.statuses) : null;
+        const entries = statusSet
+          ? normalizedEntries.filter((entry) => statusSet.has(entry.normalized.statusKey))
+          : normalizedEntries;
+        const statusLabels =
+          segment.value === "all"
+            ? ["All statuses"]
+            : (segment.statuses ?? []).map((status) => status.charAt(0).toUpperCase() + status.slice(1));
+
+        return {
+          ...segment,
+          total: entries.length,
+          statusLabels,
+        };
+      }),
+    [normalizedEntries],
+  );
+
+  const issuedCount = journeyNormalizedLCs.filter((lc) => lc.statusKey === "issued").length;
+  const documentsCount = journeyNormalizedLCs.filter((lc) => Boolean(lc.fileUrl)).length;
+  const linkedContractsCount = journeyNormalizedLCs.reduce((set, lc) => {
     if (lc.contractId) {
       set.add(lc.contractId);
     }
     return set;
   }, new Set<string>()).size;
-  const expiringSoonCount = normalizedLCs.filter((lc) => {
+  const expiringSoonCount = journeyNormalizedLCs.filter((lc) => {
     const days = daysUntilLcExpiry(lc.expiryDate);
     return typeof days === "number" && days > 0 && days <= 5;
   }).length;
   const statusFilterLabel = statusFilter === "all"
     ? "All"
     : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
+  const journeyLabel = selectedJourney?.label ?? "All LC Journeys";
+  const emptyStateDescription = (() => {
+    if (journeyFilter === "all" && statusFilter === "all") {
+      return "Get started by creating your first letter of credit.";
+    }
+    if (statusFilter === "all") {
+      return `No letters of credit found for ${journeyLabel}.`;
+    }
+    return `No LCs with status "${statusFilterLabel}" in ${journeyLabel}.`;
+  })();
 
   const handleStatusChange = async (lcId: string | number, newStatus: string) => {
     try {
@@ -169,15 +268,80 @@ export default function LettersCredit() {
 
   return (
     <MainLayout title="Letters of Credit" subtitle="Manage financial instruments and LC processing">
+      <div className="space-y-8">
+        <section>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {journeySummaries.map((summary) => {
+              const Icon = summary.icon;
+              const isActive = summary.value === journeyFilter;
+
+              return (
+                <Card
+                  key={summary.value}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setJourneyFilter(summary.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setJourneyFilter(summary.value);
+                    }
+                  }}
+                  className={cn(
+                    "h-full cursor-pointer border bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+                    isActive ? "border-primary-500 shadow-md" : "border-secondary-200 hover:border-secondary-300",
+                  )}
+                >
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                    <div>
+                      <CardTitle className="text-base font-semibold text-secondary-900">{summary.label}</CardTitle>
+                      <p className="mt-1 text-sm text-secondary-600">{summary.description}</p>
+                    </div>
+                    <div
+                      className={cn(
+                        "rounded-lg p-2",
+                        isActive ? "bg-primary-100 text-primary-700" : "bg-secondary-100 text-secondary-600",
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="text-3xl font-bold text-secondary-900">{summary.total}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-secondary-500">LCs in flow</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {summary.statusLabels.map((status) => (
+                        <Badge
+                          key={`${summary.value}-${status}`}
+                          variant="secondary"
+                          className={cn(
+                            "bg-secondary-100 text-secondary-700",
+                            isActive && "bg-primary-100 text-primary-700",
+                          )}
+                        >
+                          {status}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+
+        <section>
           {/* Header Actions */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <div className="flex w-full flex-col gap-2 sm:w-auto">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_FILTER_OPTIONS.map((option) => (
+                  {availableStatusOptions.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option === "all"
                         ? "All Statuses"
@@ -186,66 +350,70 @@ export default function LettersCredit() {
                   ))}
                 </SelectContent>
               </Select>
+              <span className="text-xs text-secondary-500">
+                Viewing: <span className="font-semibold text-secondary-700">{journeyLabel}</span>
+              </span>
             </div>
-            
+
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
-                <Button className="bg-primary-500 hover:bg-primary-600 text-black w-full sm:w-auto">
+                <Button className="w-full bg-primary-500 text-black hover:bg-primary-600 sm:w-auto">
                   <Plus className="mr-2" size={16} />
                   New LC
                 </Button>
               </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Create New Letter of Credit</DialogTitle>
-                  </DialogHeader>
-                  <LetterOfCreditForm
-                    onSuccess={() => setShowCreateDialog(false)}
-                    onCancel={() => setShowCreateDialog(false)}
-                  />
-                </DialogContent>
-              </Dialog>
-          </div>
-
-          {/* Edit LC Dialog */}
-          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Edit Letter of Credit</DialogTitle>
-              </DialogHeader>
-              {editingLC && (
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New Letter of Credit</DialogTitle>
+                </DialogHeader>
                 <LetterOfCreditForm
-                  lc={editingLC}
-                  onSuccess={() => {
-                    setShowEditDialog(false);
-                    setEditingLC(null);
-                  }}
-                  onCancel={() => {
-                    setShowEditDialog(false);
-                    setEditingLC(null);
-                  }}
+                  onSuccess={() => setShowCreateDialog(false)}
+                  onCancel={() => setShowCreateDialog(false)}
                 />
-              )}
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </section>
 
-          {/* View LC Summary Dialog */}
-          <LCSummary
-            lc={viewingLC}
-            isOpen={showViewDialog}
-            onClose={() => {
-              setShowViewDialog(false);
-              setViewingLC(null);
-            }}
-          />
+        {/* Edit LC Dialog */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Letter of Credit</DialogTitle>
+            </DialogHeader>
+            {editingLC && (
+              <LetterOfCreditForm
+                lc={editingLC}
+                onSuccess={() => {
+                  setShowEditDialog(false);
+                  setEditingLC(null);
+                }}
+                onCancel={() => {
+                  setShowEditDialog(false);
+                  setEditingLC(null);
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
-          {/* LC Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="bg-white border border-secondary-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-secondary-600">Issued LCs</p>
+        {/* View LC Summary Dialog */}
+        <LCSummary
+          lc={viewingLC}
+          isOpen={showViewDialog}
+          onClose={() => {
+            setShowViewDialog(false);
+            setViewingLC(null);
+          }}
+        />
+
+        {/* LC Stats Cards */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+          <Card className="bg-white border border-secondary-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-secondary-600">Issued LCs</p>
                     <p className="text-3xl font-bold text-secondary-900">{issuedCount}</p>
                   </div>
                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -305,6 +473,7 @@ export default function LettersCredit() {
             <CardHeader>
               <CardTitle className="text-xl font-bold text-secondary-900">
                 Letters of Credit
+                <span className="mt-1 block text-sm font-normal text-secondary-500">{journeyLabel}</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -435,9 +604,7 @@ export default function LettersCredit() {
                   <University className="mx-auto h-12 w-12 text-secondary-400" />
                   <h3 className="mt-4 text-lg font-semibold text-secondary-900">No letters of credit found</h3>
                   <p className="mt-2 text-secondary-600">
-                    {statusFilter === "all"
-                      ? "Get started by creating your first letter of credit."
-                      : `No LCs with status "${statusFilterLabel}" found.`}
+                    {emptyStateDescription}
                   </p>
                   {user && ['admin', 'finance_officer'].includes((user as any)?.role) ? (
                     <Button
@@ -452,6 +619,7 @@ export default function LettersCredit() {
               )}
             </CardContent>
           </Card>
+      </div>
     </MainLayout>
   );
 }
