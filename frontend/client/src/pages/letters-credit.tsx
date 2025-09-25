@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, University, Edit, Eye, Trash, LayoutDashboard, Building2, Factory } from "lucide-react";
+import { Plus, University, Edit, Eye, Trash, Building2, Factory } from "lucide-react";
 import StatusBadge from "@/components/ui/status-badge";
 import {
   normalizeLc,
@@ -26,7 +26,7 @@ import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface JourneySegment {
-  value: "all" | "gasc_to_upf" | "upf_to_supplier";
+  value: "gasc_to_upf" | "upf_to_supplier";
   label: string;
   description: string;
   statuses: string[] | null;
@@ -34,13 +34,6 @@ interface JourneySegment {
 }
 
 const JOURNEY_SEGMENTS: JourneySegment[] = [
-  {
-    value: "all",
-    label: "All LC Journeys",
-    description: "View every letter of credit across both workflows.",
-    statuses: null,
-    icon: LayoutDashboard,
-  },
   {
     value: "gasc_to_upf",
     label: "LC GASC → UPF",
@@ -74,12 +67,22 @@ export default function LettersCredit() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [journeyFilter, setJourneyFilter] = useState<JourneySegment["value"]>("all");
+  const [journeyFilter, setJourneyFilter] = useState<JourneySegment["value"]>("gasc_to_upf");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [editingLC, setEditingLC] = useState<any>(null);
   const [viewingLC, setViewingLC] = useState<any>(null);
+  const [suppressJourneySelection, setSuppressJourneySelection] = useState(false);
+
+  useEffect(() => {
+    if (!suppressJourneySelection) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setSuppressJourneySelection(false), 250);
+    return () => window.clearTimeout(timer);
+  }, [suppressJourneySelection]);
 
   // Delete LC mutation
   const deleteLCMutation = useMutation({
@@ -127,7 +130,7 @@ export default function LettersCredit() {
   );
 
   const availableStatusOptions = useMemo(() => {
-    if (!selectedJourney || selectedJourney.value === "all" || !selectedJourney.statuses) {
+    if (!selectedJourney || !selectedJourney.statuses) {
       return STATUS_FILTER_OPTIONS as readonly string[];
     }
 
@@ -155,10 +158,6 @@ export default function LettersCredit() {
   );
 
   const journeyEntries = useMemo(() => {
-    if (journeyFilter === "all") {
-      return normalizedEntries;
-    }
-
     const journey = JOURNEY_SEGMENTS.find((segment) => segment.value === journeyFilter);
     if (!journey || !journey.statuses) {
       return normalizedEntries;
@@ -188,10 +187,9 @@ export default function LettersCredit() {
         const entries = statusSet
           ? normalizedEntries.filter((entry) => statusSet.has(entry.normalized.statusKey))
           : normalizedEntries;
-        const statusLabels =
-          segment.value === "all"
-            ? ["All statuses"]
-            : (segment.statuses ?? []).map((status) => status.charAt(0).toUpperCase() + status.slice(1));
+        const statusLabels = (segment.statuses ?? []).map(
+          (status) => status.charAt(0).toUpperCase() + status.slice(1),
+        );
 
         return {
           ...segment,
@@ -217,9 +215,9 @@ export default function LettersCredit() {
   const statusFilterLabel = statusFilter === "all"
     ? "All"
     : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1);
-  const journeyLabel = selectedJourney?.label ?? "All LC Journeys";
+  const journeyLabel = selectedJourney?.label ?? JOURNEY_SEGMENTS[0].label;
   const emptyStateDescription = (() => {
-    if (journeyFilter === "all" && statusFilter === "all") {
+    if (normalizedEntries.length === 0) {
       return "Get started by creating your first letter of credit.";
     }
     if (statusFilter === "all") {
@@ -280,8 +278,19 @@ export default function LettersCredit() {
                   key={summary.value}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setJourneyFilter(summary.value)}
+                  onClick={(event) => {
+                    if (suppressJourneySelection) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      return;
+                    }
+                    setJourneyFilter(summary.value);
+                  }}
                   onKeyDown={(event) => {
+                    if (suppressJourneySelection) {
+                      event.preventDefault();
+                      return;
+                    }
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
                       setJourneyFilter(summary.value);
@@ -367,7 +376,10 @@ export default function LettersCredit() {
                   <DialogTitle>Create New Letter of Credit</DialogTitle>
                 </DialogHeader>
                 <LetterOfCreditForm
-                  onSuccess={() => setShowCreateDialog(false)}
+                  onSuccess={() => {
+                    setSuppressJourneySelection(true);
+                    setShowCreateDialog(false);
+                  }}
                   onCancel={() => setShowCreateDialog(false)}
                 />
               </DialogContent>
