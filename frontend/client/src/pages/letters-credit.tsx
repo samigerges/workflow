@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, University, Edit, Eye, Trash, Building2, Factory } from "lucide-react";
 import StatusBadge from "@/components/ui/status-badge";
 import {
@@ -24,7 +25,6 @@ import {
 } from "@/lib/lc";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 type FlowKey = NormalizedLC["flowKey"];
 
@@ -46,7 +46,7 @@ const JOURNEY_SEGMENTS: JourneySegment[] = [
   },
   {
     value: "upf_to_supplier",
-    label: "UPF → Supplier",
+    label: "UPF → Suppliers",
     description: "Tracks fulfillment, utilization, and supplier-facing activities.",
     statuses: ["utilized", "expired", "cancelled", "archived"],
     icon: Factory,
@@ -188,23 +188,6 @@ export default function LettersCredit() {
     [journeyEntries, statusFilter],
   );
 
-  const journeySummaries = useMemo(
-    () =>
-      JOURNEY_SEGMENTS.map((segment) => {
-        const entries = normalizedEntries.filter((entry) => entry.normalized.flowKey === segment.value);
-        const statusLabels = (segment.statuses ?? []).map(
-          (status) => status.charAt(0).toUpperCase() + status.slice(1),
-        );
-
-        return {
-          ...segment,
-          total: entries.length,
-          statusLabels,
-        };
-      }),
-    [normalizedEntries],
-  );
-
   const issuedCount = journeyNormalizedLCs.filter((lc) => lc.statusKey === "issued").length;
   const documentsCount = journeyNormalizedLCs.filter((lc) => Boolean(lc.fileUrl)).length;
   const linkedContractsCount = journeyNormalizedLCs.reduce((set, lc) => {
@@ -273,77 +256,35 @@ export default function LettersCredit() {
     <MainLayout title="Letters of Credit" subtitle="Manage financial instruments and LC processing">
       <div className="space-y-8">
         <section>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {journeySummaries.map((summary) => {
-              const Icon = summary.icon;
-              const isActive = summary.value === journeyFilter;
-
-              return (
-                <Card
-                  key={summary.value}
-                  role="button"
-                  tabIndex={0}
-                  onClick={(event) => {
-                    if (suppressJourneySelection) {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      return;
-                    }
-                    setJourneyFilter(summary.value);
-                  }}
-                  onKeyDown={(event) => {
-                    if (suppressJourneySelection) {
-                      event.preventDefault();
-                      return;
-                    }
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setJourneyFilter(summary.value);
-                    }
-                  }}
-                  className={cn(
-                    "h-full cursor-pointer border bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
-                    isActive ? "border-primary-500 shadow-md" : "border-secondary-200 hover:border-secondary-300",
-                  )}
-                >
-                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
-                    <div>
-                      <CardTitle className="text-base font-semibold text-secondary-900">{summary.label}</CardTitle>
-                      <p className="mt-1 text-sm text-secondary-600">{summary.description}</p>
-                    </div>
-                    <div
-                      className={cn(
-                        "rounded-lg p-2",
-                        isActive ? "bg-primary-100 text-primary-700" : "bg-secondary-100 text-secondary-600",
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <p className="text-3xl font-bold text-secondary-900">{summary.total}</p>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-secondary-500">LCs in flow</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {summary.statusLabels.map((status) => (
-                        <Badge
-                          key={`${summary.value}-${status}`}
-                          variant="secondary"
-                          className={cn(
-                            "bg-secondary-100 text-secondary-700",
-                            isActive && "bg-primary-100 text-primary-700",
-                          )}
-                        >
-                          {status}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+          <Tabs
+            value={journeyFilter}
+            onValueChange={(value) => {
+              if (suppressJourneySelection) {
+                return;
+              }
+              setJourneyFilter(value as FlowKey);
+            }}
+          >
+            <TabsList
+              className={cn(
+                "grid w-full grid-cols-2 gap-2 rounded-lg bg-secondary-100 p-1 text-sm font-medium text-secondary-600 sm:w-fit",
+                suppressJourneySelection && "pointer-events-none opacity-60",
+              )}
+            >
+              <TabsTrigger
+                value="gasc_to_upf"
+                className="rounded-md px-4 py-2 text-secondary-700 data-[state=active]:bg-white data-[state=active]:text-secondary-900 data-[state=active]:shadow"
+              >
+                LC GASC → UPF
+              </TabsTrigger>
+              <TabsTrigger
+                value="upf_to_supplier"
+                className="rounded-md px-4 py-2 text-secondary-700 data-[state=active]:bg-white data-[state=active]:text-secondary-900 data-[state=active]:shadow"
+              >
+                UPF → Suppliers
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </section>
 
         <section>
