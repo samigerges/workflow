@@ -1,10 +1,14 @@
-﻿# Backend (.NET 8) build and runtime with SQLite persistence
+# Backend (.NET 8) build and runtime with SQLite persistence
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-# Copy project sources (context should be backend/WorkflowBackend.Api)
+
+# Copy project files and restore dependencies first for better layer caching
+COPY WorkflowBackend.Api.csproj ./
+RUN dotnet restore WorkflowBackend.Api.csproj --disable-parallel
+
+# Copy the remaining source code
 COPY . .
-RUN dotnet restore
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish WorkflowBackend.Api.csproj -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
