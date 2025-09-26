@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -68,6 +68,26 @@ interface VesselNominationFormProps {
   contracts: any[];
   lcs: any[];
   vessel?: any;
+}
+
+interface FormSectionProps {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}
+
+function FormSection({ title, description, children }: FormSectionProps) {
+  return (
+    <section className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        {description ? (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      <div className="space-y-6">{children}</div>
+    </section>
+  );
 }
 
 export default function VesselNominationForm({ onSuccess, onCancel, contracts, lcs, vessel }: VesselNominationFormProps) {
@@ -247,172 +267,391 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
   return (
     <Card>
       <CardContent className="p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="name">Vessel Name *</Label>
-              <Input
-                id="name"
-                {...register("name")}
-                placeholder="MV Atlantic Trader"
-                className={errors.name ? "border-red-500" : ""}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
-              )}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
+          <FormSection
+            title="Vessel Overview"
+            description="Capture the headline information that identifies this nomination."
+          >
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <Label htmlFor="name">Vessel Name *</Label>
+                <Input
+                  id="name"
+                  {...register("name")}
+                  placeholder="MV Atlantic Trader"
+                  className={errors.name ? "border-red-500" : ""}
+                />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="contractId">Related Contract *</Label>
+                <Select
+                  onValueChange={(value) => {
+                    setValue(
+                      "contractId",
+                      value && value.length > 0 ? value : undefined,
+                    );
+                  }}
+                  defaultValue={
+                    vessel?.contractId ? String(vessel.contractId) : undefined
+                  }
+                >
+                  <SelectTrigger className={errors.contractId ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select a contract" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contracts.map((contract) => (
+                      <SelectItem key={contract.id} value={contract.id.toString()}>
+                        {contract.publicId ?? `CON-${contract.id.toString().padStart(3, "0")}`} - {contract.supplierName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.contractId && (
+                  <p className="mt-1 text-sm text-red-500">{errors.contractId.message}</p>
+                )}
+              </div>
             </div>
-          </div>
+          </FormSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="contractId">Related Contract *</Label>
-              <Select
-                onValueChange={(value) => {
-                  setValue(
-                    "contractId",
-                    value && value.length > 0 ? value : undefined,
-                  );
-                }}
-                defaultValue={vessel?.contractId ? String(vessel.contractId) : undefined}
-              >
-                <SelectTrigger className={errors.contractId ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select a contract" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contracts.map((contract) => (
-                    <SelectItem key={contract.id} value={contract.id.toString()}>
-                      {(contract.publicId ?? `CON-${contract.id.toString().padStart(3, '0')}`)} - {contract.supplierName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.contractId && (
-                <p className="text-sm text-red-500 mt-1">{errors.contractId.message}</p>
-              )}
-            </div>
-
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="quantity">Quantity (tons) *</Label>
-              <Input
-                id="quantity"
-                type="number"
-                {...register("quantity", { valueAsNumber: true })}
-                placeholder="1000"
-                className={errors.quantity ? "border-red-500" : ""}
-              />
-              {errors.quantity && (
-                <p className="text-sm text-red-500 mt-1">{errors.quantity.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="cargoType">Cargo Type *</Label>
-              <Select 
-                onValueChange={(value) => setValue("cargoType", value)}
-                defaultValue={vessel?.cargoType}
-              >
-                <SelectTrigger className={errors.cargoType ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select cargo type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CARGO_TYPES.map((cargo) => (
-                    <SelectItem key={cargo.value} value={cargo.value}>{cargo.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.cargoType && (
-                <p className="text-sm text-red-500 mt-1">{errors.cargoType.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-            <div>
-              <Label htmlFor="countryOfOrigin">Country of Origin *</Label>
-              <Select 
-                onValueChange={(value) => setValue("countryOfOrigin", value)}
-                defaultValue={vessel?.countryOfOrigin}
-              >
-                <SelectTrigger className={errors.countryOfOrigin ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country} value={country}>{country}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.countryOfOrigin && (
-                <p className="text-sm text-red-500 mt-1">{errors.countryOfOrigin.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-            <div>
-              <Label htmlFor="portOfDischarge">Port of Discharge *</Label>
-              <Select 
-                onValueChange={(value) => setValue("portOfDischarge", value)}
-                defaultValue={vessel?.portOfDischarge}
-              >
-                <SelectTrigger className={errors.portOfDischarge ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select port" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PORTS.map((port) => (
-                    <SelectItem key={port} value={port}>{port}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.portOfDischarge && (
-                <p className="text-sm text-red-500 mt-1">{errors.portOfDischarge.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Letters of Credit Section */}
           <Separator />
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Letters of Credit
+
+          <FormSection
+            title="Cargo & Voyage Details"
+            description="Outline what the vessel is carrying and when it is expected to move."
+          >
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <Label htmlFor="quantity">Quantity (tons) *</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  {...register("quantity", { valueAsNumber: true })}
+                  placeholder="1000"
+                  className={errors.quantity ? "border-red-500" : ""}
+                />
+                {errors.quantity && (
+                  <p className="mt-1 text-sm text-red-500">{errors.quantity.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="cargoType">Cargo Type *</Label>
+                <Select
+                  onValueChange={(value) => setValue("cargoType", value)}
+                  defaultValue={vessel?.cargoType ?? undefined}
+                >
+                  <SelectTrigger className={errors.cargoType ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select cargo type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CARGO_TYPES.map((cargo) => (
+                      <SelectItem key={cargo.value} value={cargo.value}>
+                        {cargo.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.cargoType && (
+                  <p className="mt-1 text-sm text-red-500">{errors.cargoType.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <Label htmlFor="countryOfOrigin">Country of Origin *</Label>
+                <Select
+                  onValueChange={(value) => setValue("countryOfOrigin", value)}
+                  defaultValue={vessel?.countryOfOrigin ?? undefined}
+                >
+                  <SelectTrigger className={errors.countryOfOrigin ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((country) => (
+                      <SelectItem key={country} value={country}>
+                        {country}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.countryOfOrigin && (
+                  <p className="mt-1 text-sm text-red-500">{errors.countryOfOrigin.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="portOfDischarge">Port of Discharge *</Label>
+                <Select
+                  onValueChange={(value) => setValue("portOfDischarge", value)}
+                  defaultValue={vessel?.portOfDischarge ?? undefined}
+                >
+                  <SelectTrigger className={errors.portOfDischarge ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select port" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PORTS.map((port) => (
+                      <SelectItem key={port} value={port}>
+                        {port}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.portOfDischarge && (
+                  <p className="mt-1 text-sm text-red-500">{errors.portOfDischarge.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div>
+                <Label htmlFor="eta">Estimated Time of Arrival (ETA) *</Label>
+                <Input
+                  id="eta"
+                  type="datetime-local"
+                  {...register("eta")}
+                  className={errors.eta ? "border-red-500" : ""}
+                />
+                {errors.eta && (
+                  <p className="mt-1 text-sm text-red-500">{errors.eta.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="etd">Estimated Time of Departure (ETD)</Label>
+                <Input
+                  id="etd"
+                  type="datetime-local"
+                  {...register("etd")}
+                  className={errors.etd ? "border-red-500" : ""}
+                />
+                {errors.etd && (
+                  <p className="mt-1 text-sm text-red-500">{errors.etd.message}</p>
+                )}
+              </div>
+            </div>
+          </FormSection>
+
+          <Separator />
+
+          <FormSection
+            title="Loading Plans"
+            description="Document each origin port feeding this vessel and its expected contribution."
+          >
+            <Card>
+              <CardHeader className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <CardTitle>Loading Ports</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Add ports, quantities, and status updates for the loading schedule.
+                  </p>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setVesselLCs([...vesselLCs, { lcId: "", quantity: 0, notes: "" }])
+                    setLoadingPorts([
+                      ...loadingPorts,
+                      {
+                        portName: "",
+                        expectedQuantity: 0,
+                        loadingStatus: "pending",
+                      },
+                    ])
                   }
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add LC
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Port
                 </Button>
-                {vesselLCs.length === 0 && vessel && (
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {loadingPorts.length === 0 ? (
+                  <p className="py-4 text-center text-muted-foreground">
+                    No loading ports have been documented yet.
+                  </p>
+                ) : (
+                  loadingPorts.map((port, index) => (
+                    <div key={index} className="space-y-4 rounded-lg border p-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                          <Label>Port Name</Label>
+                          <Input
+                            value={port.portName}
+                            onChange={(e) => {
+                              const updated = [...loadingPorts];
+                              updated[index].portName = e.target.value;
+                              setLoadingPorts(updated);
+                            }}
+                            placeholder="Port of Shanghai"
+                          />
+                        </div>
+                        <div>
+                          <Label>Port Code</Label>
+                          <Input
+                            value={port.portCode || ""}
+                            onChange={(e) => {
+                              const updated = [...loadingPorts];
+                              updated[index].portCode = e.target.value;
+                              setLoadingPorts(updated);
+                            }}
+                            placeholder="CNSHA"
+                          />
+                        </div>
+                        <div>
+                          <Label>Country</Label>
+                          <Select
+                            value={port.country || ""}
+                            onValueChange={(value) => {
+                              const updated = [...loadingPorts];
+                              updated[index].country = value;
+                              setLoadingPorts(updated);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select country" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {COUNTRIES.map((country) => (
+                                <SelectItem key={country} value={country}>
+                                  {country}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div>
+                          <Label>Expected Quantity (tons)</Label>
+                          <Input
+                            type="number"
+                            value={port.expectedQuantity}
+                            onChange={(e) => {
+                              const updated = [...loadingPorts];
+                              updated[index].expectedQuantity = parseInt(e.target.value) || 0;
+                              setLoadingPorts(updated);
+                            }}
+                            placeholder="500"
+                          />
+                        </div>
+                        <div>
+                          <Label>Loading Date</Label>
+                          <Input
+                            type="datetime-local"
+                            value={port.loadingDate || ""}
+                            onChange={(e) => {
+                              const updated = [...loadingPorts];
+                              updated[index].loadingDate = e.target.value;
+                              setLoadingPorts(updated);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label>Loading Status</Label>
+                          <Select
+                            value={port.loadingStatus}
+                            onValueChange={(value) => {
+                              const updated = [...loadingPorts];
+                              updated[index].loadingStatus = value;
+                              setLoadingPorts(updated);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="in-progress">In Progress</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-end">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (loadingPorts.length > 1) {
+                                const updated = loadingPorts.filter((_, i) => i !== index);
+                                setLoadingPorts(updated);
+                              }
+                            }}
+                            disabled={loadingPorts.length <= 1}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Notes</Label>
+                        <Textarea
+                          value={port.notes ?? ""}
+                          onChange={(e) => {
+                            const updated = [...loadingPorts];
+                            updated[index].notes = e.target.value;
+                            setLoadingPorts(updated);
+                          }}
+                          placeholder="Berth availability, draft restrictions, documentation requirements..."
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </FormSection>
+
+          <Separator />
+
+          <FormSection
+            title="Letters of Credit"
+            description="Link the vessel to letters of credit that finance or guarantee the shipment."
+          >
+            <Card>
+              <CardHeader className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle>Associated LCs</CardTitle>
+                <div className="flex flex-wrap gap-2">
+                  {vesselLCs.length === 0 && vessel ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setVesselLCs([{ lcId: "", quantity: 0, notes: "" }])}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add First LC
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
-                    onClick={() => setVesselLCs([{ lcId: "", quantity: 0, notes: "" }])}
+                    onClick={() =>
+                      setVesselLCs([...vesselLCs, { lcId: "", quantity: 0, notes: "" }])
+                    }
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add First LC
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add LC
                   </Button>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {vesselLCs.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No letters of credit added yet. Click "Add LC" to start.</p>
-              ) : (
-                <div className="space-y-4">
-                  {vesselLCs.map((vesselLC, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
-                      <div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {vesselLCs.length === 0 ? (
+                  <p className="py-4 text-center text-muted-foreground">
+                    No letters of credit have been associated with this vessel yet.
+                  </p>
+                ) : (
+                  vesselLCs.map((vesselLC, index) => (
+                    <div
+                      key={index}
+                      className="space-y-4 rounded-lg border p-4 md:grid md:grid-cols-12 md:gap-4"
+                    >
+                      <div className="md:col-span-4">
                         <Label>Letter of Credit</Label>
                         <Select
-                          value={vesselLC.lcId || undefined}
+                          value={vesselLC.lcId || ""}
                           onValueChange={(value) => {
                             const updated = [...vesselLCs];
                             updated[index].lcId = value;
@@ -437,7 +676,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                           </SelectContent>
                         </Select>
                       </div>
-                      <div>
+                      <div className="md:col-span-3">
                         <Label>Quantity (tons)</Label>
                         <Input
                           type="number"
@@ -450,10 +689,10 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                           placeholder="1000"
                         />
                       </div>
-                      <div>
+                      <div className="md:col-span-4">
                         <Label>Notes</Label>
                         <Input
-                          value={vesselLC.notes || ''}
+                          value={vesselLC.notes || ""}
                           onChange={(e) => {
                             const updated = [...vesselLCs];
                             updated[index].notes = e.target.value;
@@ -462,7 +701,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                           placeholder="Optional notes"
                         />
                       </div>
-                      <div className="flex items-end">
+                      <div className="md:col-span-1 md:flex md:items-end">
                         <Button
                           type="button"
                           variant="outline"
@@ -476,150 +715,24 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                         </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </FormSection>
 
-          {/* Loading Ports Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Loading Ports
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLoadingPorts([...loadingPorts, { 
-                    portName: '', 
-                    expectedQuantity: 0, 
-                    loadingStatus: 'pending' 
-                  }])}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Port
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {loadingPorts.map((port, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border rounded-lg">
-                    <div>
-                      <Label>Port Name</Label>
-                      <Input
-                        value={port.portName}
-                        onChange={(e) => {
-                          const updated = [...loadingPorts];
-                          updated[index].portName = e.target.value;
-                          setLoadingPorts(updated);
-                        }}
-                        placeholder="Port of Shanghai"
-                      />
-                    </div>
-                    <div>
-                      <Label>Port Code</Label>
-                      <Input
-                        value={port.portCode || ''}
-                        onChange={(e) => {
-                          const updated = [...loadingPorts];
-                          updated[index].portCode = e.target.value;
-                          setLoadingPorts(updated);
-                        }}
-                        placeholder="CNSHA"
-                      />
-                    </div>
-                    <div>
-                      <Label>Country</Label>
-                      <Select 
-                        value={port.country || ''}
-                        onValueChange={(value) => {
-                          const updated = [...loadingPorts];
-                          updated[index].country = value;
-                          setLoadingPorts(updated);
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {COUNTRIES.map((country) => (
-                            <SelectItem key={country} value={country}>{country}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Expected Quantity</Label>
-                      <Input
-                        type="number"
-                        value={port.expectedQuantity}
-                        onChange={(e) => {
-                          const updated = [...loadingPorts];
-                          updated[index].expectedQuantity = parseInt(e.target.value) || 0;
-                          setLoadingPorts(updated);
-                        }}
-                        placeholder="500"
-                      />
-                    </div>
-                    <div>
-                      <Label>Loading Date</Label>
-                      <Input
-                        type="datetime-local"
-                        value={port.loadingDate || ''}
-                        onChange={(e) => {
-                          const updated = [...loadingPorts];
-                          updated[index].loadingDate = e.target.value;
-                          setLoadingPorts(updated);
-                        }}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (loadingPorts.length > 1) {
-                            const updated = loadingPorts.filter((_, i) => i !== index);
-                            setLoadingPorts(updated);
-                          }
-                        }}
-                        disabled={loadingPorts.length <= 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <Separator />
 
-          <div>
-            <Label htmlFor="eta">Estimated Time of Arrival (ETA) *</Label>
-            <Input
-              id="eta"
-              type="datetime-local"
-              {...register("eta")}
-              className={errors.eta ? "border-red-500" : ""}
-            />
-            {errors.eta && (
-              <p className="text-sm text-red-500 mt-1">{errors.eta.message}</p>
-            )}
-          </div>
-
-          {/* Trade Terms Section */}
-          <div className="space-y-4 border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-900">Trade Terms & Companies</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+          <FormSection
+            title="Trade Partners & Costs"
+            description="Capture the commercial arrangements and supporting partners for the voyage."
+          >
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <Label htmlFor="tradeTerms">Trade Terms *</Label>
-                <Select 
+                <Select
                   onValueChange={(value) => setValue("tradeTerms", value)}
-                  defaultValue={vessel?.tradeTerms || "FOB"}
+                  defaultValue={vessel?.tradeTerms ?? "FOB"}
                 >
                   <SelectTrigger className={errors.tradeTerms ? "border-red-500" : ""}>
                     <SelectValue placeholder="Select trade terms" />
@@ -630,12 +743,12 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   </SelectContent>
                 </Select>
                 {errors.tradeTerms && (
-                  <p className="text-sm text-red-500 mt-1">{errors.tradeTerms.message}</p>
+                  <p className="mt-1 text-sm text-red-500">{errors.tradeTerms.message}</p>
                 )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div>
                 <Label htmlFor="insuranceCompany">Insurance Company *</Label>
                 <Input
@@ -645,7 +758,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   className={errors.insuranceCompany ? "border-red-500" : ""}
                 />
                 {errors.insuranceCompany && (
-                  <p className="text-sm text-red-500 mt-1">{errors.insuranceCompany.message}</p>
+                  <p className="mt-1 text-sm text-red-500">{errors.insuranceCompany.message}</p>
                 )}
               </div>
               <div>
@@ -657,7 +770,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   className={errors.inspectionCompany ? "border-red-500" : ""}
                 />
                 {errors.inspectionCompany && (
-                  <p className="text-sm text-red-500 mt-1">{errors.inspectionCompany.message}</p>
+                  <p className="mt-1 text-sm text-red-500">{errors.inspectionCompany.message}</p>
                 )}
               </div>
               <div>
@@ -669,16 +782,15 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   className={errors.shippingCompany ? "border-red-500" : ""}
                 />
                 {errors.shippingCompany && (
-                  <p className="text-sm text-red-500 mt-1">{errors.shippingCompany.message}</p>
+                  <p className="mt-1 text-sm text-red-500">{errors.shippingCompany.message}</p>
                 )}
               </div>
             </div>
 
-            {/* FOB Costs - only show when FOB is selected */}
             {watch("tradeTerms") === "FOB" && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h4 className="font-semibold text-yellow-900 mb-3">FOB Additional Costs</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                <h4 className="mb-3 font-semibold text-yellow-900">FOB Additional Costs</h4>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
                     <Label htmlFor="insuranceCost">Insurance Cost (USD)</Label>
                     <Input
@@ -690,7 +802,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                       className={errors.insuranceCost ? "border-red-500" : ""}
                     />
                     {errors.insuranceCost && (
-                      <p className="text-sm text-red-500 mt-1">{errors.insuranceCost.message}</p>
+                      <p className="mt-1 text-sm text-red-500">{errors.insuranceCost.message}</p>
                     )}
                   </div>
                   <div>
@@ -704,7 +816,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                       className={errors.inspectionCost ? "border-red-500" : ""}
                     />
                     {errors.inspectionCost && (
-                      <p className="text-sm text-red-500 mt-1">{errors.inspectionCost.message}</p>
+                      <p className="mt-1 text-sm text-red-500">{errors.inspectionCost.message}</p>
                     )}
                   </div>
                   <div>
@@ -718,57 +830,71 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                       className={errors.shippingCost ? "border-red-500" : ""}
                     />
                     {errors.shippingCost && (
-                      <p className="text-sm text-red-500 mt-1">{errors.shippingCost.message}</p>
+                      <p className="mt-1 text-sm text-red-500">{errors.shippingCost.message}</p>
                     )}
                   </div>
                 </div>
               </div>
             )}
-          </div>
+          </FormSection>
 
-          <div>
-            <Label htmlFor="shippingInstructions">Shipping Instructions</Label>
-            <Textarea
-              id="shippingInstructions"
-              {...register("shippingInstructions")}
-              rows={4}
-              placeholder="Special handling instructions, cargo details, loading requirements..."
-            />
-          </div>
+          <Separator />
 
-          <div>
-            <Label>Shipping Instructions Document</Label>
-            <FileUpload
-              accept=".pdf,.doc,.docx"
-              onFileSelect={setSelectedFiles}
-              existingFile={vessel?.instructionsFile}
-              description="PDF, DOC, DOCX up to 5MB"
-            />
-          </div>
+          <FormSection
+            title="Supporting Documents"
+            description="Attach the instructions and reference material required to execute the voyage."
+          >
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="shippingInstructions">Shipping Instructions</Label>
+                <Textarea
+                  id="shippingInstructions"
+                  {...register("shippingInstructions")}
+                  rows={4}
+                  placeholder="Special handling instructions, cargo details, loading requirements..."
+                />
+              </div>
+              <div>
+                <Label>Shipping Instructions Document</Label>
+                <FileUpload
+                  accept=".pdf,.doc,.docx"
+                  onFileSelect={setSelectedFiles}
+                  existingFile={vessel?.instructionsFile}
+                  description="PDF, DOC, DOCX up to 5MB"
+                />
+              </div>
+            </div>
+          </FormSection>
 
+          <Separator />
 
-
-          <div className="flex justify-end space-x-3">
-            {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:justify-end">
+              {onCancel && (
+                <Button type="button" variant="outline" onClick={onCancel}>
+                  Cancel
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setValue("status", "nominated")}
+                disabled={createMutation.isPending}
+              >
+                Save Draft
               </Button>
-            )}
-            <Button 
-              type="button" 
-              variant="outline"
-              onClick={() => setValue("status", "nominated")}
-              disabled={createMutation.isPending}
-            >
-              Save Draft
-            </Button>
-            <Button 
-              type="submit" 
-              className="bg-purple-500 hover:bg-purple-600 text-white"
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending ? "Processing..." : (vessel ? "Update Vessel" : "Nominate Vessel")}
-            </Button>
+              <Button
+                type="submit"
+                className="bg-purple-500 text-white hover:bg-purple-600"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending
+                  ? "Processing..."
+                  : vessel
+                    ? "Update Vessel"
+                    : "Nominate Vessel"}
+              </Button>
+            </div>
           </div>
         </form>
       </CardContent>
