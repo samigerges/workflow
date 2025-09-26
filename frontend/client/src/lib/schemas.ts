@@ -29,9 +29,9 @@ export type Need = z.infer<typeof insertNeedSchema> & {
 export const insertRequestSchema = z
   .object({
   description: z
-    .string({ required_error: "Description is required" })
-    .min(1, "Description is required")
-    .max(4000, "Description must be 4000 characters or less"),
+    .string({ required_error: "Additional notes are required" })
+    .min(1, "Additional notes are required")
+    .max(4000, "Additional notes must be 4000 characters or less"),
   quantity: z
     .number({ invalid_type_error: "Quantity is required" })
     .superRefine((val, ctx) => {

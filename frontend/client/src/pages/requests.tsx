@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, FileText, Edit, Trash, Settings, Vote, Eye, MessageSquare } from "lucide-react";
 
 const formatRequestPreview = (description?: string) => {
-  if (!description) return "No description";
+  if (!description) return "No additional notes";
   return description.length > 60 ? `${description.slice(0, 60)}…` : description;
 };
 
