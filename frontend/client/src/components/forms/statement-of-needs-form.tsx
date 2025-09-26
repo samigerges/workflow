@@ -64,6 +64,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
     defaultValues: request ? {
       // safely parse numeric fields
       ...request,
+      description: request?.description ?? "",
       startDate: request?.startDate ? new Date(request.startDate).toISOString().split("T")[0] : undefined,
       endDate: request?.endDate ? new Date(request.endDate).toISOString().split("T")[0] : undefined,
       pricePerTon: request?.pricePerTon ? Number(request.pricePerTon) :
@@ -83,7 +84,8 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
       uploadedFile: "",
       letterOfGuarantee: "",
       paymentCurrency: undefined,
-      wheatPercentage: undefined
+      wheatPercentage: undefined,
+      description: "",
     }
   });
 
@@ -128,6 +130,10 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
             : payload.quantity,
         uploadedFile: request?.uploadedFile || "",
       };
+
+      if (typeof submitData.description === "string" && !submitData.description.trim()) {
+        submitData.description = undefined;
+      }
 
       // Clean undefined fields (optional)
       Object.keys(submitData).forEach((k) => {
@@ -253,12 +259,12 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           }
         }}>
           <div>
-            <Label htmlFor="description">Description *</Label>
+            <Label htmlFor="description">Additional Notes (Optional)</Label>
             <Textarea
               id="description"
               {...register("description")}
               rows={4}
-              placeholder="Detailed description of goods, specifications, and requirements"
+              placeholder="Add any extra context, requirements, or considerations"
               className={errors.description ? "border-red-500" : ""}
             />
             {errors.description && (
