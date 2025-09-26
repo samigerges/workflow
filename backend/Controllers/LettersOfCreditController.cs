@@ -83,8 +83,11 @@ namespace WorkflowBackend.Api.Controllers
             var candidates = await _db.LettersOfCredit
                 .Where(l => l.ExpiryDate.HasValue
                     && l.ExpiryDate.Value < referenceTimeUtc
-                    && !string.Equals(l.Status, "Expired", StringComparison.OrdinalIgnoreCase)
-                    && CanAutoExpire(l.Status))
+                    && l.Status != null
+                    && l.Status.ToLower() != "expired"
+                    && l.Status.ToLower() != "cancelled"
+                    && l.Status.ToLower() != "archived"
+                    && l.Status.ToLower() != "utilized")
                 .ToListAsync();
 
             if (candidates.Count == 0) return;
