@@ -455,14 +455,20 @@ export default function Reports() {
   }, [vessels]);
 
   const uniqueLCs = useMemo(() => {
-    return normalizedLcEntries
-      .filter(({ normalized }) => normalized.flowKey === "upf_to_supplier")
-      .map(({ raw, normalized }) => {
-        const idValue = raw?.id ?? normalized.id;
-        if (idValue === null || idValue === undefined) return null;
-        return { id: idValue, number: normalized.number };
-      })
-      .filter((entry): entry is { id: string | number; number: string } => entry !== null);
+    const uniqueById = new Map<string, { id: string | number; number: string }>();
+
+    normalizedLcEntries.forEach(({ raw, normalized }) => {
+      const idValue = raw?.id ?? normalized.id;
+      if (idValue === null || idValue === undefined) return;
+
+      const idKey = String(idValue);
+      if (uniqueById.has(idKey)) return;
+
+      const lcNumber = normalized.number ?? (typeof raw?.lcNumber === "string" ? raw.lcNumber : String(idValue));
+      uniqueById.set(idKey, { id: idValue, number: lcNumber });
+    });
+
+    return Array.from(uniqueById.values());
   }, [normalizedLcEntries]);
 
   if (isLoading) {
