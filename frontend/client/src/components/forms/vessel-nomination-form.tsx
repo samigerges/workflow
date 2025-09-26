@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -54,12 +54,7 @@ interface VesselLC {
 
 interface LoadingPort {
   portName: string;
-  portCode?: string;
-  country?: string;
-  loadingDate?: string;
   expectedQuantity: number;
-  loadingStatus: string;
-  notes?: string;
 }
 
 interface VesselNominationFormProps {
@@ -95,13 +90,12 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
   const queryClient = useQueryClient();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [vesselLCs, setVesselLCs] = useState<VesselLC[]>(
-    vessel ? [] : [{ lcId: "", quantity: 0, notes: "" }]
+    vessel ? [] : [{ lcId: "", quantity: 0 }]
   );
   const [loadingPorts, setLoadingPorts] = useState<LoadingPort[]>([
     {
       portName: "",
       expectedQuantity: 0,
-      loadingStatus: "pending",
     },
   ]);
 
@@ -134,6 +128,44 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
   });
 
   const lcsArray = Array.isArray(lcs) ? lcs : [];
+
+  const vesselQuantity = watch("quantity") ?? 0;
+  const previousQuantityRef = useRef<number>(
+    Number.isFinite(vesselQuantity) ? vesselQuantity : 0,
+  );
+
+  useEffect(() => {
+    const normalizedQuantity = Number.isFinite(vesselQuantity)
+      ? vesselQuantity
+      : 0;
+    const previousQuantity = previousQuantityRef.current;
+
+    setLoadingPorts((prev) => {
+      let changed = false;
+      const updated = prev.map((port) => {
+        if (!port.expectedQuantity || port.expectedQuantity === previousQuantity) {
+          changed = true;
+          return { ...port, expectedQuantity: normalizedQuantity };
+        }
+        return port;
+      });
+      return changed ? updated : prev;
+    });
+
+    setVesselLCs((prev) => {
+      let changed = false;
+      const updated = prev.map((lc) => {
+        if (!lc.quantity || lc.quantity === previousQuantity) {
+          changed = true;
+          return { ...lc, quantity: normalizedQuantity };
+        }
+        return lc;
+      });
+      return changed ? updated : prev;
+    });
+
+    previousQuantityRef.current = normalizedQuantity;
+  }, [vesselQuantity]);
 
   const normalizedLcs = useMemo(() => {
     return lcsArray.map((lc: any) => ({
@@ -457,7 +489,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                 <div className="space-y-1">
                   <CardTitle>Loading Ports</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    Add ports, quantities, and status updates for the loading schedule.
+                    Add each origin port and the quantity allocated to it.
                   </p>
                 </div>
                 <Button
@@ -467,11 +499,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   onClick={() =>
                     setLoadingPorts([
                       ...loadingPorts,
-                      {
-                        portName: "",
-                        expectedQuantity: 0,
-                        loadingStatus: "pending",
-                      },
+                      { portName: "", expectedQuantity: vesselQuantity || 0 },
                     ])
                   }
                 >
@@ -486,129 +514,50 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   </p>
                 ) : (
                   loadingPorts.map((port, index) => (
-                    <div key={index} className="space-y-4 rounded-lg border p-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <div>
-                          <Label>Port Name</Label>
-                          <Input
-                            value={port.portName}
-                            onChange={(e) => {
-                              const updated = [...loadingPorts];
-                              updated[index].portName = e.target.value;
-                              setLoadingPorts(updated);
-                            }}
-                            placeholder="Port of Shanghai"
-                          />
-                        </div>
-                        <div>
-                          <Label>Port Code</Label>
-                          <Input
-                            value={port.portCode || ""}
-                            onChange={(e) => {
-                              const updated = [...loadingPorts];
-                              updated[index].portCode = e.target.value;
-                              setLoadingPorts(updated);
-                            }}
-                            placeholder="CNSHA"
-                          />
-                        </div>
-                        <div>
-                          <Label>Country</Label>
-                          <Select
-                            value={port.country || ""}
-                            onValueChange={(value) => {
-                              const updated = [...loadingPorts];
-                              updated[index].country = value;
-                              setLoadingPorts(updated);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select country" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {COUNTRIES.map((country) => (
-                                <SelectItem key={country} value={country}>
-                                  {country}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                        <div>
-                          <Label>Expected Quantity (tons)</Label>
-                          <Input
-                            type="number"
-                            value={port.expectedQuantity}
-                            onChange={(e) => {
-                              const updated = [...loadingPorts];
-                              updated[index].expectedQuantity = parseInt(e.target.value) || 0;
-                              setLoadingPorts(updated);
-                            }}
-                            placeholder="500"
-                          />
-                        </div>
-                        <div>
-                          <Label>Loading Date</Label>
-                          <Input
-                            type="datetime-local"
-                            value={port.loadingDate || ""}
-                            onChange={(e) => {
-                              const updated = [...loadingPorts];
-                              updated[index].loadingDate = e.target.value;
-                              setLoadingPorts(updated);
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <Label>Loading Status</Label>
-                          <Select
-                            value={port.loadingStatus}
-                            onValueChange={(value) => {
-                              const updated = [...loadingPorts];
-                              updated[index].loadingStatus = value;
-                              setLoadingPorts(updated);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="in-progress">In Progress</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-end">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              if (loadingPorts.length > 1) {
-                                const updated = loadingPorts.filter((_, i) => i !== index);
-                                setLoadingPorts(updated);
-                              }
-                            }}
-                            disabled={loadingPorts.length <= 1}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <Label>Notes</Label>
-                        <Textarea
-                          value={port.notes ?? ""}
+                    <div
+                      key={index}
+                      className="flex flex-col gap-4 rounded-lg border p-4 md:flex-row md:items-end"
+                    >
+                      <div className="flex-1 space-y-2">
+                        <Label>Port Name</Label>
+                        <Input
+                          value={port.portName}
                           onChange={(e) => {
                             const updated = [...loadingPorts];
-                            updated[index].notes = e.target.value;
+                            updated[index].portName = e.target.value;
                             setLoadingPorts(updated);
                           }}
-                          placeholder="Berth availability, draft restrictions, documentation requirements..."
+                          placeholder="Port of Shanghai"
                         />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <Label>Quantity (tons)</Label>
+                        <Input
+                          type="number"
+                          value={port.expectedQuantity}
+                          onChange={(e) => {
+                            const updated = [...loadingPorts];
+                            updated[index].expectedQuantity = parseInt(e.target.value) || 0;
+                            setLoadingPorts(updated);
+                          }}
+                          placeholder="500"
+                        />
+                      </div>
+                      <div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (loadingPorts.length > 1) {
+                              const updated = loadingPorts.filter((_, i) => i !== index);
+                              setLoadingPorts(updated);
+                            }
+                          }}
+                          disabled={loadingPorts.length <= 1}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -632,7 +581,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                       type="button"
                       variant="secondary"
                       size="sm"
-                      onClick={() => setVesselLCs([{ lcId: "", quantity: 0, notes: "" }])}
+                      onClick={() => setVesselLCs([{ lcId: "", quantity: vesselQuantity || 0 }])}
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Add First LC
@@ -643,7 +592,10 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      setVesselLCs([...vesselLCs, { lcId: "", quantity: 0, notes: "" }])
+                      setVesselLCs([
+                        ...vesselLCs,
+                        { lcId: "", quantity: vesselQuantity || 0 },
+                      ])
                     }
                   >
                     <Plus className="mr-2 h-4 w-4" />
@@ -660,9 +612,9 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   vesselLCs.map((vesselLC, index) => (
                     <div
                       key={index}
-                      className="space-y-4 rounded-lg border p-4 md:grid md:grid-cols-12 md:gap-4"
+                      className="flex flex-col gap-4 rounded-lg border p-4 md:flex-row md:items-end"
                     >
-                      <div className="md:col-span-4">
+                      <div className="flex-1 space-y-2">
                         <Label>Letter of Credit</Label>
                         <Select
                           value={vesselLC.lcId || ""}
@@ -690,7 +642,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="md:col-span-3">
+                      <div className="flex-1 space-y-2">
                         <Label>Quantity (tons)</Label>
                         <Input
                           type="number"
@@ -703,19 +655,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                           placeholder="1000"
                         />
                       </div>
-                      <div className="md:col-span-4">
-                        <Label>Notes</Label>
-                        <Input
-                          value={vesselLC.notes || ""}
-                          onChange={(e) => {
-                            const updated = [...vesselLCs];
-                            updated[index].notes = e.target.value;
-                            setVesselLCs(updated);
-                          }}
-                          placeholder="Optional notes"
-                        />
-                      </div>
-                      <div className="md:col-span-1 md:flex md:items-end">
+                      <div>
                         <Button
                           type="button"
                           variant="outline"
