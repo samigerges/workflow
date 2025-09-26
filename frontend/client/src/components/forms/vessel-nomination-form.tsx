@@ -142,6 +142,14 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
     }));
   }, [lcsArray]);
 
+  const upfToSupplierLcs = useMemo(
+    () =>
+      normalizedLcs.filter(
+        ({ normalized }) => normalized.flowKey === "upf_to_supplier",
+      ),
+    [normalizedLcs],
+  );
+
   const createMutation = useMutation({
     mutationFn: async (data: VesselFormData) => {
       const hasFile = selectedFiles.length > 0;
@@ -662,7 +670,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                             <SelectValue placeholder="Select LC" />
                           </SelectTrigger>
                           <SelectContent>
-                            {normalizedLcs.map(({ raw, normalized }) => {
+                            {upfToSupplierLcs.map(({ raw, normalized }) => {
                               const lcId = raw?.id ?? normalized.id;
                               if (lcId === null || lcId === undefined) {
                                 return null;
