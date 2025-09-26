@@ -246,300 +246,302 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
   return (
     <Card>
       <CardContent className="p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" onInvalid={() => {
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8" onInvalid={() => {
           if (process.env.NODE_ENV !== "production") {
             // eslint-disable-next-line no-console
             console.log("Form validation failed");
           }
         }}>
-          <div>
-            <Label htmlFor="description">Description *</Label>
-            <Textarea
-              id="description"
-              {...register("description")}
-              rows={4}
-              placeholder="Detailed description of goods, specifications, and requirements"
-              className={errors.description ? "border-red-500" : ""}
-            />
-            {errors.description && (
-              <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="cargoType">Cargo Type *</Label>
-              <Controller
-                control={control}
-                name="cargoType"
-                defaultValue={request?.cargoType ?? undefined}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className={errors.cargoType ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select cargo type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CARGO_TYPES.map((cargo) => (
-                        <SelectItem key={cargo.value} value={cargo.value}>
-                          {cargo.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.cargoType && (
-                <p className="text-sm text-red-500 mt-1">{errors.cargoType.message}</p>
-              )}
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-gray-900">Request Details</h3>
+              <p className="text-sm text-muted-foreground">
+                Define the goods being requested and the required quantities.
+              </p>
             </div>
-            <div>
-              <Label htmlFor="pricePerTon">Price per unit *</Label>
-              <Input
-                id="pricePerTon"
-                type="number"
-                step="0.01"
-                {...register("pricePerTon", { valueAsNumber: true })}
-                placeholder="e.g. 500"
-                className={errors.pricePerTon ? "border-red-500" : ""}
-              />
-              {errors.pricePerTon && (
-                <p className="text-sm text-red-500 mt-1">{errors.pricePerTon.message}</p>
-              )}
-            </div>
-            {isWheat && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="wheatPercentage">Wheat Percentage *</Label>
-                <Input
-                  id="wheatPercentage"
-                  type="number"
-                  step="0.01"
-                  {...register("wheatPercentage", { valueAsNumber: true })}
-                  placeholder="e.g. 12.5"
-                  className={errors.wheatPercentage ? "border-red-500" : ""}
+                <Label htmlFor="cargoType">Cargo Type *</Label>
+                <Controller
+                  control={control}
+                  name="cargoType"
+                  defaultValue={request?.cargoType ?? undefined}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className={errors.cargoType ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Select cargo type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CARGO_TYPES.map((cargo) => (
+                          <SelectItem key={cargo.value} value={cargo.value}>
+                            {cargo.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
-                {errors.wheatPercentage && (
-                  <p className="text-sm text-red-500 mt-1">{errors.wheatPercentage.message}</p>
+                {errors.cargoType && (
+                  <p className="text-sm text-red-500 mt-1">{errors.cargoType.message}</p>
                 )}
               </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="quantity">Quantity *</Label>
-              <Input
-                id="quantity"
-                type="number"
-                {...register("quantity", { valueAsNumber: true })}
-                placeholder="e.g. 500"
-                className={errors.quantity ? "border-red-500" : ""}
-              />
-              {errors.quantity && (
-                <p className="text-sm text-red-500 mt-1">{errors.quantity.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="unitOfMeasure">Unit of Measure *</Label>
-              <Controller
-                control={control}
-                name="unitOfMeasure"
-                defaultValue={request?.unitOfMeasure ?? undefined}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className={errors.unitOfMeasure ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {UNITS_OF_MEASURE.map((unit) => (
-                        <SelectItem key={unit} value={unit}>
-                          {unit}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div>
+                <Label htmlFor="quantity">Quantity *</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  {...register("quantity", { valueAsNumber: true })}
+                  placeholder="e.g. 500"
+                  className={errors.quantity ? "border-red-500" : ""}
+                />
+                {errors.quantity && (
+                  <p className="text-sm text-red-500 mt-1">{errors.quantity.message}</p>
                 )}
-              />
-              {errors.unitOfMeasure && (
-                <p className="text-sm text-red-500 mt-1">{errors.unitOfMeasure.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="supplierName">Supplier Name *</Label>
-              <Input
-                id="supplierName"
-                {...register("supplierName")}
-                placeholder="Name of the supplier"
-                className={errors.supplierName ? "border-red-500" : ""}
-              />
-              {errors.supplierName && (
-                <p className="text-sm text-red-500 mt-1">{errors.supplierName.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="countryOfOrigin">Country of Origin *</Label>
-              <Controller
-                control={control}
-                name="countryOfOrigin"
-                defaultValue={request?.countryOfOrigin ?? undefined}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className={errors.countryOfOrigin ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select country of origin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COUNTRIES.map((country) => (
-                        <SelectItem key={country} value={country}>
-                          {country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              </div>
+              <div>
+                <Label htmlFor="unitOfMeasure">Unit of Measure *</Label>
+                <Controller
+                  control={control}
+                  name="unitOfMeasure"
+                  defaultValue={request?.unitOfMeasure ?? undefined}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className={errors.unitOfMeasure ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Select unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UNITS_OF_MEASURE.map((unit) => (
+                          <SelectItem key={unit} value={unit}>
+                            {unit}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.unitOfMeasure && (
+                  <p className="text-sm text-red-500 mt-1">{errors.unitOfMeasure.message}</p>
                 )}
-              />
-              {errors.countryOfOrigin && (
-                <p className="text-sm text-red-500 mt-1">{errors.countryOfOrigin.message}</p>
+              </div>
+              {isWheat && (
+                <div>
+                  <Label htmlFor="wheatPercentage">Wheat Percentage *</Label>
+                  <Input
+                    id="wheatPercentage"
+                    type="number"
+                    step="0.01"
+                    {...register("wheatPercentage", { valueAsNumber: true })}
+                    placeholder="e.g. 12.5"
+                    className={errors.wheatPercentage ? "border-red-500" : ""}
+                  />
+                  {errors.wheatPercentage && (
+                    <p className="text-sm text-red-500 mt-1">{errors.wheatPercentage.message}</p>
+                  )}
+                </div>
               )}
             </div>
-          </div>
+          </section>
 
-          {/* New row: Payment Method + Shipping Method */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="paymentMethod">Payment Method *</Label>
-              <Controller
-                control={control}
-                name="paymentMethod"
-                defaultValue={request?.paymentMethod ?? undefined}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className={errors.paymentMethod ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CONTRACT_PAYMENT_METHODS.map((pm) => (
-                        <SelectItem key={pm.value} value={pm.value}>
-                          {pm.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-gray-900">Supplier &amp; Pricing</h3>
+              <p className="text-sm text-muted-foreground">
+                Capture supplier details and commercial terms for this request.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="supplierName">Supplier Name *</Label>
+                <Input
+                  id="supplierName"
+                  {...register("supplierName")}
+                  placeholder="Name of the supplier"
+                  className={errors.supplierName ? "border-red-500" : ""}
+                />
+                {errors.supplierName && (
+                  <p className="text-sm text-red-500 mt-1">{errors.supplierName.message}</p>
                 )}
-              />
-              {errors.paymentMethod && (
-                <p className="text-sm text-red-500 mt-1">{errors.paymentMethod.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="shippingMethod">Shipping Method *</Label>
-              <Controller
-                control={control}
-                name="shippingMethod"
-                defaultValue={request?.shippingMethod ?? undefined}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className={errors.shippingMethod ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select shipping method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SHIPPING_METHODS.map((sm) => (
-                        <SelectItem key={sm.value} value={sm.value}>
-                          {sm.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              </div>
+              <div>
+                <Label htmlFor="countryOfOrigin">Country of Origin *</Label>
+                <Controller
+                  control={control}
+                  name="countryOfOrigin"
+                  defaultValue={request?.countryOfOrigin ?? undefined}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className={errors.countryOfOrigin ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Select country of origin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.countryOfOrigin && (
+                  <p className="text-sm text-red-500 mt-1">{errors.countryOfOrigin.message}</p>
                 )}
-              />
-              {errors.shippingMethod && (
-                <p className="text-sm text-red-500 mt-1">{errors.shippingMethod.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Letter of Guarantee */}
-          <div>
-            <Label htmlFor="letterOfGuarantee">Letter of Guarantee *</Label>
-            <Textarea
-              id="letterOfGuarantee"
-              {...register("letterOfGuarantee")}
-              rows={3}
-              placeholder="Enter letter of guarantee details or requirements"
-              className={errors.letterOfGuarantee ? "border-red-500" : ""}
-            />
-            {errors.letterOfGuarantee && (
-              <p className="text-sm text-red-500 mt-1">{errors.letterOfGuarantee.message}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <Label htmlFor="startDate">Start Date *</Label>
-              <Input
-                id="startDate"
-                type="date"
-                {...register("startDate")}
-                placeholder="Select start date"
-                className={errors.startDate ? "border-red-500" : ""}
-              />
-              {errors.startDate && (
-                <p className="text-sm text-red-500 mt-1">{errors.startDate.message}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="endDate">End Date *</Label>
-              <Input
-                id="endDate"
-                type="date"
-                {...register("endDate")}
-                placeholder="Select end date"
-                className={errors.endDate ? "border-red-500" : ""}
-              />
-              {errors.endDate && (
-                <p className="text-sm text-red-500 mt-1">{errors.endDate.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="paymentCurrency">Payment Currency *</Label>
-              <Controller
-                control={control}
-                name="paymentCurrency"
-                defaultValue={request?.paymentCurrency ?? request?.currency ?? undefined}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger className={errors.paymentCurrency ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select payment currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map((currency) => (
-                        <SelectItem key={currency} value={currency}>
-                          {currency}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              </div>
+              <div>
+                <Label htmlFor="pricePerTon">Price per unit *</Label>
+                <Input
+                  id="pricePerTon"
+                  type="number"
+                  step="0.01"
+                  {...register("pricePerTon", { valueAsNumber: true })}
+                  placeholder="e.g. 500"
+                  className={errors.pricePerTon ? "border-red-500" : ""}
+                />
+                {errors.pricePerTon && (
+                  <p className="text-sm text-red-500 mt-1">{errors.pricePerTon.message}</p>
                 )}
-              />
-              {errors.paymentCurrency && (
-                <p className="text-sm text-red-500 mt-1">{errors.paymentCurrency.message}</p>
-              )}
+              </div>
+              <div>
+                <Label htmlFor="paymentCurrency">Payment Currency *</Label>
+                <Controller
+                  control={control}
+                  name="paymentCurrency"
+                  defaultValue={request?.paymentCurrency ?? request?.currency ?? undefined}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className={errors.paymentCurrency ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Select payment currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CURRENCIES.map((currency) => (
+                          <SelectItem key={currency} value={currency}>
+                            {currency}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.paymentCurrency && (
+                  <p className="text-sm text-red-500 mt-1">{errors.paymentCurrency.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="paymentMethod">Payment Method *</Label>
+                <Controller
+                  control={control}
+                  name="paymentMethod"
+                  defaultValue={request?.paymentMethod ?? undefined}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className={errors.paymentMethod ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CONTRACT_PAYMENT_METHODS.map((pm) => (
+                          <SelectItem key={pm.value} value={pm.value}>
+                            {pm.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.paymentMethod && (
+                  <p className="text-sm text-red-500 mt-1">{errors.paymentMethod.message}</p>
+                )}
+              </div>
             </div>
-          </div>
+          </section>
 
-          {/* Document Upload Section */}
-          <div className="border-t pt-6">
-            <Label htmlFor="documentUpload" className="text-base font-semibold">Contract Request Document *</Label>
-            <p className="text-sm text-secondary-600 mb-4">
-              Upload the contract request document (PDF, DOC, DOCX - Max 10MB)
-            </p>
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-gray-900">Schedule &amp; Logistics</h3>
+              <p className="text-sm text-muted-foreground">
+                Outline the timing requirements and any logistical constraints.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="startDate">Start Date *</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  {...register("startDate")}
+                  placeholder="Select start date"
+                  className={errors.startDate ? "border-red-500" : ""}
+                />
+                {errors.startDate && (
+                  <p className="text-sm text-red-500 mt-1">{errors.startDate.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="endDate">End Date *</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  {...register("endDate")}
+                  placeholder="Select end date"
+                  className={errors.endDate ? "border-red-500" : ""}
+                />
+                {errors.endDate && (
+                  <p className="text-sm text-red-500 mt-1">{errors.endDate.message}</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="shippingMethod">Shipping Method *</Label>
+                <Controller
+                  control={control}
+                  name="shippingMethod"
+                  defaultValue={request?.shippingMethod ?? undefined}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className={errors.shippingMethod ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Select shipping method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SHIPPING_METHODS.map((sm) => (
+                          <SelectItem key={sm.value} value={sm.value}>
+                            {sm.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.shippingMethod && (
+                  <p className="text-sm text-red-500 mt-1">{errors.shippingMethod.message}</p>
+                )}
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="letterOfGuarantee">Letter of Guarantee *</Label>
+                <Textarea
+                  id="letterOfGuarantee"
+                  {...register("letterOfGuarantee")}
+                  rows={3}
+                  placeholder="Provide the letter of guarantee requirements"
+                  className={errors.letterOfGuarantee ? "border-red-500" : ""}
+                />
+                {errors.letterOfGuarantee && (
+                  <p className="text-sm text-red-500 mt-1">{errors.letterOfGuarantee.message}</p>
+                )}
+              </div>
+            </div>
+          </section>
 
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-gray-900">Supporting Documents</h3>
+              <p className="text-sm text-muted-foreground">
+                Upload the import request document for routing and approval.
+              </p>
+            </div>
             <div className="space-y-4">
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0">
                 <div className="flex-1">
+                  <Label htmlFor="documentUpload">Contract Request Document *</Label>
                   <Input
                     id="documentUpload"
                     type="file"
@@ -550,6 +552,9 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
                   {fileError && (
                     <p className="text-sm text-red-500 mt-1">{fileError}</p>
                   )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    PDF, DOC, or DOCX files up to 10MB.
+                  </p>
                 </div>
                 {(selectedFile || request?.uploadedFile) && (
                   <div className="flex items-center space-x-2 text-green-600">
@@ -560,13 +565,12 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
               </div>
 
               {selectedFile && (
-                <div className="flex items-center space-x-2 text-sm text-secondary-600">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <Upload size={14} />
-                  <span>Document will be uploaded with request and sent for approval</span>
+                  <span>Document will be uploaded with the request for approval.</span>
                 </div>
               )}
 
-              {/* Show existing uploaded document for editing */}
               {request?.uploadedFile && !selectedFile && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <div className="flex items-center space-x-3">
@@ -575,14 +579,36 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
                       <p className="font-medium text-blue-900">Current Document</p>
                       <p className="text-sm text-blue-700">{request.uploadedFile}</p>
                       <p className="text-xs text-blue-600 mt-1">
-                        Upload a new file above to replace this document
+                        Upload a new file above to replace this document.
                       </p>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-          </div>
+          </section>
+
+          <section className="space-y-2">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-gray-900">Additional Notes</h3>
+              <p className="text-sm text-muted-foreground">
+                Share any extra context or instructions that approvers should know.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="description">Additional Notes *</Label>
+              <Textarea
+                id="description"
+                {...register("description")}
+                rows={4}
+                placeholder="Add context, requirements, or special handling details"
+                className={errors.description ? "border-red-500" : ""}
+              />
+              {errors.description && (
+                <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
+              )}
+            </div>
+          </section>
 
           <div className="flex justify-end space-x-3">
             {onCancel && (
