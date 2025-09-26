@@ -207,8 +207,11 @@ export default function Reports() {
   // Filtered Vessels based on port/date/LC
   const filteredVessels = useMemo(() => {
     return vessels.filter((v) => {
-      if (selectedPortFilter && selectedPortFilter !== "__ALL__" && v.portOfDischarge !== selectedPortFilter) {
-        return false;
+      if (selectedPortFilter && selectedPortFilter !== "__ALL__") {
+        const vesselPort = v.portOfDischarge?.trim() || "Unknown Port";
+        if (vesselPort !== selectedPortFilter) {
+          return false;
+        }
       }
 
       if (
@@ -225,7 +228,10 @@ export default function Reports() {
   // Filtered Contracts based on supplier/date
   const filteredContracts = useMemo(() => {
     return contracts.filter((c) => {
-      if (selectedSupplierFilter && selectedSupplierFilter !== "__ALL__" && c.supplierName !== selectedSupplierFilter) return false;
+      if (selectedSupplierFilter && selectedSupplierFilter !== "__ALL__") {
+        const supplierName = c.supplierName?.trim() || "Unknown Supplier";
+        if (supplierName !== selectedSupplierFilter) return false;
+      }
       // Date range applies if a contract intersects the window
       if (from || to) {
         const start = c.startDate ? parseISO(c.startDate) : null;
@@ -445,13 +451,43 @@ export default function Reports() {
 
   // ---------- Options for filters ----------
   const uniqueSuppliers = useMemo(() => {
-    return Array.from(new Set(contracts.map((c) => c.supplierName).filter(Boolean)))
-      .sort() as string[];
+    const suppliers = new Set<string>();
+    let hasFallback = false;
+
+    contracts.forEach((contract) => {
+      const name = contract.supplierName?.trim();
+      if (name) {
+        suppliers.add(name);
+      } else {
+        hasFallback = true;
+      }
+    });
+
+    if (hasFallback) {
+      suppliers.add("Unknown Supplier");
+    }
+
+    return Array.from(suppliers).sort();
   }, [contracts]);
 
   const uniquePorts = useMemo(() => {
-    return Array.from(new Set(vessels.map((v) => v.portOfDischarge).filter(Boolean)))
-      .sort() as string[];
+    const ports = new Set<string>();
+    let hasFallback = false;
+
+    vessels.forEach((vessel) => {
+      const port = vessel.portOfDischarge?.trim();
+      if (port) {
+        ports.add(port);
+      } else {
+        hasFallback = true;
+      }
+    });
+
+    if (hasFallback) {
+      ports.add("Unknown Port");
+    }
+
+    return Array.from(ports).sort();
   }, [vessels]);
 
   const uniqueLCs = useMemo(() => {
