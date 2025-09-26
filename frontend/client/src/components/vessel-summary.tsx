@@ -9,6 +9,25 @@ import StatusBadge from "@/components/ui/status-badge";
 import VesselDocuments from "@/components/vessel-documents";
 import { normalizeLc, type NormalizedLC, formatLcCurrency } from "@/lib/lc";
 
+function extractLcId(link: any): string | null {
+  if (!link) return null;
+
+  const possibleId =
+    link.lcId ??
+    link.letterOfCreditId ??
+    link.letter_of_credit_id ??
+    link.LetterOfCreditId ??
+    link?.letterOfCredit?.id ??
+    null;
+
+  if (possibleId === null || possibleId === undefined) {
+    return null;
+  }
+
+  const idString = String(possibleId);
+  return idString.length > 0 ? idString : null;
+}
+
 interface VesselSummaryProps {
   vessel: any;
   isOpen: boolean;
@@ -136,8 +155,9 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
               {vesselLCsArray.length > 0 ? (
                 <div className="space-y-3">
                   {vesselLCsArray.map((vesselLC: any, index: number) => {
-                    const normalizedLc = normalizedLcMap.get(String(vesselLC.lcId));
-                    const lcNumber = normalizedLc?.number ?? `LC-${vesselLC.lcId}`;
+                    const linkId = extractLcId(vesselLC);
+                    const normalizedLc = linkId ? normalizedLcMap.get(linkId) : undefined;
+                    const lcNumber = normalizedLc?.number ?? (linkId ? `LC-${linkId}` : "-");
                     const issuingBank = normalizedLc?.issuingBank ?? "Unknown";
                     const lcStatusKey = normalizedLc?.statusKey ?? normalizedLc?.status?.toLowerCase();
                     const statusLabel = normalizedLc?.status
@@ -396,8 +416,9 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
               <CardContent>
                 <div className="space-y-4">
                   {vesselLCsArray.map((vesselLC: any, index: number) => {
-                    const normalizedLc = normalizedLcMap.get(String(vesselLC.lcId));
-                    const lcNumber = normalizedLc?.number ?? `LC-${vesselLC.lcId}`;
+                    const linkId = extractLcId(vesselLC);
+                    const normalizedLc = linkId ? normalizedLcMap.get(linkId) : undefined;
+                    const lcNumber = normalizedLc?.number ?? (linkId ? `LC-${linkId}` : "-");
                     const issuingBank = normalizedLc?.issuingBank ?? "Not specified";
                     const lcStatusKey = normalizedLc?.statusKey ?? normalizedLc?.status?.toLowerCase();
                     const statusLabel = normalizedLc?.status
