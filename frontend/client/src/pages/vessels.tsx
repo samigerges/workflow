@@ -19,6 +19,25 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Ship, Edit, Download, MapPin, Calendar, Eye, Activity, Trash } from "lucide-react";
 import { normalizeLc, type NormalizedLC } from "@/lib/lc";
 
+function extractLcId(link: any): string | null {
+  if (!link) return null;
+
+  const possibleId =
+    link.lcId ??
+    link.letterOfCreditId ??
+    link.letter_of_credit_id ??
+    link.LetterOfCreditId ??
+    link?.letterOfCredit?.id ??
+    null;
+
+  if (possibleId === null || possibleId === undefined) {
+    return null;
+  }
+
+  const idString = String(possibleId);
+  return idString.length > 0 ? idString : null;
+}
+
 // Component to display LC numbers for a vessel
 function VesselLCDisplay({
   vesselId,
@@ -41,8 +60,9 @@ function VesselLCDisplay({
   return (
     <div className="space-y-1">
       {vesselLCsArray.map((vesselLC: any, index: number) => {
-        const normalizedLc = normalizedLcMap.get(String(vesselLC.lcId));
-        const lcNumber = normalizedLc?.number ?? `LC-${vesselLC.lcId}`;
+        const linkId = extractLcId(vesselLC);
+        const normalizedLc = linkId ? normalizedLcMap.get(linkId) : undefined;
+        const lcNumber = normalizedLc?.number ?? (linkId ? `LC-${linkId}` : "-");
         return (
           <Badge key={index} variant="secondary" className="text-xs">
             {lcNumber}

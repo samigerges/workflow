@@ -233,6 +233,12 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
       // Remove all vessel-related queries from cache completely
       queryClient.removeQueries({ queryKey: ["/api/vessels"] });
       queryClient.removeQueries({ predicate: (query) => query.queryKey[0] === "/api/vessels" });
+      queryClient.removeQueries({
+        predicate: (query) => {
+          const [firstKey] = query.queryKey;
+          return typeof firstKey === "string" && firstKey.startsWith("/api/vessels/");
+        },
+      });
       queryClient.removeQueries({ queryKey: ["/api/dashboard/stats"] });
       
       // Also invalidate LC queries to refresh allocated quantities
