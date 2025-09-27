@@ -9,14 +9,13 @@ import VesselNominationForm from "@/components/forms/vessel-nomination-form";
 import VesselSummary from "@/components/vessel-summary";
 import VesselDischargeTracking from "@/components/vessel-discharge-tracking";
 import StatusBadge from "@/components/ui/status-badge";
-import StatusChangeDropdown from "@/components/ui/status-change-dropdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Ship, Edit, Download, MapPin, Calendar, Eye, Activity, Trash } from "lucide-react";
+import { Plus, Ship, Edit, MapPin, Calendar, Eye, Activity, Trash } from "lucide-react";
 import { normalizeLc, type NormalizedLC } from "@/lib/lc";
 
 function extractLcId(link: any): string | null {
@@ -370,7 +369,6 @@ export default function Vessels() {
                       <TableHead>Route</TableHead>
                       <TableHead>ETA</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Customs Release</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -419,23 +417,8 @@ export default function Vessels() {
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <StatusBadge status={vessel.status} type="vessel" />
-                            <StatusChangeDropdown
-                              entityType="vessel"
-                              entityId={vessel.id}
-                              currentStatus={vessel.status}
-                            />
+                            <span className="text-xs text-secondary-500">Status updates automatically</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={
-                            vessel?.customsReleaseStatus === 'verified' ? 'bg-green-100 text-green-800' :
-                            vessel?.customsReleaseStatus === 'received' ? 'bg-blue-100 text-blue-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }>
-                            {vessel?.customsReleaseStatus === 'verified' ? 'Released' :
-                             vessel?.customsReleaseStatus === 'received' ? 'Received' :
-                             'Pending'}
-                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
@@ -474,13 +457,6 @@ export default function Vessels() {
                                 title="Track discharge progress"
                               >
                                 <Activity size={14} />
-                              </Button>
-                            )}
-                            {vessel.instructionsFile && (
-                              <Button size="sm" variant="outline" asChild>
-                                <a href={`/api/files/${vessel.instructionsFile}`} target="_blank" rel="noopener noreferrer">
-                                  <Download size={14} />
-                                </a>
                               </Button>
                             )}
                             <Button 
