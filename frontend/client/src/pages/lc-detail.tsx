@@ -37,22 +37,43 @@ export default function LCDetail() {
     enabled: isAuthenticated,
   });
 
-  const isLoading = lcsLoading || vesselsLoading;
-
   // Find the specific LC
   const lcData = useMemo(() => {
     const lcsArray = Array.isArray(lettersOfCredit) ? lettersOfCredit : [];
     return lcsArray.find((lc: any) => lc.id.toString() === id);
   }, [lettersOfCredit, id]);
 
+  const lcId = lcData?.id;
+  const { data: lcVesselRelations, isLoading: lcVesselRelationsLoading } = useQuery({
+    queryKey: ["/api/letters-of-credit", lcId, "vessels"],
+    enabled: isAuthenticated && !!lcId,
+  });
+
+  const isLoading = lcsLoading || vesselsLoading || lcVesselRelationsLoading;
+
   // Find vessels associated with this LC
+  const lcVesselIdSet = useMemo(() => {
+    if (!Array.isArray(lcVesselRelations)) return new Set<string>();
+    const ids = lcVesselRelations
+      .map((relation: any) => relation?.vesselId)
+      .filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
+    return new Set<string>(ids);
+  }, [lcVesselRelations]);
+
+  const lcVesselRelationMap = useMemo(() => {
+    if (!Array.isArray(lcVesselRelations)) return new Map<string, any>();
+    const entries = lcVesselRelations
+      .map((relation: any) => [relation?.vesselId, relation] as [unknown, any])
+      .filter((entry): entry is [string, any] => typeof entry[0] === "string" && entry[0].length > 0);
+    return new Map<string, any>(entries);
+  }, [lcVesselRelations]);
+
   const lcVessels = useMemo(() => {
     if (!lcData) return [];
     const vesselsArray = Array.isArray(vessels) ? vessels : [];
-    return vesselsArray.filter((vessel: any) => 
-      lcData.vesselIds && lcData.vesselIds.includes(vessel.id)
-    );
-  }, [vessels, lcData]);
+    if (lcVesselIdSet.size === 0) return [];
+    return vesselsArray.filter((vessel: any) => lcVesselIdSet.has(vessel.id));
+  }, [vessels, lcData, lcVesselIdSet]);
 
   // Calculate LC analytics
   const normalizedLc = useMemo(() => (lcData ? normalizeLc(lcData) : null), [lcData]);
@@ -60,10 +81,23 @@ export default function LCDetail() {
   const lcAnalytics = useMemo(() => {
     if (!lcData || !normalizedLc) return null;
 
-    const allocatedQuantity = lcVessels.reduce(
-      (sum, vessel) => sum + (Number(vessel.quantity) || 0),
-      0,
-    );
+    const allocatedQuantity = (() => {
+      if (lcVesselRelationMap.size === 0) {
+        return lcVessels.reduce(
+          (sum, vessel) => sum + (Number(vessel.quantity) || 0),
+          0,
+        );
+      }
+
+      let total = 0;
+      lcVesselRelationMap.forEach((relation) => {
+        const quantity = Number(relation?.quantity);
+        if (Number.isFinite(quantity)) {
+          total += quantity;
+        }
+      });
+      return total;
+    })();
 
     const rawQuantity = Number(lcData.quantity);
     const normalizedQuantity =
@@ -107,7 +141,7 @@ export default function LCDetail() {
           ? `${formatLcDate(normalizedLc.issueDate)} - ${formatLcDate(normalizedLc.expiryDate)}`
           : "N/A",
     };
-  }, [lcData, normalizedLc, lcVessels]);
+  }, [lcData, normalizedLc, lcVessels, lcVesselRelationMap]);
 
   const handleVesselClick = (vessel: any) => {
     setSelectedVessel(vessel);
@@ -266,27 +300,37 @@ export default function LCDetail() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {lcVessels.map((vessel: any) => (
-                      <TableRow 
-                        key={vessel.id}
-                        className="cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => handleVesselClick(vessel)}
-                      >
-                        <TableCell className="font-medium text-blue-600">{vessel.vesselName}</TableCell>
-                        <TableCell className="font-semibold">{vessel.quantity?.toLocaleString() || 0} tons</TableCell>
-                        <TableCell>
-                          <Badge variant={vessel.status === 'delivered' ? 'default' : 'secondary'}>
-                            {vessel.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{vessel.eta ? new Date(vessel.eta).toLocaleDateString() : 'N/A'}</TableCell>
-                        <TableCell>{vessel.departurePort || 'N/A'}</TableCell>
-                        <TableCell>{vessel.arrivalPort || 'N/A'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{vessel.cargoType || 'N/A'}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {lcVessels.map((vessel: any) => {
+                      const relation = lcVesselRelationMap.get(vessel.id);
+                      const allocated = Number(relation?.quantity);
+
+                      return (
+                        <TableRow
+                          key={vessel.id}
+                          className="cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => handleVesselClick(vessel)}
+                        >
+                          <TableCell className="font-medium text-blue-600">{vessel.vesselName}</TableCell>
+                          <TableCell className="font-semibold">
+                            {Number.isFinite(allocated)
+                              ? allocated.toLocaleString()
+                              : vessel.quantity?.toLocaleString() || 0}{" "}
+                            tons
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={vessel.status === 'delivered' ? 'default' : 'secondary'}>
+                              {vessel.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{vessel.eta ? new Date(vessel.eta).toLocaleDateString() : 'N/A'}</TableCell>
+                          <TableCell>{vessel.departurePort || 'N/A'}</TableCell>
+                          <TableCell>{vessel.arrivalPort || 'N/A'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{vessel.cargoType || 'N/A'}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
