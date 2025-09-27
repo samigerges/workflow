@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -249,6 +250,156 @@ public class LettersOfCreditControllerTests
         Assert.Equal(contractB.Id, lc.ContractId);
         Assert.Equal("UPF_TO_SUPPLIER", payload.Flow);
         Assert.Equal("UPF_TO_SUPPLIER", lc.Flow);
+    }
+
+    [Fact]
+    public async Task GetAll_UpfFlowWithoutVessels_DefaultsToIssued()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+
+        var lc = new LetterOfCredit
+        {
+            Number = "LC-UPF-1",
+            Flow = "UPF_TO_SUPPLIER",
+            Status = "Active",
+            Quantity = 100m
+        };
+
+        context.LettersOfCredit.Add(lc);
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetAll(status: null, contractId: null, flow: "UPF_TO_SUPPLIER");
+
+        var payload = Assert.IsAssignableFrom<IEnumerable<LetterOfCreditResponse>>(result.Value);
+        var single = Assert.Single(payload);
+        Assert.Equal("Issued", single.Status);
+    }
+
+    [Fact]
+    public async Task GetAll_UpfFlowWithPartialAllocation_SetsStatusToActive()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+
+        var lc = new LetterOfCredit
+        {
+            Number = "LC-UPF-2",
+            Flow = "UPF_TO_SUPPLIER",
+            Status = "Issued",
+            Quantity = 100m
+        };
+
+        var vessel = new Vessel
+        {
+            Name = "MV Partial",
+            Quantity = 40m
+        };
+
+        context.LettersOfCredit.Add(lc);
+        context.Vessels.Add(vessel);
+        await context.SaveChangesAsync();
+
+        context.VesselLettersOfCredit.Add(new VesselLetterOfCredit
+        {
+            LetterOfCreditId = lc.Id,
+            VesselId = vessel.Id
+        });
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetAll(status: null, contractId: null, flow: "UPF_TO_SUPPLIER");
+
+        var payload = Assert.IsAssignableFrom<IEnumerable<LetterOfCreditResponse>>(result.Value);
+        var single = Assert.Single(payload);
+        Assert.Equal("Active", single.Status);
+    }
+
+    [Fact]
+    public async Task GetAll_UpfFlowWithFullAllocation_SetsStatusToUtilized()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+
+        var lc = new LetterOfCredit
+        {
+            Number = "LC-UPF-3",
+            Flow = "UPF_TO_SUPPLIER",
+            Status = "Active",
+            Quantity = 80m
+        };
+
+        var vessel = new Vessel
+        {
+            Name = "MV Complete",
+            Quantity = 90m
+        };
+
+        context.LettersOfCredit.Add(lc);
+        context.Vessels.Add(vessel);
+        await context.SaveChangesAsync();
+
+        context.VesselLettersOfCredit.Add(new VesselLetterOfCredit
+        {
+            LetterOfCreditId = lc.Id,
+            VesselId = vessel.Id
+        });
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetAll(status: null, contractId: null, flow: "UPF_TO_SUPPLIER");
+
+        var payload = Assert.IsAssignableFrom<IEnumerable<LetterOfCreditResponse>>(result.Value);
+        var single = Assert.Single(payload);
+        Assert.Equal("Utilized", single.Status);
+    }
+
+    [Fact]
+    public async Task GetAll_UpfFlowKeepsTerminalStatuses()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+
+        var lc = new LetterOfCredit
+        {
+            Number = "LC-UPF-4",
+            Flow = "UPF_TO_SUPPLIER",
+            Status = "Cancelled",
+            Quantity = 50m
+        };
+
+        var vessel = new Vessel
+        {
+            Name = "MV Cancelled",
+            Quantity = 50m
+        };
+
+        context.LettersOfCredit.Add(lc);
+        context.Vessels.Add(vessel);
+        await context.SaveChangesAsync();
+
+        context.VesselLettersOfCredit.Add(new VesselLetterOfCredit
+        {
+            LetterOfCreditId = lc.Id,
+            VesselId = vessel.Id
+        });
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetAll(status: null, contractId: null, flow: "UPF_TO_SUPPLIER");
+
+        var payload = Assert.IsAssignableFrom<IEnumerable<LetterOfCreditResponse>>(result.Value);
+        var single = Assert.Single(payload);
+        Assert.Equal("Cancelled", single.Status);
     }
 
     [Fact]
