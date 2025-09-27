@@ -159,6 +159,8 @@ export default function LettersCredit() {
     [journeyEntries],
   );
 
+  const isUpfToSuppliers = journeyFilter === "upf_to_supplier";
+
   const issuedCount = journeyNormalizedLCs.filter((lc) => lc.statusKey === "issued").length;
   const documentsCount = journeyNormalizedLCs.filter((lc) => Boolean(lc.fileUrl)).length;
   const linkedContractsCount = journeyNormalizedLCs.reduce((set, lc) => {
@@ -400,9 +402,10 @@ export default function LettersCredit() {
                       <TableHead>Price per Unit</TableHead>
                       <TableHead>Total Price</TableHead>
                       <TableHead>Issuing Bank</TableHead>
-                      <TableHead>Beneficiary</TableHead>
-                      <TableHead>Supplier</TableHead>
-                      <TableHead>Shipment Period</TableHead>
+                      {!isUpfToSuppliers && <TableHead>Beneficiary</TableHead>}
+                      {!isUpfToSuppliers && <TableHead>Supplier</TableHead>}
+                      <TableHead>Shipment From</TableHead>
+                      <TableHead>Shipment To</TableHead>
                       <TableHead>Issue Date</TableHead>
                       <TableHead>Expiry Date</TableHead>
                       <TableHead>Status</TableHead>
@@ -431,9 +434,14 @@ export default function LettersCredit() {
                           </TableCell>
                           <TableCell>{formatLcCurrency(normalized.amount, normalized.currency)}</TableCell>
                           <TableCell>{normalized.issuingBank ?? "—"}</TableCell>
-                          <TableCell>{normalized.beneficiary ?? "—"}</TableCell>
-                          <TableCell>{normalized.supplierName ?? "—"}</TableCell>
-                          <TableCell>{formatLcDate(normalized.shipmentPeriod)}</TableCell>
+                          {!isUpfToSuppliers && (
+                            <TableCell>{normalized.beneficiary ?? "—"}</TableCell>
+                          )}
+                          {!isUpfToSuppliers && (
+                            <TableCell>{normalized.supplierName ?? "—"}</TableCell>
+                          )}
+                          <TableCell>{formatLcDate(normalized.shipmentPeriodStart)}</TableCell>
+                          <TableCell>{formatLcDate(normalized.shipmentPeriodEnd)}</TableCell>
                           <TableCell>{formatLcDate(normalized.issueDate)}</TableCell>
                           <TableCell className={expired ? "text-red-600 font-medium" : ""}>
                             {formatLcDate(normalized.expiryDate)}
