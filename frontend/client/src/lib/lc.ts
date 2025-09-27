@@ -15,6 +15,8 @@ export interface NormalizedLC {
   status: string;
   statusKey: string;
   issueDate: string | null;
+  shipmentPeriodStart: string | null;
+  shipmentPeriodEnd: string | null;
   shipmentPeriod: string | null;
   expiryDate: string | null;
   contractId: string | null;
@@ -101,7 +103,25 @@ export function normalizeLc(raw: any): NormalizedLC {
   const flowKey = normalizedFlow.toLowerCase() as NormalizedLC["flowKey"];
 
   const issueDate = safeDateString(raw?.issueDate) ?? safeDateString(raw?.issuedDate);
+  const shipmentPeriodStart =
+    safeDateString(raw?.shipmentPeriodStart) ??
+    safeDateString(raw?.shipmentPeriodFrom) ??
+    safeDateString(raw?.shipmentPeriod?.start) ??
+    safeDateString(raw?.shipmentPeriod?.from) ??
+    safeDateString(raw?.shipmentStartDate) ??
+    safeDateString(raw?.shipment_start_date) ??
+    safeDateString(raw?.shipment_period_start);
+  const shipmentPeriodEnd =
+    safeDateString(raw?.shipmentPeriodEnd) ??
+    safeDateString(raw?.shipmentPeriodTo) ??
+    safeDateString(raw?.shipmentPeriod?.end) ??
+    safeDateString(raw?.shipmentPeriod?.to) ??
+    safeDateString(raw?.shipmentEndDate) ??
+    safeDateString(raw?.shipment_end_date) ??
+    safeDateString(raw?.shipment_period_end);
   const shipmentPeriod = safeDateString(raw?.shipmentPeriod) ?? safeDateString(raw?.shipmentPeriodDate);
+  const normalizedShipmentPeriodStart = shipmentPeriodStart ?? shipmentPeriod ?? null;
+  const normalizedShipmentPeriodEnd = shipmentPeriodEnd ?? shipmentPeriod ?? null;
   const expiryDate = safeDateString(raw?.expiryDate) ?? safeDateString(raw?.expirationDate);
   const createdAt = safeDateString(raw?.createdAt);
   const updatedAt = safeDateString(raw?.updatedAt);
@@ -130,6 +150,8 @@ export function normalizeLc(raw: any): NormalizedLC {
     status,
     statusKey,
     issueDate,
+    shipmentPeriodStart: normalizedShipmentPeriodStart,
+    shipmentPeriodEnd: normalizedShipmentPeriodEnd,
     shipmentPeriod,
     expiryDate,
     contractId,
