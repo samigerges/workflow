@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Ship, Package, MapPin, FileText, ExternalLink, University, DollarSign } from "lucide-react";
+import { Calendar, Ship, Package, MapPin, FileText, ExternalLink, University } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import StatusBadge from "@/components/ui/status-badge";
 import VesselDocuments from "@/components/vessel-documents";
@@ -140,88 +140,6 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Letters of Credit */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center space-x-2">
-                <FileText className="h-5 w-5" />
-                <span>Letters of Credit</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {vesselLCsArray.length > 0 ? (
-                <div className="space-y-3">
-                  {vesselLCsArray.map((vesselLC: any, index: number) => {
-                    const linkId = extractLcId(vesselLC);
-                    const normalizedLc = linkId ? normalizedLcMap.get(linkId) : undefined;
-                    const lcNumber = normalizedLc?.number ?? (linkId ? `LC-${linkId}` : "-");
-                    const issuingBank = normalizedLc?.issuingBank ?? "Unknown";
-                    const lcStatusKey = normalizedLc?.statusKey ?? normalizedLc?.status?.toLowerCase();
-                    const statusLabel = normalizedLc?.status
-                      ? normalizedLc.status.charAt(0).toUpperCase() + normalizedLc.status.slice(1)
-                      : "Unknown";
-                    const lcAmountLabel = formatLcCurrency(
-                      normalizedLc?.amount ?? null,
-                      normalizedLc?.currency ?? null,
-                    );
-                    const pricePerUnitLabel = formatLcCurrency(
-                      normalizedLc?.pricePerUnit ?? null,
-                      normalizedLc?.currency ?? null,
-                    );
-                    return (
-                      <div key={index} className="p-3 border rounded-lg">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">LC Number:</span>
-                            <p className="text-gray-900">{lcNumber}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Issuing Bank:</span>
-                            <p className="text-gray-900">{issuingBank}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Quantity:</span>
-                            <p className="text-gray-900">{vesselLC.quantity} tons</p>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Price per Unit:</span>
-                            <p className="text-gray-900">{pricePerUnitLabel}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Total Price:</span>
-                            <p className="text-gray-900">{lcAmountLabel}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">LC Status:</span>
-                            <Badge
-                              className={
-                                lcStatusKey === "issued"
-                                  ? "bg-green-100 text-green-800"
-                                  : lcStatusKey === "expired"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }
-                            >
-                              {statusLabel}
-                            </Badge>
-                          </div>
-                        </div>
-                        {vesselLC.notes && (
-                          <div className="mt-2">
-                            <span className="text-sm font-medium text-gray-500">Notes:</span>
-                            <p className="text-gray-700 text-sm">{vesselLC.notes}</p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-4">No letters of credit assigned to this vessel</p>
-              )}
             </CardContent>
           </Card>
 
@@ -401,17 +319,18 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
               <CardHeader>
                 <CardTitle className="text-lg flex items-center space-x-2">
                   <University className="h-5 w-5" />
-                    <span>Associated Letters of Credit ({vesselLCsArray.length})</span>
+                  <span>Associated Letters of Credit ({vesselLCsArray.length})</span>
                 </CardTitle>
-                  {vesselLCsArray.length > 0 && (
-                  <div className="flex items-center space-x-2 text-sm">
-                    <Package className="h-4 w-4 text-gray-500" />
-                    <span className="font-medium text-gray-500">Total LC Quantity:</span>
-                    <span className="font-semibold text-gray-900">
-                        {vesselLCsArray.reduce((total: number, lc: any) => total + (lc.quantity || 0), 0).toLocaleString()} tons
-                    </span>
-                  </div>
-                )}
+                <div className="flex items-center space-x-2 text-sm">
+                  <Package className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium text-gray-500">Total LC Quantity:</span>
+                  <span className="font-semibold text-gray-900">
+                    {vesselLCsArray.reduce(
+                      (total: number, lc: any) => total + (lc.quantity || 0),
+                      0,
+                    ).toLocaleString()} tons
+                  </span>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
