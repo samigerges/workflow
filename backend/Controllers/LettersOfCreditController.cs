@@ -101,6 +101,93 @@ namespace WorkflowBackend.Api.Controllers
             await _db.SaveChangesAsync();
         }
 
+        private static bool IsTerminalUpfStatus(string? status)
+        {
+            if (status is null) return false;
+
+            return string.Equals(status, "Cancelled", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(status, "Archived", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(status, "Expired", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string DetermineUpfSupplierStatus(string currentStatus, int vesselCount, decimal allocatedQuantity, decimal targetQuantity)
+        {
+            if (vesselCount == 0)
+            {
+                return string.Equals(currentStatus, "Draft", StringComparison.OrdinalIgnoreCase)
+                    ? "Draft"
+                    : "Issued";
+            }
+
+            if (targetQuantity > 0m)
+            {
+                var tolerance = Math.Max(targetQuantity * 0.001m, 0.0001m);
+                if (allocatedQuantity + tolerance >= targetQuantity)
+                {
+                    return "Utilized";
+                }
+            }
+            else if (string.Equals(currentStatus, "Utilized", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Utilized";
+            }
+
+            return "Active";
+        }
+
+        private async Task ApplyAutomaticUpfSupplierStatusesAsync(IReadOnlyList<LetterOfCredit> letters)
+        {
+            if (letters.Count == 0) return;
+
+            var relevant = letters
+                .Where(l => string.Equals(l.Flow, "UPF_TO_SUPPLIER", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (relevant.Count == 0) return;
+
+            var ids = relevant.Select(l => l.Id).ToList();
+
+            var allocations = await _db.VesselLettersOfCredit
+                .Where(link => ids.Contains(link.LetterOfCreditId))
+                .Select(link => new
+                {
+                    link.LetterOfCreditId,
+                    Quantity = link.Vessel != null
+                        ? (link.Vessel.ActualQuantity ?? link.Vessel.Quantity ?? 0m)
+                        : 0m
+                })
+                .ToListAsync();
+
+            var summary = allocations
+                .GroupBy(x => x.LetterOfCreditId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
+                    {
+                        VesselCount = g.Count(),
+                        AllocatedQuantity = g.Sum(x => x.Quantity)
+                    });
+
+            foreach (var lc in relevant)
+            {
+                if (IsTerminalUpfStatus(lc.Status))
+                    continue;
+
+                summary.TryGetValue(lc.Id, out var info);
+
+                var vesselCount = info?.VesselCount ?? 0;
+                var allocated = info?.AllocatedQuantity ?? 0m;
+                var target = lc.Quantity ?? 0m;
+                var current = string.IsNullOrWhiteSpace(lc.Status) ? "Draft" : lc.Status!;
+
+                var next = DetermineUpfSupplierStatus(current, vesselCount, allocated, target);
+                if (!string.Equals(next, current, StringComparison.OrdinalIgnoreCase))
+                {
+                    lc.Status = next;
+                }
+            }
+        }
+
         private static bool TryNormalizeFlow(string? input, string fallback, out string normalized)
         {
             if (string.IsNullOrWhiteSpace(input))
@@ -212,6 +299,7 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             var items = await q.OrderByDescending(l => l.CreatedAt).ToListAsync();
+            await ApplyAutomaticUpfSupplierStatusesAsync(items);
             return items.Select(ToResponse).ToList();
         }
 
@@ -228,6 +316,7 @@ namespace WorkflowBackend.Api.Controllers
             {
                 await _db.SaveChangesAsync();
             }
+            await ApplyAutomaticUpfSupplierStatusesAsync(new[] { lc });
             return ToResponse(lc);
         }
 
