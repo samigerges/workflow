@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -125,6 +125,28 @@ const fetcher = async <T,>(url: string): Promise<T> => {
   return res.json();
 };
 
+const CATEGORY_SERIES_LIMIT = 4;
+const CATEGORY_COLORS = ["#2563eb", "#f97316", "#16a34a", "#0ea5e9", "#a855f7", "#f43f5e"];
+const MONTHLY_TREND_SERIES_LABELS: Record<"needed" | "received", string> = {
+  needed: "Needed",
+  received: "Received",
+};
+
+const createCategoryId = (label: string) =>
+  label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "") || "category";
+
+const withOpacity = (hex: string, alpha: number) => {
+  const normalized = hex.replace("#", "");
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 export default function Reports() {
   const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -140,6 +162,8 @@ export default function Reports() {
     "area",
   );
   const [forecastChartType, setForecastChartType] = useState<"line" | "bar">("line");
+  const [monthlyTrendSeries, setMonthlyTrendSeries] =
+    useState<"needed" | "received">("needed");
 
   // ---- Data ----
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery<LetterOfCredit[]>({
@@ -431,7 +455,9 @@ export default function Reports() {
     const sixMonthsAgo = addMonths(now, -6);
     const months = eachMonthOfInterval({ start: sixMonthsAgo, end: now });
 
-    return months.map((month) => {
+    const categoryTotals = new Map<string, number>();
+
+    const monthlyRaw = months.map((month) => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       const monthLabel = format(month, "MMM yyyy");
@@ -448,30 +474,128 @@ export default function Reports() {
         return d >= monthStart && d <= monthEnd && (!from || d >= from) && (!to || d <= to);
       });
 
-      const cat: Record<string, { needed: number; received: number }> = {};
+      const categories = new Map<string, { needed: number; received: number }>();
 
       monthlyNeeds.forEach((n) => {
-        const key = n.category || "Other";
-        if (!cat[key]) cat[key] = { needed: 0, received: 0 };
-        cat[key].needed += asNumber(n.requiredQuantity, 0);
+        const key = n.category && n.category.trim() ? n.category : "Other";
+        const current = categories.get(key) || { needed: 0, received: 0 };
+        const needed = asNumber(n.requiredQuantity, 0);
+        current.needed += needed;
+        categories.set(key, current);
+        categoryTotals.set(key, (categoryTotals.get(key) || 0) + needed);
       });
 
       monthlyShipments.forEach((s) => {
         const v = filteredVessels.find((vv) => vv.id === s.vesselId);
-        const key = v?.cargoType || "Other";
-        if (!cat[key]) cat[key] = { needed: 0, received: 0 };
-        cat[key].received += asNumber(s.quantityUnloaded, 0);
+        const key = v?.cargoType && v.cargoType.trim() ? v.cargoType : "Other";
+        const current = categories.get(key) || { needed: 0, received: 0 };
+        const received = asNumber(s.quantityUnloaded, 0);
+        current.received += received;
+        categories.set(key, current);
+      });
+
+      return { month, monthLabel, categories };
+    });
+
+    const rankedCategories = Array.from(categoryTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([category]) => category);
+    const retainedCategories = rankedCategories.slice(0, CATEGORY_SERIES_LIMIT);
+    const retainedCategorySet = new Set(retainedCategories);
+
+    return monthlyRaw.map(({ month, monthLabel, categories }) => {
+      const neededByCategory: Record<string, number> = {};
+      const receivedByCategory: Record<string, number> = {};
+      let otherNeeded = 0;
+      let otherReceived = 0;
+
+      categories.forEach(({ needed, received }, category) => {
+        if (retainedCategorySet.has(category)) {
+          neededByCategory[category] = needed;
+          receivedByCategory[category] = received;
+        } else {
+          otherNeeded += needed;
+          otherReceived += received;
+        }
+      });
+
+      if (otherNeeded > 0 || otherReceived > 0) {
+        neededByCategory.Other = otherNeeded;
+        receivedByCategory.Other = otherReceived;
+      }
+
+      const totalNeeded = Object.values(neededByCategory).reduce((sum, value) => sum + value, 0);
+      const totalReceived = Object.values(receivedByCategory).reduce((sum, value) => sum + value, 0);
+
+      const dominantCategoryEntry = Object.entries(neededByCategory)
+        .sort((a, b) => b[1] - a[1])[0];
+
+      const flattened: Record<string, number> = {};
+      Object.entries(neededByCategory).forEach(([category, value]) => {
+        const id = createCategoryId(category);
+        flattened[`needed::${id}`] = value;
+      });
+      Object.entries(receivedByCategory).forEach(([category, value]) => {
+        const id = createCategoryId(category);
+        flattened[`received::${id}`] = value;
       });
 
       return {
         month: monthLabel,
         date: month,
-        totalNeeded: Object.values(cat).reduce((a, c) => a + c.needed, 0),
-        totalReceived: Object.values(cat).reduce((a, c) => a + c.received, 0),
-        ...cat,
-      } as any;
+        totalNeeded,
+        totalReceived,
+        neededByCategory,
+        receivedByCategory,
+        dominantCategory: dominantCategoryEntry?.[0] || "—",
+        ...flattened,
+      };
     });
   }, [needs, shipments, filteredVessels, from, to]);
+
+  const monthlyTrendCategories = useMemo(() => {
+    const totals = new Map<string, number>();
+
+    monthlyTrends.forEach((trend) => {
+      Object.entries(trend.neededByCategory || {}).forEach(([category, value]) => {
+        totals.set(category, (totals.get(category) || 0) + value);
+      });
+    });
+
+    const sorted = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
+    const limited = sorted.slice(0, CATEGORY_SERIES_LIMIT);
+    const otherEntry = sorted.find(([category]) => category === "Other");
+
+    if (otherEntry && !limited.some(([category]) => category === "Other")) {
+      limited.push(otherEntry);
+    }
+
+    return limited.map(([category]) => ({
+      id: createCategoryId(category),
+      label: category,
+    }));
+  }, [monthlyTrends]);
+
+  const monthlyTrendCategoryLookup = useMemo(() => {
+    const lookup = new Map<string, string>();
+    monthlyTrendCategories.forEach(({ id, label }) => {
+      lookup.set(id, label);
+    });
+    return lookup;
+  }, [monthlyTrendCategories]);
+
+  const formatMonthlyTrendTooltip = useCallback(
+    (rawValue: number | string, dataKey: string) => {
+      const [series, id] = dataKey.split("::");
+      const numericValue = typeof rawValue === "number" ? rawValue : Number(rawValue) || 0;
+      const categoryLabel = monthlyTrendCategoryLookup.get(id) || id;
+      const resolvedSeries = series === "needed" || series === "received" ? series : monthlyTrendSeries;
+      const metricLabel = MONTHLY_TREND_SERIES_LABELS[resolvedSeries];
+
+      return [numericValue.toLocaleString(), `${categoryLabel} (${metricLabel})`];
+    },
+    [monthlyTrendCategoryLookup, monthlyTrendSeries],
+  );
 
   // ---------- 3-Month Forecast (simple heuristic) ----------
   const forecastData = useMemo(() => {
@@ -1149,27 +1273,51 @@ export default function Reports() {
                   <Calendar className="h-5 w-5" />
                   <span>Monthly Category Trends</span>
                 </CardTitle>
-                <div className="flex items-center space-x-2">
-                  <Label
-                    htmlFor="monthly-trend-chart-type"
-                    className="text-sm font-medium text-muted-foreground"
-                  >
-                    Chart Type
-                  </Label>
-                  <Select
-                    value={monthlyTrendChartType}
-                    onValueChange={(value) =>
-                      setMonthlyTrendChartType(value as "area" | "bar")
-                    }
-                  >
-                    <SelectTrigger id="monthly-trend-chart-type" className="w-[140px]">
-                      <SelectValue placeholder="Select chart" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="area">Area</SelectItem>
-                      <SelectItem value="bar">Bar</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Label
+                      htmlFor="monthly-trend-series"
+                      className="text-sm font-medium text-muted-foreground"
+                    >
+                      Series
+                    </Label>
+                    <Select
+                      value={monthlyTrendSeries}
+                      onValueChange={(value) =>
+                        setMonthlyTrendSeries(value as "needed" | "received")
+                      }
+                    >
+                      <SelectTrigger id="monthly-trend-series" className="w-[160px]">
+                        <SelectValue placeholder="Select series" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="needed">Needed</SelectItem>
+                        <SelectItem value="received">Received</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Label
+                      htmlFor="monthly-trend-chart-type"
+                      className="text-sm font-medium text-muted-foreground"
+                    >
+                      Chart Type
+                    </Label>
+                    <Select
+                      value={monthlyTrendChartType}
+                      onValueChange={(value) =>
+                        setMonthlyTrendChartType(value as "area" | "bar")
+                      }
+                    >
+                      <SelectTrigger id="monthly-trend-chart-type" className="w-[140px]">
+                        <SelectValue placeholder="Select chart" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="area">Area</SelectItem>
+                        <SelectItem value="bar">Bar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -1184,34 +1332,55 @@ export default function Reports() {
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="month" />
                             <YAxis />
-                            <Tooltip />
+                            <Tooltip
+                              formatter={(value, dataKey) =>
+                                formatMonthlyTrendTooltip(value as number | string, dataKey as string)
+                              }
+                            />
                             <Legend />
-                            <Area
-                              type="monotone"
-                              dataKey="totalNeeded"
-                              stackId="1"
-                              name="Total Needed"
-                              stroke="#3b82f6"
-                              fill="rgba(59, 130, 246, 0.35)"
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="totalReceived"
-                              stackId="2"
-                              name="Total Received"
-                              stroke="#22c55e"
-                              fill="rgba(34, 197, 94, 0.35)"
-                            />
+                            {monthlyTrendCategories.map((category, index) => {
+                              const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+                              const dataKey = `${monthlyTrendSeries}::${category.id}`;
+                              const metricLabel = MONTHLY_TREND_SERIES_LABELS[monthlyTrendSeries];
+                              return (
+                                <Area
+                                  key={`${dataKey}-area`}
+                                  type="monotone"
+                                  dataKey={dataKey}
+                                  stackId={monthlyTrendSeries}
+                                  name={`${category.label} (${metricLabel})`}
+                                  stroke={color}
+                                  fill={withOpacity(color, 0.35)}
+                                />
+                              );
+                            })}
                           </AreaChart>
                         ) : (
                           <BarChart data={monthlyTrends}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="month" />
                             <YAxis />
-                            <Tooltip />
+                            <Tooltip
+                              formatter={(value, dataKey) =>
+                                formatMonthlyTrendTooltip(value as number | string, dataKey as string)
+                              }
+                            />
                             <Legend />
-                            <Bar dataKey="totalNeeded" name="Total Needed" fill="#3b82f6" />
-                            <Bar dataKey="totalReceived" name="Total Received" fill="#22c55e" />
+                            {monthlyTrendCategories.map((category, index) => {
+                              const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+                              const dataKey = `${monthlyTrendSeries}::${category.id}`;
+                              const metricLabel = MONTHLY_TREND_SERIES_LABELS[monthlyTrendSeries];
+                              return (
+                                <Bar
+                                  key={`${dataKey}-bar`}
+                                  dataKey={dataKey}
+                                  name={`${category.label} (${metricLabel})`}
+                                  fill={withOpacity(color, 0.85)}
+                                  stroke={color}
+                                  stackId={monthlyTrendSeries}
+                                />
+                              );
+                            })}
                           </BarChart>
                         )}
                       </ResponsiveContainer>
@@ -1226,6 +1395,7 @@ export default function Reports() {
                             <TableHead>Total Received</TableHead>
                             <TableHead>Gap</TableHead>
                             <TableHead>Fill Rate</TableHead>
+                            <TableHead>Dominant Category</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1248,9 +1418,10 @@ export default function Reports() {
                                     <span className="text-sm">{fillRate.toFixed(1)}%</span>
                                   </div>
                                 </TableCell>
+                                <TableCell>{t.dominantCategory}</TableCell>
                               </TableRow>
-                            );
-                          })}
+                          );
+                        })}
                         </TableBody>
                       </Table>
                     </div>
