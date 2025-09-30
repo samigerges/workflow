@@ -107,8 +107,10 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
     const supplierContracts = filteredContracts.filter((c: Contract) => c.supplierName === selectedSupplier);
 
     const vesselMatchesSupplier = (vessel: Vessel) => {
-      if (typeof vessel.contractId !== "number") return false;
-      return supplierContracts.some((contract) => contract.id === vessel.contractId);
+      const vesselContractId = vessel.contractId != null ? String(vessel.contractId) : null;
+      if (!vesselContractId) return false;
+
+      return supplierContracts.some((contract) => String(contract.id) === vesselContractId);
     };
 
     const vesselsForSupplier = filteredVesselsForDateRange.filter(vesselMatchesSupplier);
@@ -160,18 +162,17 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
       return supplierFiltered;
     }
 
-    const contractIdsFromVessels = new Set<number>();
-    filteredVessels.forEach((vessel) => {
-      if (typeof vessel.contractId === "number") {
-        contractIdsFromVessels.add(vessel.contractId);
-      }
-    });
+    const contractIdsFromVessels = new Set(
+      filteredVessels
+        .map((vessel) => (vessel.contractId != null ? String(vessel.contractId) : null))
+        .filter((contractId): contractId is string => Boolean(contractId)),
+    );
 
     if (contractIdsFromVessels.size === 0) {
       return [];
     }
 
-    return supplierFiltered.filter((contract) => contractIdsFromVessels.has(contract.id));
+    return supplierFiltered.filter((contract) => contractIdsFromVessels.has(String(contract.id)));
   }, [filteredContracts, filteredVessels, selectedSupplier, selectedCountry]);
 
   const quantityMetrics = useMemo(
