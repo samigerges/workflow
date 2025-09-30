@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WorkflowBackend.Api.Models;
+using ServiceProviderModel = WorkflowBackend.Api.Models.ServiceProvider;
+using ServiceProviderPriceModel = WorkflowBackend.Api.Models.ServiceProviderPrice;
 
 namespace WorkflowBackend.Api.Data
 {
@@ -27,6 +29,9 @@ namespace WorkflowBackend.Api.Data
         public DbSet<ShipmentDocument> ShipmentDocuments => Set<ShipmentDocument>();
 
         public DbSet<Document> Documents => Set<Document>(); // <— Global documents
+
+        public DbSet<ServiceProviderModel> ServiceProviders => Set<ServiceProviderModel>();
+        public DbSet<ServiceProviderPriceModel> ServiceProviderPrices => Set<ServiceProviderPriceModel>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -184,6 +189,29 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<Document>().Property(d => d.TagsCsv).HasMaxLength(1000);
             modelBuilder.Entity<Document>()
                 .HasIndex(d => new { d.EntityType, d.EntityId });
+
+            // Service Providers
+            modelBuilder.Entity<ServiceProviderModel>().Property(p => p.Name).HasMaxLength(200).IsRequired();
+            modelBuilder.Entity<ServiceProviderModel>().Property(p => p.Type).HasMaxLength(50).IsRequired();
+            modelBuilder.Entity<ServiceProviderModel>().Property(p => p.ContactName).HasMaxLength(200);
+            modelBuilder.Entity<ServiceProviderModel>().Property(p => p.ContactEmail).HasMaxLength(200);
+            modelBuilder.Entity<ServiceProviderModel>().Property(p => p.ContactPhone).HasMaxLength(50);
+            modelBuilder.Entity<ServiceProviderModel>().Property(p => p.DefaultCurrency).HasMaxLength(10);
+            modelBuilder.Entity<ServiceProviderModel>()
+                .HasIndex(p => new { p.Type, p.Name })
+                .IsUnique();
+            modelBuilder.Entity<ServiceProviderModel>()
+                .HasMany(p => p.Prices)
+                .WithOne(price => price.ServiceProvider)
+                .HasForeignKey(price => price.ServiceProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ServiceProviderPriceModel>().Property(p => p.Currency).HasMaxLength(10).IsRequired();
+            modelBuilder.Entity<ServiceProviderPriceModel>().Property(p => p.Notes).HasMaxLength(2000);
+            modelBuilder.Entity<ServiceProviderPriceModel>().Property(p => p.Price).HasPrecision(18, 2);
+            modelBuilder.Entity<ServiceProviderPriceModel>().Property(p => p.QuotedAt).IsRequired();
+            modelBuilder.Entity<ServiceProviderPriceModel>()
+                .HasIndex(p => new { p.ServiceProviderId, p.QuotedAt });
         }
     }
 }
