@@ -134,6 +134,10 @@ export default function Reports() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const [monthlyTrendChartType, setMonthlyTrendChartType] = useState<"area" | "bar">(
+    "area",
+  );
+  const [forecastChartType, setForecastChartType] = useState<"line" | "bar">("line");
 
   // ---- Data ----
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery<LetterOfCredit[]>({
@@ -1051,11 +1055,33 @@ export default function Reports() {
 
           <TabsContent value="future" className="space-y-8">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <CardTitle className="flex items-center space-x-2">
                   <Calendar className="h-5 w-5" />
                   <span>Monthly Category Trends</span>
                 </CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Label
+                    htmlFor="monthly-trend-chart-type"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
+                    Chart Type
+                  </Label>
+                  <Select
+                    value={monthlyTrendChartType}
+                    onValueChange={(value) =>
+                      setMonthlyTrendChartType(value as "area" | "bar")
+                    }
+                  >
+                    <SelectTrigger id="monthly-trend-chart-type" className="w-[140px]">
+                      <SelectValue placeholder="Select chart" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="area">Area</SelectItem>
+                      <SelectItem value="bar">Bar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
                 {isDataLoading ? (
@@ -1064,15 +1090,41 @@ export default function Reports() {
                   <div className="space-y-6">
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={monthlyTrends}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Area type="monotone" dataKey="totalNeeded" stackId="1" name="Total Needed" />
-                          <Area type="monotone" dataKey="totalReceived" stackId="2" name="Total Received" />
-                        </AreaChart>
+                        {monthlyTrendChartType === "area" ? (
+                          <AreaChart data={monthlyTrends}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Area
+                              type="monotone"
+                              dataKey="totalNeeded"
+                              stackId="1"
+                              name="Total Needed"
+                              stroke="#3b82f6"
+                              fill="rgba(59, 130, 246, 0.35)"
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="totalReceived"
+                              stackId="2"
+                              name="Total Received"
+                              stroke="#22c55e"
+                              fill="rgba(34, 197, 94, 0.35)"
+                            />
+                          </AreaChart>
+                        ) : (
+                          <BarChart data={monthlyTrends}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="totalNeeded" name="Total Needed" fill="#3b82f6" />
+                            <Bar dataKey="totalReceived" name="Total Received" fill="#22c55e" />
+                          </BarChart>
+                        )}
                       </ResponsiveContainer>
                     </div>
 
@@ -1121,11 +1173,33 @@ export default function Reports() {
             </Card>
 
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <CardTitle className="flex items-center space-x-2">
                   <TrendingUp className="h-5 w-5" />
                   <span>3-Month Forecast</span>
                 </CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Label
+                    htmlFor="forecast-chart-type"
+                    className="text-sm font-medium text-muted-foreground"
+                  >
+                    Chart Type
+                  </Label>
+                  <Select
+                    value={forecastChartType}
+                    onValueChange={(value) =>
+                      setForecastChartType(value as "line" | "bar")
+                    }
+                  >
+                    <SelectTrigger id="forecast-chart-type" className="w-[140px]">
+                      <SelectValue placeholder="Select chart" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="line">Line</SelectItem>
+                      <SelectItem value="bar">Bar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
                 {isDataLoading ? (
@@ -1134,19 +1208,36 @@ export default function Reports() {
                   <div className="space-y-6">
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={forecastData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line
-                            type="monotone"
-                            dataKey="expectedContractQuantity"
-                            name="Expected Contract Quantity"
-                            strokeWidth={2}
-                          />
-                        </LineChart>
+                        {forecastChartType === "line" ? (
+                          <LineChart data={forecastData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Line
+                              type="monotone"
+                              dataKey="expectedContractQuantity"
+                              name="Expected Contract Quantity"
+                              stroke="#6366f1"
+                              strokeWidth={2}
+                              dot
+                            />
+                          </LineChart>
+                        ) : (
+                          <BarChart data={forecastData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar
+                              dataKey="expectedContractQuantity"
+                              name="Expected Contract Quantity"
+                              fill="#6366f1"
+                            />
+                          </BarChart>
+                        )}
                       </ResponsiveContainer>
                     </div>
 
