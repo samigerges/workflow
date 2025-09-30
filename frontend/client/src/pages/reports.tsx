@@ -38,6 +38,8 @@ import {
   Area,
   LineChart,
   Line,
+  ComposedChart,
+  ReferenceLine,
 } from "recharts";
 import {
   BarChart3,
@@ -386,6 +388,42 @@ export default function Reports() {
       units: d.units,
     }));
   }, [filteredVessels]);
+
+  const tonnageSeriesNames = ["Needed", "Received", "Remaining"] as const;
+  const isTonnageSeries = (name: string) =>
+    tonnageSeriesNames.includes(name as (typeof tonnageSeriesNames)[number]);
+
+  const formatTonnageValue = (value: number | string) => {
+    const numericValue = typeof value === "number" ? value : parseFloat(String(value));
+    if (!Number.isFinite(numericValue)) return value;
+    return `${numericValue.toLocaleString()} tons`;
+  };
+
+  const formatPercentValue = (value: number | string) => {
+    const numericValue = typeof value === "number" ? value : parseFloat(String(value));
+    if (!Number.isFinite(numericValue)) return value;
+    return `${numericValue.toFixed(1)}%`;
+  };
+
+  const portTooltipFormatter = (value: number | string, name: string) => {
+    if (isTonnageSeries(name)) {
+      return [formatTonnageValue(value), name];
+    }
+    if (name === "Completion Rate") {
+      return [formatPercentValue(value), name];
+    }
+    return [value, name];
+  };
+
+  const portLegendFormatter = (value: string) => {
+    if (isTonnageSeries(value)) {
+      return `${value} (tons)`;
+    }
+    if (value === "Completion Rate") {
+      return "Completion Rate (%)";
+    }
+    return value;
+  };
 
   // ---------- Monthly Trends (respects date filter) ----------
   const monthlyTrends = useMemo(() => {
@@ -893,15 +931,66 @@ export default function Reports() {
 
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={portAnalytics}>
+                        <ComposedChart data={portAnalytics}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="port" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Bar dataKey="needed" name="Needed" />
-                          <Bar dataKey="received" name="Received" />
-                        </BarChart>
+                          <YAxis
+                            yAxisId="left"
+                            tickFormatter={(value) =>
+                              typeof value === "number" ? value.toLocaleString() : value
+                            }
+                            label={{ value: "Tonnage (tons)", angle: -90, position: "insideLeft" }}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            tickFormatter={(value) => `${value}%`}
+                            label={{ value: "Completion (%)", angle: -90, position: "insideRight" }}
+                          />
+                          <Tooltip
+                            formatter={portTooltipFormatter}
+                            labelFormatter={(label) => `Port: ${label}`}
+                          />
+                          <Legend formatter={portLegendFormatter} />
+                          <Bar
+                            yAxisId="left"
+                            dataKey="needed"
+                            name="Needed"
+                            stackId="tonnage"
+                            fill="#bfdbfe"
+                          />
+                          <Bar
+                            yAxisId="left"
+                            dataKey="received"
+                            name="Received"
+                            stackId="tonnage"
+                            fill="#2563eb"
+                          />
+                          <Bar
+                            yAxisId="left"
+                            dataKey="remaining"
+                            name="Remaining"
+                            stackId="tonnage"
+                            fill="#f97316"
+                          />
+                          <Line
+                            yAxisId="right"
+                            type="monotone"
+                            dataKey="completionRate"
+                            name="Completion Rate"
+                            stroke="#0ea5e9"
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                            activeDot={{ r: 5 }}
+                          />
+                          <ReferenceLine
+                            yAxisId="right"
+                            y={100}
+                            stroke="#16a34a"
+                            strokeDasharray="4 4"
+                            label={{ value: "100%", position: "right", fill: "#16a34a" }}
+                          />
+                        </ComposedChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
