@@ -8,6 +8,7 @@
     "vessels": "Vessels",
     "documents": "Documents",
     "vesselTracking": "Vessel Tracking",
+    "serviceProviders": "Service Providers",
     "reports": "Reports"
   },
   "common": {
@@ -63,7 +64,9 @@
     "switchToRegister": "Don't have an account? Register",
     "switchToLogin": "Already have an account? Login",
     "welcomeTitle": "Welcome to ImportFlow",
-    "welcomeSubtitle": "Streamline your import workflow from start to finish"
+    "welcomeSubtitle": "Streamline your import workflow from start to finish",
+    "sessionExpiredTitle": "Unauthorized",
+    "sessionExpiredDescription": "You are logged out. Logging in again..."
   },
   "forms": {
     "needTitle": "Need Title",
@@ -117,5 +120,123 @@
     "deleteError": "Failed to delete item",
     "uploadSuccess": "File uploaded successfully",
     "uploadError": "Failed to upload file"
+  },
+  "serviceProviders": {
+    "title": "Service Providers",
+    "subtitle": "Manage service partners, quotes, and contact details",
+    "heading": "{{count}} provider",
+    "heading_plural": "{{count}} providers",
+    "description": "Track quotes and maintain records for logistics, shipping, and other partners.",
+    "tabs": {
+      "all": "All providers"
+    },
+    "types": {
+      "logistics": "Logistics",
+      "shipping": "Shipping",
+      "customsBroker": "Customs broker",
+      "insurance": "Insurance",
+      "inspection": "Inspection",
+      "warehousing": "Warehousing",
+      "other": "Other"
+    },
+    "summary": {
+      "total": "Providers",
+      "averagePrice": "Average latest quote",
+      "latestQuote": "Most recent quote",
+      "noQuotes": "No quotes yet",
+      "mixedCurrency": "Mixed"
+    },
+    "emptyState": "No service providers found for this type.",
+    "table": {
+      "provider": "Provider",
+      "contact": "Contact",
+      "latestQuote": "Latest quote",
+      "averagePrice": "Average quote",
+      "actions": "Actions"
+    },
+    "actions": {
+      "addProvider": "Add provider",
+      "addQuote": "Add quote",
+      "confirmDelete": "Are you sure you want to delete {{name}}? This action cannot be undone."
+    },
+    "notifications": {
+      "deleteSuccess": "Provider deleted successfully",
+      "deleteError": "Failed to delete provider",
+      "loadError": "Failed to load service providers"
+    },
+    "form": {
+      "titleCreate": "Create service provider",
+      "titleEdit": "Edit service provider",
+      "labels": {
+        "name": "Provider name",
+        "type": "Provider type",
+        "contactName": "Contact name",
+        "contactEmail": "Contact email",
+        "contactPhone": "Contact phone",
+        "website": "Website",
+        "currency": "Preferred currency",
+        "address": "Address",
+        "services": "Services offered",
+        "notes": "Notes"
+      },
+      "placeholders": {
+        "name": "Enter provider name",
+        "type": "Select provider type",
+        "contactName": "Enter contact name",
+        "contactEmail": "Enter contact email",
+        "contactPhone": "Enter contact phone",
+        "website": "Enter website URL",
+        "currency": "Select currency",
+        "address": "Enter address",
+        "services": "List services offered",
+        "notes": "Add internal notes"
+      },
+      "helpers": {
+        "services": "Separate entries with commas or line breaks."
+      },
+      "validation": {
+        "nameRequired": "Provider name is required",
+        "typeRequired": "Provider type is required",
+        "email": "Enter a valid email address",
+        "website": "Enter a valid URL"
+      },
+      "submitCreate": "Create provider",
+      "submitUpdate": "Save changes",
+      "createSuccess": "Provider created successfully",
+      "updateSuccess": "Provider updated successfully",
+      "error": "Failed to save provider"
+    },
+    "priceForm": {
+      "title": "Add quote",
+      "labels": {
+        "price": "Quote price",
+        "currency": "Currency",
+        "validFrom": "Valid from",
+        "validUntil": "Valid until",
+        "notes": "Notes"
+      },
+      "placeholders": {
+        "price": "Enter quote price",
+        "currency": "Select currency",
+        "notes": "Add any relevant notes"
+      },
+      "validation": {
+        "price": "Enter a valid price",
+        "pricePositive": "Price must be greater than zero",
+        "currency": "Select a currency",
+        "dateRange": "End date must be after the start date"
+      },
+      "submit": "Add quote",
+      "createSuccess": "Quote added successfully",
+      "error": "Failed to add quote"
+    },
+    "details": {
+      "title": "Provider details",
+      "contactSection": "Contact details",
+      "servicesSection": "Services",
+      "quotesSection": "Quote history",
+      "noQuotes": "No quotes available",
+      "noServices": "No services listed"
+    }
   }
 }
