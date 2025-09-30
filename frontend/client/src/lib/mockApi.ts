@@ -15,6 +15,7 @@ import {
   vesselLoadingPorts,
   shipments,
   finalSettlements,
+  serviceProviders,
 } from "../mocks";
 
 function jsonResponse(data: unknown, status = 200) {
@@ -30,6 +31,329 @@ function formDataToObject(data: FormData) {
 
 function generateId(list: { id: any }[]) {
   return list.length ? Math.max(...list.map((i) => Number(i.id))) + 1 : 1;
+}
+
+type ServiceProviderPriceEntry = {
+  id: number;
+  amount: number;
+  currency: string;
+  recordedAt: string;
+  unit?: string | null;
+  notes?: string | null;
+};
+
+type ServiceProviderRecord = {
+  id: number;
+  type: string;
+  name: string;
+  priceHistory: ServiceProviderPriceEntry[];
+  [key: string]: any;
+};
+
+const serviceProviderStore = serviceProviders as ServiceProviderRecord[];
+
+function parseMaybeJson(value: unknown) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeToStringArray(value: unknown) {
+  if (!value && value !== 0) {
+    return [] as string[];
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) =>
+        typeof item === "string" ? item.trim() : item != null ? String(item) : "",
+      )
+      .filter((item) => item.length > 0);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
+
+  return [String(value)];
+}
+
+function normalizePriceHistory(
+  input: unknown,
+  existing: ServiceProviderPriceEntry[] = [],
+) {
+  if (
+    input === undefined ||
+    input === null ||
+    (typeof input === "string" && input.trim().length === 0)
+  ) {
+    return undefined;
+  }
+
+  const parsed = parseMaybeJson(input);
+  const values = Array.isArray(parsed) ? parsed : [parsed];
+  const history: ServiceProviderPriceEntry[] = [];
+  let nextId = existing.length
+    ? Math.max(...existing.map((entry) => Number(entry.id) || 0))
+    : 0;
+
+  values.forEach((item) => {
+    if (!item || typeof item !== "object") {
+      return;
+    }
+
+    const raw = item as Record<string, any>;
+    const amountRaw =
+      typeof raw.amount === "number"
+        ? raw.amount
+        : Number(raw.amount ?? raw.rate ?? raw.value ?? NaN);
+
+    if (!Number.isFinite(amountRaw)) {
+      return;
+    }
+
+    const currencyRaw = raw.currency ?? raw.currencyCode ?? raw.curr ?? raw.ccy;
+    const currency =
+      typeof currencyRaw === "string" && currencyRaw.trim().length
+        ? currencyRaw.trim().toUpperCase()
+        : "USD";
+
+    let recordedAt =
+      raw.recordedAt ?? raw.timestamp ?? raw.date ?? raw.effectiveDate ?? raw.validFrom;
+    if (recordedAt instanceof Date) {
+      recordedAt = recordedAt.toISOString();
+    } else if (typeof recordedAt === "number") {
+      recordedAt = new Date(recordedAt).toISOString();
+    } else if (typeof recordedAt === "string") {
+      const parsedDate = new Date(recordedAt);
+      recordedAt = Number.isNaN(parsedDate.getTime())
+        ? recordedAt
+        : parsedDate.toISOString();
+    } else {
+      recordedAt = new Date().toISOString();
+    }
+
+    const unit =
+      typeof raw.unit === "string" && raw.unit.trim().length
+        ? raw.unit.trim()
+        : raw.unit ?? null;
+    const notes =
+      typeof raw.notes === "string" && raw.notes.trim().length
+        ? raw.notes.trim()
+        : typeof raw.remarks === "string" && raw.remarks.trim().length
+          ? raw.remarks.trim()
+          : raw.remarks ?? null;
+
+    const idValue = raw.id ?? raw.priceId ?? raw.entryId;
+    const id =
+      idValue !== undefined && idValue !== null && !Number.isNaN(Number(idValue))
+        ? Number(idValue)
+        : ++nextId;
+
+    history.push({
+      id,
+      amount: Number(amountRaw),
+      currency,
+      recordedAt,
+      unit: unit ?? null,
+      notes: notes ?? null,
+    });
+  });
+
+  return history;
+}
+
+function normalizeSinglePriceEntry(
+  payload: any,
+  existingEntries: ServiceProviderPriceEntry[] = [],
+  existingEntry?: ServiceProviderPriceEntry,
+) {
+  if (!payload && !existingEntry) {
+    return null;
+  }
+
+  const candidate = existingEntry
+    ? { ...existingEntry, ...payload, id: existingEntry.id }
+    : payload;
+  const normalized = normalizePriceHistory(candidate, existingEntries);
+  if (!normalized || normalized.length === 0) {
+    return null;
+  }
+
+  const [entry] = normalized;
+  if (existingEntry) {
+    entry.id = existingEntry.id;
+  }
+
+  return entry;
+}
+
+function parseQueryParams(rawUrl: string, fallback?: unknown) {
+  const result: Record<string, any> = {};
+
+  try {
+    const url = new URL(rawUrl, "http://mock.local");
+    url.searchParams.forEach((value, key) => {
+      if (Object.prototype.hasOwnProperty.call(result, key)) {
+        const current = result[key];
+        if (Array.isArray(current)) {
+          current.push(value);
+        } else {
+          result[key] = [current, value];
+        }
+      } else {
+        result[key] = value;
+      }
+    });
+  } catch {
+    // Ignore URL parsing issues for relative paths without query strings
+  }
+
+  if (fallback && typeof fallback === "object" && !(fallback instanceof FormData)) {
+    Object.assign(result, fallback as Record<string, any>);
+  }
+
+  return result;
+}
+
+function computePriceSummary(priceHistory: ServiceProviderPriceEntry[]) {
+  const averageByCurrency: Record<string, number> = {};
+  const lastByCurrency: Record<string, ServiceProviderPriceEntry | null> = {};
+  const grouped = new Map<string, ServiceProviderPriceEntry[]>();
+
+  priceHistory.forEach((entry) => {
+    if (!entry || !entry.currency) {
+      return;
+    }
+
+    const currency = entry.currency.toUpperCase();
+    const amount = Number(entry.amount);
+    if (!Number.isFinite(amount)) {
+      return;
+    }
+
+    const normalizedEntry = { ...entry, currency, amount };
+    if (!grouped.has(currency)) {
+      grouped.set(currency, []);
+    }
+    grouped.get(currency)!.push(normalizedEntry);
+  });
+
+  grouped.forEach((entries, currency) => {
+    const sum = entries.reduce((acc, item) => acc + Number(item.amount), 0);
+    const avg = entries.length ? sum / entries.length : 0;
+    averageByCurrency[currency] = Number(avg.toFixed(2));
+
+    let lastEntry = entries[0];
+    let lastTimestamp = Date.parse(lastEntry.recordedAt ?? "");
+
+    entries.forEach((entry) => {
+      const timestamp = Date.parse(entry.recordedAt ?? "");
+      if (Number.isNaN(timestamp)) {
+        if (Number.isNaN(lastTimestamp)) {
+          lastEntry = entry;
+        }
+        return;
+      }
+
+      if (Number.isNaN(lastTimestamp) || timestamp > lastTimestamp) {
+        lastEntry = entry;
+        lastTimestamp = timestamp;
+      }
+    });
+
+    lastByCurrency[currency] = { ...lastEntry };
+  });
+
+  return { averageByCurrency, lastByCurrency };
+}
+
+function clonePriceEntry(entry: ServiceProviderPriceEntry) {
+  return { ...entry };
+}
+
+function buildServiceProviderResponse(provider: ServiceProviderRecord) {
+  const priceHistory = Array.isArray(provider.priceHistory)
+    ? provider.priceHistory.map(clonePriceEntry)
+    : [];
+
+  return {
+    ...provider,
+    priceHistory,
+    priceSummary: computePriceSummary(priceHistory),
+  };
+}
+
+function normalizeServiceProviderPayload(
+  payload: any,
+  existing?: ServiceProviderRecord,
+) {
+  if (!payload) {
+    return payload;
+  }
+
+  const result: Record<string, any> = { ...payload };
+
+  const normalizedHistory = normalizePriceHistory(
+    result.priceHistory ?? result.prices,
+    existing?.priceHistory ?? [],
+  );
+  if (normalizedHistory) {
+    result.priceHistory = normalizedHistory;
+  } else if (!result.priceHistory && existing?.priceHistory) {
+    result.priceHistory = existing.priceHistory;
+  }
+
+  delete result.prices;
+  delete result.priceSummary;
+  delete result.id;
+
+  const arrayFields = [
+    "coverageRegions",
+    "servicesOffered",
+    "focusCommodities",
+    "supportedCurrencies",
+    "tags",
+  ];
+  arrayFields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(result, field)) {
+      result[field] = normalizeToStringArray(result[field]);
+    }
+  });
+
+  const numericFields = ["rating", "leadTimeDays"];
+  numericFields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(result, field)) {
+      const value = Number(result[field]);
+      if (Number.isFinite(value)) {
+        result[field] = value;
+      } else {
+        delete result[field];
+      }
+    }
+  });
+
+  if (typeof result.type === "string") {
+    result.type = result.type.toLowerCase();
+  } else if (existing?.type) {
+    result.type = existing.type;
+  }
+
+  return result;
 }
 
 function normalizeContractDocument(payload: any, existing?: any) {
@@ -128,6 +452,17 @@ export async function apiRequest(
     method = methodOrUrl.toUpperCase();
     url = urlOrData;
   }
+
+  url = typeof url === "string" ? url : "";
+  const rawUrl = url;
+  const [pathOnly] = rawUrl.split("?");
+  const queryParams = parseQueryParams(rawUrl, method === "GET" ? body : undefined);
+  url = pathOnly;
+  if (method === "GET") {
+    body = undefined;
+  }
+
+  const query = queryParams;
 
   // Authentication
   if (method === "GET" && url === "/api/auth/user") return jsonResponse(demoUser);
@@ -458,6 +793,153 @@ export async function apiRequest(
     if (item) {
       item.status = (body as any)?.status;
       return jsonResponse(item);
+    }
+  }
+
+  // Service providers
+  if (url === "/api/service-providers") {
+    if (method === "GET") {
+      let list = serviceProviderStore;
+      const typeFilter = query.type ?? query.providerType ?? query.category;
+      if (typeFilter) {
+        const value = Array.isArray(typeFilter) ? typeFilter[0] : typeFilter;
+        const normalized = String(value).toLowerCase();
+        list = list.filter((provider) =>
+          String(provider.type ?? "").toLowerCase() === normalized,
+        );
+      }
+
+      const response = list.map((provider) => buildServiceProviderResponse(provider));
+      return jsonResponse(response);
+    }
+
+    if (method === "POST") {
+      const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+      const normalizedPayload = normalizeServiceProviderPayload(payload);
+      const priceHistory = Array.isArray(normalizedPayload?.priceHistory)
+        ? normalizedPayload.priceHistory
+        : [];
+      const type = normalizedPayload?.type ?? payload?.type ?? "shipping";
+      const name =
+        normalizedPayload?.name ??
+        normalizedPayload?.companyName ??
+        payload?.name ??
+        "New Provider";
+
+      const newProvider: ServiceProviderRecord = {
+        id: generateId(serviceProviderStore),
+        type,
+        name,
+        priceHistory,
+        ...normalizedPayload,
+      };
+
+      if (!Array.isArray(newProvider.priceHistory)) {
+        newProvider.priceHistory = [];
+      }
+
+      serviceProviderStore.push(newProvider);
+      return jsonResponse(buildServiceProviderResponse(newProvider), 201);
+    }
+  }
+  match = url.match(/^\/api\/service-providers\/(\d+)$/);
+  if (match) {
+    const id = Number(match[1]);
+    const idx = serviceProviderStore.findIndex((provider) => provider.id === id);
+    if (idx !== -1) {
+      const provider = serviceProviderStore[idx];
+
+      if (method === "GET") {
+        return jsonResponse(buildServiceProviderResponse(provider));
+      }
+
+      if (method === "PUT" || method === "PATCH") {
+        const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+        const normalizedPayload = normalizeServiceProviderPayload(payload, provider) || {};
+        serviceProviderStore[idx] = {
+          ...provider,
+          ...normalizedPayload,
+          priceHistory: Array.isArray(normalizedPayload.priceHistory)
+            ? normalizedPayload.priceHistory
+            : provider.priceHistory || [],
+        };
+
+        return jsonResponse(buildServiceProviderResponse(serviceProviderStore[idx]));
+      }
+
+      if (method === "DELETE") {
+        serviceProviderStore.splice(idx, 1);
+        return jsonResponse({ ok: true });
+      }
+    }
+  }
+
+  match = url.match(/^\/api\/service-providers\/(\d+)\/prices$/);
+  if (match) {
+    const providerId = Number(match[1]);
+    const provider = serviceProviderStore.find((item) => item.id === providerId);
+    if (provider) {
+      provider.priceHistory = Array.isArray(provider.priceHistory)
+        ? provider.priceHistory
+        : [];
+
+      if (method === "GET") {
+        return jsonResponse({
+          priceHistory: provider.priceHistory.map(clonePriceEntry),
+          priceSummary: computePriceSummary(provider.priceHistory),
+        });
+      }
+
+      if (method === "POST") {
+        const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+        const entry = normalizeSinglePriceEntry(payload, provider.priceHistory);
+        if (entry) {
+          if (!entry.id || provider.priceHistory.some((item) => item.id === entry.id)) {
+            entry.id = generateId(provider.priceHistory);
+          }
+          provider.priceHistory = [...provider.priceHistory, entry];
+        }
+
+        return jsonResponse(
+          buildServiceProviderResponse(provider),
+          entry ? 201 : 200,
+        );
+      }
+    }
+  }
+
+  match = url.match(/^\/api\/service-providers\/(\d+)\/prices\/(\d+)$/);
+  if (match) {
+    const providerId = Number(match[1]);
+    const priceId = Number(match[2]);
+    const provider = serviceProviderStore.find((item) => item.id === providerId);
+    if (provider) {
+      provider.priceHistory = Array.isArray(provider.priceHistory)
+        ? provider.priceHistory
+        : [];
+      const priceIndex = provider.priceHistory.findIndex((item) => Number(item.id) === priceId);
+
+      if (priceIndex !== -1) {
+        if (method === "PUT" || method === "PATCH") {
+          const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+          const updated = normalizeSinglePriceEntry(
+            payload,
+            provider.priceHistory,
+            provider.priceHistory[priceIndex],
+          );
+          if (updated) {
+            provider.priceHistory[priceIndex] = { ...provider.priceHistory[priceIndex], ...updated };
+            provider.priceHistory[priceIndex].id = priceId;
+          }
+
+          return jsonResponse(buildServiceProviderResponse(provider));
+        }
+
+        if (method === "DELETE") {
+          provider.priceHistory.splice(priceIndex, 1);
+          return jsonResponse(buildServiceProviderResponse(provider));
+        }
+      }
     }
   }
 
