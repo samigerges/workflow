@@ -529,6 +529,37 @@ export default function Reports() {
       )
     : 0;
 
+  const reportTabs = [
+    {
+      value: "overview" as const,
+      label: "Overview",
+      icon: BarChart3,
+      metric: filteredVessels.length.toLocaleString(),
+      description: "Active vessels monitored",
+    },
+    {
+      value: "contracts" as const,
+      label: "Contracts",
+      icon: FileText,
+      metric: contractAnalytics.length.toLocaleString(),
+      description: "Contracts under analysis",
+    },
+    {
+      value: "lcs" as const,
+      label: "LCs",
+      icon: University,
+      metric: lcAnalytics.length.toLocaleString(),
+      description: "Letters of credit tracked",
+    },
+    {
+      value: "future" as const,
+      label: "Future",
+      icon: Calendar,
+      metric: forecastData.length.toLocaleString(),
+      description: "Upcoming months forecasted",
+    },
+  ];
+
   return (
     <MainLayout title="Reports & Analytics" subtitle="Comprehensive import workflow analytics and forecasting">
       <div className="p-6 space-y-8">
@@ -628,12 +659,28 @@ export default function Reports() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full gap-2 sm:w-auto sm:grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="contracts">Contracts</TabsTrigger>
-            <TabsTrigger value="lcs">LCs</TabsTrigger>
-            <TabsTrigger value="future">Future</TabsTrigger>
-          </TabsList>
+          <div className="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <TabsList className="w-full flex flex-wrap gap-3 bg-transparent p-0">
+              {reportTabs.map(({ value, label, icon: Icon, metric, description }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="flex-1 min-w-[220px] rounded-xl border bg-card p-4 text-left shadow-sm transition-all hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:shadow-md"
+                >
+                  <div className="flex flex-col items-start gap-3">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Icon className="h-4 w-4" />
+                      <span className="font-medium">{label}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-2xl font-semibold leading-none">{metric}</div>
+                      <p className="text-sm text-muted-foreground">{description}</p>
+                    </div>
+                  </div>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
           <TabsContent value="overview" className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
