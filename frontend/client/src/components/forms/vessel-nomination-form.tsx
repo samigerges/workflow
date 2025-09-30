@@ -40,6 +40,9 @@ const vesselFormSchema = z.object({
   insuranceCost: z.union([z.number(), z.string()]).optional().nullable(),
   inspectionCost: z.union([z.number(), z.string()]).optional().nullable(),
   shippingCost: z.union([z.number(), z.string()]).optional().nullable(),
+  invoiceNumber: z.string().optional().nullable(),
+  invoiceUnitPrice: z.union([z.number(), z.string()]).optional().nullable(),
+  invoiceTotalPrice: z.union([z.number(), z.string()]).optional().nullable(),
   shippingInstructions: z.string().optional().nullable(),
 });
 
@@ -120,16 +123,31 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
               ? Number(vessel.quantity)
               : undefined,
           tradeTerms: vessel.tradeTerms ?? "FOB",
+          invoiceNumber: vessel.invoiceNumber ?? "",
+          invoiceUnitPrice:
+            vessel.invoiceUnitPrice !== null && vessel.invoiceUnitPrice !== undefined
+              ? Number(vessel.invoiceUnitPrice)
+              : undefined,
+          invoiceTotalPrice:
+            vessel.invoiceTotalPrice !== null && vessel.invoiceTotalPrice !== undefined
+              ? Number(vessel.invoiceTotalPrice)
+              : undefined,
         }
       : {
           status: "nominated",
           tradeTerms: "FOB",
+          invoiceNumber: "",
         }
   });
 
   const lcsArray = Array.isArray(lcs) ? lcs : [];
 
   const vesselQuantity = watch("quantity") ?? 0;
+  const invoiceUnitPrice = watch("invoiceUnitPrice");
+  const invoiceTotalPrice = watch("invoiceTotalPrice");
+  const normalizedQuantity = Number.isFinite(vesselQuantity)
+    ? vesselQuantity
+    : null;
   const previousQuantityRef = useRef<number>(
     Number.isFinite(vesselQuantity) ? vesselQuantity : 0,
   );
@@ -166,6 +184,82 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
 
     previousQuantityRef.current = normalizedQuantity;
   }, [vesselQuantity]);
+
+  const parseNumericValue = (value: unknown): number | null => {
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : null;
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return null;
+      }
+
+      const parsed = Number(trimmed);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+  };
+
+  const computedInvoiceTotal = useMemo(() => {
+    const unitPriceNumber = parseNumericValue(invoiceUnitPrice);
+
+    if (
+      normalizedQuantity === null ||
+      unitPriceNumber === null
+    ) {
+      return null;
+    }
+
+    const total = normalizedQuantity * unitPriceNumber;
+    return Number.isFinite(total) ? total : null;
+  }, [invoiceUnitPrice, normalizedQuantity]);
+
+  useEffect(() => {
+    const quantityNumber = normalizedQuantity;
+    const unitPriceNumber = parseNumericValue(invoiceUnitPrice);
+    const existingTotal = parseNumericValue(invoiceTotalPrice);
+
+    if (
+      typeof quantityNumber === "number" &&
+      quantityNumber > 0 &&
+      unitPriceNumber !== null &&
+      unitPriceNumber > 0 &&
+      (existingTotal === null || existingTotal === 0)
+    ) {
+      const calculated = Number((quantityNumber * unitPriceNumber).toFixed(2));
+      if (!Number.isNaN(calculated)) {
+        setValue("invoiceTotalPrice", calculated, { shouldDirty: false });
+      }
+    }
+  }, [invoiceUnitPrice, invoiceTotalPrice, normalizedQuantity, setValue]);
+
+  const invoiceUnitPriceNumber = useMemo(
+    () => parseNumericValue(invoiceUnitPrice),
+    [invoiceUnitPrice],
+  );
+  const invoiceTotalPriceNumber = useMemo(
+    () => parseNumericValue(invoiceTotalPrice),
+    [invoiceTotalPrice],
+  );
+
+  const formatCurrency = (value: number | null) => {
+    if (value === null) {
+      return null;
+    }
+
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const invoiceTotalsDiffer =
+    invoiceTotalPriceNumber !== null &&
+    computedInvoiceTotal !== null &&
+    Math.abs(invoiceTotalPriceNumber - computedInvoiceTotal) > 0.5;
 
   const normalizedLcs = useMemo(() => {
     return lcsArray.map((lc: any) => ({
@@ -206,6 +300,10 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
         formData.append("instructionsFile", selectedFiles[0]);
         payload = formData;
       } else {
+        const invoiceNumericKeys = new Set([
+          "invoiceUnitPrice",
+          "invoiceTotalPrice",
+        ]);
         const sanitizedData = Object.entries(data).reduce(
           (acc, [key, value]) => {
             if (
@@ -217,7 +315,25 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
               return acc;
             }
 
-            acc[key] = value;
+            let normalizedValue = value;
+
+            if (invoiceNumericKeys.has(key)) {
+              if (typeof value === "string") {
+                const parsed = Number(value);
+                if (!Number.isFinite(parsed)) {
+                  return acc;
+                }
+                normalizedValue = parsed;
+              } else if (typeof value === "number") {
+                if (!Number.isFinite(value)) {
+                  return acc;
+                }
+              } else {
+                return acc;
+              }
+            }
+
+            acc[key] = normalizedValue;
             return acc;
           },
           {} as Record<string, unknown>,
@@ -789,6 +905,74 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   </div>
                 </div>
               </div>
+            )}
+          </FormSection>
+
+          <Separator />
+
+          <FormSection
+            title="Commercial Invoice"
+            description="Record the pricing details that will appear on the supplier's invoice."
+          >
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div>
+                <Label htmlFor="invoiceNumber">Invoice Number</Label>
+                <Input
+                  id="invoiceNumber"
+                  {...register("invoiceNumber")}
+                  placeholder="INV-2025-001"
+                  className={errors.invoiceNumber ? "border-red-500" : ""}
+                />
+                {errors.invoiceNumber && (
+                  <p className="mt-1 text-sm text-red-500">{errors.invoiceNumber.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="invoiceUnitPrice">Unit Price (USD)</Label>
+                <Input
+                  id="invoiceUnitPrice"
+                  type="number"
+                  step="0.01"
+                  {...register("invoiceUnitPrice")}
+                  placeholder="250.00"
+                  className={errors.invoiceUnitPrice ? "border-red-500" : ""}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Enter the contracted unit price per ton.
+                </p>
+                {errors.invoiceUnitPrice && (
+                  <p className="mt-1 text-sm text-red-500">{errors.invoiceUnitPrice.message}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="invoiceTotalPrice">Total Price (USD)</Label>
+                <Input
+                  id="invoiceTotalPrice"
+                  type="number"
+                  step="0.01"
+                  {...register("invoiceTotalPrice")}
+                  placeholder="5000.00"
+                  className={errors.invoiceTotalPrice ? "border-red-500" : ""}
+                />
+                {errors.invoiceTotalPrice && (
+                  <p className="mt-1 text-sm text-red-500">{errors.invoiceTotalPrice.message}</p>
+                )}
+              </div>
+            </div>
+            {computedInvoiceTotal !== null && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Suggested total: $
+                {formatCurrency(computedInvoiceTotal)} ({
+                  normalizedQuantity?.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  }) ?? "0"
+                }{' '}
+                tons × $
+                {formatCurrency(invoiceUnitPriceNumber) ?? "0.00"}).{' '}
+                {invoiceTotalsDiffer
+                  ? "The entered total differs from this calculation."
+                  : "You can override this amount if your invoice includes additional charges."}
+              </p>
             )}
           </FormSection>
 
