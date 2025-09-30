@@ -110,6 +110,37 @@ namespace WorkflowBackend.Api.Controllers
             vessel.InsuranceCost = req.InsuranceCost;
             vessel.InspectionCost = req.InspectionCost;
             vessel.ShippingCost = req.ShippingCost;
+
+            if (req.InvoiceNumber is not null)
+            {
+                vessel.InvoiceNumber = NormalizeString(req.InvoiceNumber);
+            }
+
+            vessel.InvoiceUnitPrice = req.InvoiceUnitPrice;
+
+            if (req.InvoiceTotalPrice.HasValue)
+            {
+                vessel.InvoiceTotalPrice = req.InvoiceTotalPrice;
+            }
+            else if (req.InvoiceUnitPrice.HasValue)
+            {
+                var invoiceQuantity = req.Quantity ?? vessel.Quantity;
+                if (invoiceQuantity.HasValue)
+                {
+                    vessel.InvoiceTotalPrice = Math.Round(
+                        req.InvoiceUnitPrice.Value * invoiceQuantity.Value,
+                        2,
+                        MidpointRounding.AwayFromZero);
+                }
+                else
+                {
+                    vessel.InvoiceTotalPrice = null;
+                }
+            }
+            else
+            {
+                vessel.InvoiceTotalPrice = req.InvoiceTotalPrice;
+            }
             vessel.ShippingInstructions = string.IsNullOrWhiteSpace(req.ShippingInstructions)
                 ? null
                 : req.ShippingInstructions.Trim();
@@ -155,6 +186,9 @@ namespace WorkflowBackend.Api.Controllers
                 v.InsuranceCost,
                 v.InspectionCost,
                 v.ShippingCost,
+                v.InvoiceUnitPrice,
+                v.InvoiceNumber,
+                v.InvoiceTotalPrice,
                 v.ShippingInstructions,
                 v.ArrivalDate,
                 v.DischargeStartDate,

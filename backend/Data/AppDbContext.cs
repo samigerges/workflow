@@ -118,6 +118,9 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<Vessel>().Property(v => v.InspectionCompany).HasMaxLength(200);
             modelBuilder.Entity<Vessel>().Property(v => v.ShippingCompany).HasMaxLength(200);
             modelBuilder.Entity<Vessel>().Property(v => v.ShippingInstructions).HasColumnType("text");
+            modelBuilder.Entity<Vessel>().Property(v => v.InvoiceNumber).HasMaxLength(100);
+            modelBuilder.Entity<Vessel>().Property(v => v.InvoiceUnitPrice).HasPrecision(18, 2);
+            modelBuilder.Entity<Vessel>().Property(v => v.InvoiceTotalPrice).HasPrecision(18, 2);
             modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseNumber).HasMaxLength(100);
             modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseStatus).HasMaxLength(50);
             modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseFilePath).HasMaxLength(500);

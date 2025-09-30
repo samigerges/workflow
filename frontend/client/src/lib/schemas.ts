@@ -142,6 +142,9 @@ export const insertVesselSchema = z.object({
   insuranceCost: z.string().optional(),
   inspectionCost: z.string().optional(),
   shippingCost: z.string().optional(),
+  invoiceNumber: z.string().optional(),
+  invoiceUnitPrice: z.string().optional(),
+  invoiceTotalPrice: z.string().optional(),
   shippingInstructions: z.string().optional(),
   status: z.string().optional(),
 });

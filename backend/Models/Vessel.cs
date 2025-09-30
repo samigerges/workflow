@@ -46,6 +46,12 @@ namespace WorkflowBackend.Api.Models
         public decimal? InspectionCost { get; set; }
         public decimal? ShippingCost { get; set; }
 
+        [MaxLength(100)]
+        public string? InvoiceNumber { get; set; }
+
+        public decimal? InvoiceUnitPrice { get; set; }
+        public decimal? InvoiceTotalPrice { get; set; }
+
         [Column(TypeName = "text")]
         public string? ShippingInstructions { get; set; }
 
