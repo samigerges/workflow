@@ -825,13 +825,13 @@ export default function Reports() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <div className="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <TabsList className="w-full flex flex-wrap gap-3 bg-transparent p-0">
+          <div className="w-full overflow-x-auto">
+            <TabsList className="flex w-full min-w-max flex-nowrap gap-3 bg-transparent p-0">
               {reportTabs.map(({ value, label, icon: Icon, metric, description }) => (
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="flex-1 min-w-[220px] rounded-xl border bg-card p-4 text-left shadow-sm transition-all hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:shadow-md"
+                  className="min-w-[220px] flex-shrink-0 rounded-xl border bg-card p-4 text-left shadow-sm transition-all hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:shadow-md"
                 >
                   <div className="flex flex-col items-start gap-3">
                     <div className="flex items-center gap-2 text-muted-foreground">
