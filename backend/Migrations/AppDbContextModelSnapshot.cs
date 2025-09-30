@@ -28,14 +28,6 @@ namespace WorkflowBackend.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("PublicId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("SequenceNumber")
-                        .HasColumnType("integer");
-
                     b.Property<string>("CargoType")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -76,6 +68,11 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<decimal?>("PricePerTon")
                         .HasColumnType("numeric");
 
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<decimal?>("Quantity")
                         .HasColumnType("numeric");
 
@@ -85,6 +82,9 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<string>("ReviewNotes")
                         .HasMaxLength(20000)
                         .HasColumnType("text");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ShippingMethod")
                         .HasMaxLength(100)
@@ -207,10 +207,6 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<decimal?>("Amount")
                         .HasColumnType("numeric");
 
-                    b.Property<string>("CargoType")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
                     b.Property<string>("Applicant")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -219,14 +215,12 @@ namespace WorkflowBackend.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("CargoType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<Guid?>("ContractId")
                         .HasColumnType("uuid");
-
-                    b.Property<decimal?>("PricePerUnit")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal?>("Quantity")
-                        .HasColumnType("numeric");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -249,10 +243,14 @@ namespace WorkflowBackend.Api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<DateTime?>("IssueDate")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("Flow")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("GASC_TO_UPF");
 
-                    b.Property<DateTime?>("ShipmentPeriod")
+                    b.Property<DateTime?>("IssueDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("IssuingBank")
@@ -264,12 +262,14 @@ namespace WorkflowBackend.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("Flow")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasDefaultValue("GASC_TO_UPF");
+                    b.Property<decimal?>("PricePerUnit")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("Quantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime?>("ShipmentPeriod")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -401,14 +401,6 @@ namespace WorkflowBackend.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("PublicId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("SequenceNumber")
-                        .HasColumnType("integer");
-
                     b.Property<string>("CargoType")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -442,13 +434,17 @@ namespace WorkflowBackend.Api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<decimal?>("WheatPercentage")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)");
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<decimal?>("Quantity")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ShippingMethod")
                         .HasMaxLength(100)
@@ -478,6 +474,10 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<string>("UploadedFile")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<decimal?>("WheatPercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
 
                     b.HasKey("Id");
 
@@ -519,6 +519,84 @@ namespace WorkflowBackend.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("RequestVotes");
+                });
+
+            modelBuilder.Entity("WorkflowBackend.Api.Models.ServiceProvider", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ContactPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DefaultCurrency")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Type", "Name")
+                        .IsUnique();
+
+                    b.ToTable("ServiceProviders");
+                });
+
+            modelBuilder.Entity("WorkflowBackend.Api.Models.ServiceProviderPrice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("QuotedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ServiceProviderId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceProviderId", "QuotedAt");
+
+                    b.ToTable("ServiceProviderPrices");
                 });
 
             modelBuilder.Entity("WorkflowBackend.Api.Models.Shipment", b =>
@@ -932,6 +1010,17 @@ namespace WorkflowBackend.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("WorkflowBackend.Api.Models.ServiceProviderPrice", b =>
+                {
+                    b.HasOne("WorkflowBackend.Api.Models.ServiceProvider", "ServiceProvider")
+                        .WithMany("Prices")
+                        .HasForeignKey("ServiceProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ServiceProvider");
+                });
+
             modelBuilder.Entity("WorkflowBackend.Api.Models.Shipment", b =>
                 {
                     b.HasOne("WorkflowBackend.Api.Models.Contract", "Contract")
@@ -1023,6 +1112,11 @@ namespace WorkflowBackend.Api.Migrations
             modelBuilder.Entity("WorkflowBackend.Api.Models.Request", b =>
                 {
                     b.Navigation("Votes");
+                });
+
+            modelBuilder.Entity("WorkflowBackend.Api.Models.ServiceProvider", b =>
+                {
+                    b.Navigation("Prices");
                 });
 
             modelBuilder.Entity("WorkflowBackend.Api.Models.Shipment", b =>
