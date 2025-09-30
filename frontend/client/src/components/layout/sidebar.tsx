@@ -21,7 +21,8 @@ import {
   Menu,
   ChevronLeft,
   Target,
-  MapPin
+  MapPin,
+  Factory
 } from "lucide-react";
 import logoPath from "@assets/Picture1_1751117114784.jpg";
 
@@ -81,6 +82,13 @@ const getNavigation = (t: any) => [
     href: "/vessel-tracking",
     icon: MapPin,
     roles: ["admin", "shipping_officer"]
+  },
+  {
+    nameKey: "navigation.serviceProviders",
+    name: t("navigation.serviceProviders"),
+    href: "/service-providers",
+    icon: Factory,
+    roles: ["admin", "procurement_officer", "finance_officer"]
   },
   {
     nameKey: "navigation.reports",

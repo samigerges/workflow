@@ -190,3 +190,13 @@ export const COUNTRIES = [
   'Bulgaria',
   'Ukraine'
 ];
+
+export const SERVICE_PROVIDER_TYPES = [
+  { value: 'logistics', labelKey: 'serviceProviders.types.logistics' },
+  { value: 'shipping', labelKey: 'serviceProviders.types.shipping' },
+  { value: 'customs_broker', labelKey: 'serviceProviders.types.customsBroker' },
+  { value: 'insurance', labelKey: 'serviceProviders.types.insurance' },
+  { value: 'inspection', labelKey: 'serviceProviders.types.inspection' },
+  { value: 'warehousing', labelKey: 'serviceProviders.types.warehousing' },
+  { value: 'other', labelKey: 'serviceProviders.types.other' }
+];

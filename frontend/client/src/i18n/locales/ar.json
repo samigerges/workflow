@@ -8,6 +8,7 @@
     "vessels": "السفن",
     "documents": "المستندات",
     "vesselTracking": "تتبع السفن",
+    "serviceProviders": "مزودو الخدمات",
     "reports": "التقارير"
   },
   "common": {
@@ -63,7 +64,9 @@
     "switchToRegister": "ليس لديك حساب؟ إنشاء حساب",
     "switchToLogin": "لديك حساب بالفعل؟ تسجيل الدخول",
     "welcomeTitle": "مرحباً بك في ImportFlow",
-    "welcomeSubtitle": "تبسيط سير عمل الاستيراد من البداية إلى النهاية"
+    "welcomeSubtitle": "تبسيط سير عمل الاستيراد من البداية إلى النهاية",
+    "sessionExpiredTitle": "غير مصرح",
+    "sessionExpiredDescription": "تم تسجيل خروجك. سيتم إعادة تسجيل الدخول..."
   },
   "forms": {
     "needTitle": "عنوان الحاجة",
@@ -117,5 +120,123 @@
     "deleteError": "فشل في حذف العنصر",
     "uploadSuccess": "تم رفع الملف بنجاح",
     "uploadError": "فشل في رفع الملف"
+  },
+  "serviceProviders": {
+    "title": "مزودو الخدمات",
+    "subtitle": "إدارة شركاء الخدمات والعروض وبيانات الاتصال",
+    "heading": "{{count}} مزود خدمة",
+    "heading_plural": "{{count}} مزودي خدمة",
+    "description": "تتبع العروض واحتفظ بسجلات لشركات الخدمات اللوجستية والشحن وغيرها.",
+    "tabs": {
+      "all": "كل المزودين"
+    },
+    "types": {
+      "logistics": "الخدمات اللوجستية",
+      "shipping": "الشحن",
+      "customsBroker": "التخليص الجمركي",
+      "insurance": "التأمين",
+      "inspection": "التفتيش",
+      "warehousing": "التخزين",
+      "other": "أخرى"
+    },
+    "summary": {
+      "total": "المزودون",
+      "averagePrice": "متوسط أحدث عرض",
+      "latestQuote": "أحدث عرض",
+      "noQuotes": "لا توجد عروض",
+      "mixedCurrency": "متعدد"
+    },
+    "emptyState": "لا توجد مزودو خدمات لهذا النوع.",
+    "table": {
+      "provider": "المزود",
+      "contact": "جهة الاتصال",
+      "latestQuote": "أحدث عرض",
+      "averagePrice": "متوسط العرض",
+      "actions": "الإجراءات"
+    },
+    "actions": {
+      "addProvider": "إضافة مزود",
+      "addQuote": "إضافة عرض",
+      "confirmDelete": "هل أنت متأكد أنك تريد حذف {{name}}؟ لا يمكن التراجع عن هذا الإجراء."
+    },
+    "notifications": {
+      "deleteSuccess": "تم حذف المزود بنجاح",
+      "deleteError": "فشل حذف المزود",
+      "loadError": "فشل في تحميل مزودي الخدمات"
+    },
+    "form": {
+      "titleCreate": "إنشاء مزود خدمة",
+      "titleEdit": "تعديل مزود خدمة",
+      "labels": {
+        "name": "اسم المزود",
+        "type": "نوع المزود",
+        "contactName": "اسم جهة الاتصال",
+        "contactEmail": "البريد الإلكتروني لجهة الاتصال",
+        "contactPhone": "هاتف جهة الاتصال",
+        "website": "الموقع الإلكتروني",
+        "currency": "العملة المفضلة",
+        "address": "العنوان",
+        "services": "الخدمات المقدمة",
+        "notes": "ملاحظات"
+      },
+      "placeholders": {
+        "name": "أدخل اسم المزود",
+        "type": "اختر نوع المزود",
+        "contactName": "أدخل اسم جهة الاتصال",
+        "contactEmail": "أدخل بريد جهة الاتصال",
+        "contactPhone": "أدخل هاتف جهة الاتصال",
+        "website": "أدخل عنوان الموقع",
+        "currency": "اختر العملة",
+        "address": "أدخل العنوان",
+        "services": "اكتب الخدمات المقدمة",
+        "notes": "أضف ملاحظات داخلية"
+      },
+      "helpers": {
+        "services": "افصل العناصر بفواصل أو أسطر جديدة."
+      },
+      "validation": {
+        "nameRequired": "اسم المزود مطلوب",
+        "typeRequired": "نوع المزود مطلوب",
+        "email": "يرجى إدخال بريد إلكتروني صالح",
+        "website": "يرجى إدخال رابط صالح"
+      },
+      "submitCreate": "إنشاء مزود",
+      "submitUpdate": "حفظ التغييرات",
+      "createSuccess": "تم إنشاء المزود بنجاح",
+      "updateSuccess": "تم تحديث المزود بنجاح",
+      "error": "فشل في حفظ المزود"
+    },
+    "priceForm": {
+      "title": "إضافة عرض",
+      "labels": {
+        "price": "قيمة العرض",
+        "currency": "العملة",
+        "validFrom": "ساري من",
+        "validUntil": "ساري حتى",
+        "notes": "ملاحظات"
+      },
+      "placeholders": {
+        "price": "أدخل قيمة العرض",
+        "currency": "اختر العملة",
+        "notes": "أضف أي ملاحظات ذات صلة"
+      },
+      "validation": {
+        "price": "أدخل قيمة صحيحة",
+        "pricePositive": "يجب أن تكون القيمة أكبر من صفر",
+        "currency": "اختر العملة",
+        "dateRange": "يجب أن يكون تاريخ الانتهاء بعد تاريخ البداية"
+      },
+      "submit": "إضافة عرض",
+      "createSuccess": "تم إضافة العرض بنجاح",
+      "error": "فشل في إضافة العرض"
+    },
+    "details": {
+      "title": "تفاصيل المزود",
+      "contactSection": "بيانات الاتصال",
+      "servicesSection": "الخدمات",
+      "quotesSection": "سجل العروض",
+      "noQuotes": "لا توجد عروض",
+      "noServices": "لا توجد خدمات مضافة"
+    }
   }
 }
