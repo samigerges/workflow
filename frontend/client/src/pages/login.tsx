@@ -112,9 +112,13 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Sign In</TabsTrigger>
-              <TabsTrigger value="register">Sign Up</TabsTrigger>
+            <TabsList variant="muted" className="grid w-full grid-cols-2">
+              <TabsTrigger variant="muted" value="login">
+                Sign In
+              </TabsTrigger>
+              <TabsTrigger variant="muted" value="register">
+                Sign Up
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="login">
