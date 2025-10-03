@@ -3,7 +3,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -313,9 +319,11 @@ export default function Reports() {
           normalized.amount ?? (pricePerUnit !== null ? pricePerUnit * totalQuantity : null);
 
         const remainingQuantity = Math.max(0, totalQuantity - allocatedQuantity);
+        const utilizationRate = totalQuantity > 0 ? (allocatedQuantity / totalQuantity) * 100 : 0;
+
         return {
           id: normalized.id ?? raw?.id,
-          lcNumber: normalized.number,
+          lcNumber: normalized.number ?? raw?.lcNumber,
           totalQuantity,
           allocatedQuantity,
           remainingQuantity,
@@ -325,6 +333,7 @@ export default function Reports() {
           status: normalized.status,
           expiryDate: normalized.expiryDate,
           issuingBank: normalized.issuingBank,
+          utilizationRate,
         };
       });
   }, [normalizedLcEntries, filteredVessels, selectedLcId]);
@@ -680,20 +689,14 @@ export default function Reports() {
   }
   if (!isAuthenticated) return null;
 
-  const totalLCValue = lcAnalytics.reduce((s, lc) => s + (lc.totalPrice ?? 0), 0);
-  const dischargedTotal = filteredVessels.reduce(
-    (acc, v) => acc + asNumber(v.quantityUnloaded, 0),
-    0
-  );
-  const dischargedCount = filteredVessels.filter((v) => asNumber(v.quantityUnloaded, 0) > 0).length;
-  const avgContractCompletion = contractAnalytics.length
-    ? Math.round(
-        contractAnalytics.reduce((sum, c) => {
-          const rate = c.totalAmount > 0 ? (c.allocatedAmount / c.totalAmount) * 100 : 0;
-          return sum + Math.min(rate, 100);
-        }, 0) / contractAnalytics.length
-      )
-    : 0;
+  const activeVesselCount = filteredVessels.length;
+  const totalLCQuantity = lcAnalytics.reduce((sum, lc) => sum + lc.totalQuantity, 0);
+  const totalLCAllocated = lcAnalytics.reduce((sum, lc) => sum + lc.allocatedQuantity, 0);
+  const lcCoverageRate = totalLCQuantity > 0 ? (totalLCAllocated / totalLCQuantity) * 100 : 0;
+  const forecastMonthsCount = forecastData.length;
+  const forecastHorizonLabel = forecastMonthsCount
+    ? `${forecastData[0].month} – ${forecastData[forecastMonthsCount - 1].month}`
+    : "No upcoming forecast";
 
   const reportTabs = [
     {
@@ -737,9 +740,19 @@ export default function Reports() {
             </div>
           </div>
 
+          <p className="text-sm text-muted-foreground max-w-3xl">
+            Explore contracts, vessels, letters of credit, needs, and shipment activity pulled in with
+            authenticated analytics queries. Use the contextual filters below to focus on the slice of your
+            workflow you care about, or reset them at any time for a fresh view.
+          </p>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">Filters</CardTitle>
+              <CardDescription>
+                Narrow the dashboard by supplier, port, letter of credit, or a custom date window. Use the
+                reset action to clear all selections instantly.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -852,53 +865,49 @@ export default function Reports() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total LCs</CardTitle>
-                  <University className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{lcAnalytics.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {new Intl.NumberFormat(undefined, {
-                      style: "currency",
-                      currency: "USD",
-                      maximumFractionDigits: 0,
-                    }).format(totalLCValue)} total value
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Contracts</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{contractAnalytics.length}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {contractAnalytics.reduce((s, c) => s + c.totalAmount, 0).toLocaleString()} tons total
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Discharged Quantity</CardTitle>
+                  <CardTitle className="text-sm font-medium">Active Vessels</CardTitle>
                   <Ship className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{dischargedTotal.toLocaleString()} tons</div>
-                  <p className="text-xs text-muted-foreground">From {dischargedCount} discharged vessels</p>
+                  <div className="text-2xl font-bold">{activeVesselCount.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">Matching your current filters</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Contract Completion Rate</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Contracts in View</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{avgContractCompletion}%</div>
-                  <p className="text-xs text-muted-foreground">Average across all contracts</p>
+                  <div className="text-2xl font-bold">{contractAnalytics.length.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">Aggregated contract count</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">LC Coverage</CardTitle>
+                  <University className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{lcCoverageRate.toFixed(1)}%</div>
+                  <p className="text-xs text-muted-foreground">
+                    Across {lcAnalytics.length.toLocaleString()} letters of credit
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Forecast Horizon</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {forecastMonthsCount ? `${forecastMonthsCount}-month` : "No"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{forecastHorizonLabel}</p>
                 </CardContent>
               </Card>
             </div>
@@ -909,6 +918,10 @@ export default function Reports() {
                   <Package className="h-5 w-5" />
                   <span>Supplier Performance Analysis</span>
                 </CardTitle>
+                <CardDescription>
+                  Compare contracted versus received tonnage, fulfillment rates, and progress bars—all scoped to
+                  your active filters.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {isDataLoading ? (
@@ -995,6 +1008,10 @@ export default function Reports() {
                   <MapPin className="h-5 w-5" />
                   <span>Port Analysis</span>
                 </CardTitle>
+                <CardDescription>
+                  Drill into discharge performance for each port and see how completion shifts as you adjust the
+                  dashboard filters.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {isDataLoading ? (
@@ -1132,6 +1149,10 @@ export default function Reports() {
                   <FileText className="h-5 w-5" />
                   <span>Contract Analytics</span>
                 </CardTitle>
+                <CardDescription>
+                  Click any row to jump straight to the originating request and review the underlying workflow
+                  details.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {isDataLoading ? (
@@ -1207,6 +1228,10 @@ export default function Reports() {
                   <University className="h-5 w-5" />
                   <span>Letters of Credit Analysis</span>
                 </CardTitle>
+                <CardDescription>
+                  Harmonized via <code>normalizeLc</code> so amounts, quantities, pricing, and utilization line up
+                  across every source system.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {isDataLoading ? (
@@ -1229,7 +1254,7 @@ export default function Reports() {
                       <TableBody>
                         {lcAnalytics.map((lc) => (
                           <TableRow key={lc.id}>
-                            <TableCell className="font-medium">{lc.number || lc.id || 'LC'}</TableCell>
+                            <TableCell className="font-medium">{lc.lcNumber || lc.id || "LC"}</TableCell>
                             <TableCell>{lc.issuingBank || 'Unknown'}</TableCell>
                             <TableCell>
                               {lc.pricePerUnit !== null
@@ -1273,6 +1298,10 @@ export default function Reports() {
                   <Calendar className="h-5 w-5" />
                   <span>Monthly Category Trends</span>
                 </CardTitle>
+                <CardDescription className="max-w-xl">
+                  Toggle between needed or received series and choose area or bar charts to spotlight category
+                  gaps month over month.
+                </CardDescription>
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center space-x-2">
                     <Label
@@ -1438,6 +1467,9 @@ export default function Reports() {
                   <TrendingUp className="h-5 w-5" />
                   <span>3-Month Forecast</span>
                 </CardTitle>
+                <CardDescription>
+                  Switch between line and bar views to anticipate upcoming contract load over the next quarter.
+                </CardDescription>
                 <div className="flex items-center space-x-2">
                   <Label
                     htmlFor="forecast-chart-type"
