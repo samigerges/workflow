@@ -10,8 +10,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Login() {
   // Login form state
-  const [loginEmail, setLoginEmail] = useState("admin@importflow.local");
-  const [loginPassword, setLoginPassword] = useState("admin123");
+  const [loginEmail, setLoginEmail] = useState("admin@example.com");
+  const [loginPassword, setLoginPassword] = useState("ChangeMe123!");
   
   // Registration form state
   const [regEmail, setRegEmail] = useState("");
@@ -145,7 +145,7 @@ export default function Login() {
                   {isLoading ? "Signing In..." : "Sign In"}
                 </Button>
                 <div className="text-sm text-gray-600 text-center">
-                  Default login: admin@importflow.local / admin123
+                  Default login: admin@example.com / ChangeMe123!
                 </div>
               </form>
             </TabsContent>

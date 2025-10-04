@@ -10,7 +10,7 @@
 - ✅ **Server Files**: Deleted server/replitAuth.ts and server/routes_old.ts
 
 ### Working Features
-- ✅ **Login System**: Sign in with admin@importflow.local / admin123
+- ✅ **Login System**: Sign in with admin@example.com / ChangeMe123!
 - ✅ **Registration**: Create new users with different roles
 - ✅ **All Business Logic**: Contracts, vessels, needs, reports, etc. fully functional
 - ✅ **Database Operations**: PostgreSQL integration working perfectly
