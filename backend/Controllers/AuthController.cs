@@ -32,7 +32,7 @@ namespace WorkflowBackend.Api.Controllers
                 Email = email,
                 FirstName = req.FirstName.Trim(),
                 LastName = req.LastName.Trim(),
-                Role = string.IsNullOrWhiteSpace(req.Role) ? "User" : req.Role!.Trim()
+                Role = Security.Roles.User
             };
             user.PasswordHash = _hasher.HashPassword(user, req.Password);
 

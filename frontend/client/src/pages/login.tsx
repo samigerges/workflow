@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -19,7 +18,6 @@ export default function Login() {
   const [regPassword, setRegPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState("admin");
   
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
@@ -61,13 +59,12 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-        const response = await apiRequest("POST", "/api/register", {
-          email: regEmail,
-          password: regPassword,
-          firstName,
-          lastName,
-          role,
-        });
+      const response = await apiRequest("POST", "/api/register", {
+        email: regEmail,
+        password: regPassword,
+        firstName,
+        lastName,
+      });
 
       if (response.ok) {
         toast({
@@ -80,7 +77,6 @@ export default function Login() {
         setRegPassword("");
         setFirstName("");
         setLastName("");
-        setRole("admin");
         
         // Switch to login tab
         // Note: In a real implementation, you might auto-login here
@@ -199,20 +195,6 @@ export default function Login() {
                     placeholder="Create a password"
                     required
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="procurement_officer">Procurement Officer</SelectItem>
-                      <SelectItem value="finance_officer">Finance Officer</SelectItem>
-                      <SelectItem value="shipping_officer">Shipping Officer</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating Account..." : "Create Account"}
