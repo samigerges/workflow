@@ -4,6 +4,7 @@ using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.Security;
 using WorkflowBackend.Api.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,9 +25,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         // requests, so the user would register successfully but still get a 401
         // when trying to log in.
         options.Cookie.SameSite = SameSiteMode.None;
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-            ? CookieSecurePolicy.None
-            : CookieSecurePolicy.Always;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(int.TryParse(builder.Configuration["Auth:ExpireDays"], out var d) ? d : 7);
 
@@ -68,6 +67,18 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Honour proxy headers so authentication cookies know when the original
+// request was sent over HTTPS. Without this the cookie middleware may drop
+// the Secure flag when running behind a reverse proxy, causing browsers to
+// reject the cookie and leading to 401 responses on subsequent API calls.
+var forwardedHeadersOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedHeadersOptions);
 
 // Ensure web root + upload folders exist
 var webRoot = app.Environment.WebRootPath;
