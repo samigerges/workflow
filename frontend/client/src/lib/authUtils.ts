@@ -1,3 +1,8 @@
 export function isUnauthorizedError(error: Error): boolean {
-  return /^401: .*Unauthorized/.test(error.message);
+  if (!error?.message) {
+    return false;
+  }
+
+  const match = /^\s*(\d{3})\b/.exec(error.message);
+  return match?.[1] === "401";
 }
