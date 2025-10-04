@@ -8,7 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
+const AUTH_QUERY_KEY = ["/api/auth/user"] as const;
+
 export default function Login() {
+  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   // Login form state
   const [loginEmail, setLoginEmail] = useState("admin@example.com");
   const [loginPassword, setLoginPassword] = useState("ChangeMe123!");
@@ -28,13 +31,15 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await apiRequest("POST", "/api/login", {
+      const response = await apiRequest("POST", "/api/login", {
         email: loginEmail,
         password: loginPassword,
       });
 
-      // Invalidate auth query to refetch user data
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      const user = await response.json();
+
+      queryClient.setQueryData(AUTH_QUERY_KEY, user);
+      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
 
       // Navigate to dashboard
       setLocation("/");
@@ -59,35 +64,33 @@ export default function Login() {
     setIsLoading(true);
 
     try {
+      const newEmail = regEmail;
+      const newPassword = regPassword;
+
       const response = await apiRequest("POST", "/api/register", {
-        email: regEmail,
-        password: regPassword,
+        email: newEmail,
+        password: newPassword,
         firstName,
         lastName,
       });
 
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Account created successfully! You can now log in.",
-        });
-        
-        // Clear registration form
-        setRegEmail("");
-        setRegPassword("");
-        setFirstName("");
-        setLastName("");
-        
-        // Switch to login tab
-        // Note: In a real implementation, you might auto-login here
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Error",
-          description: errorData.message || "Registration failed",
-          variant: "destructive",
-        });
-      }
+      await response.json();
+
+      toast({
+        title: "Success",
+        description: "Account created successfully! You can now log in.",
+      });
+
+      // Clear registration form
+      setRegEmail("");
+      setRegPassword("");
+      setFirstName("");
+      setLastName("");
+
+      // Prefill and focus login tab so the user can sign in right away
+      setActiveTab("login");
+      setLoginEmail(newEmail);
+      setLoginPassword(newPassword);
     } catch (error) {
       toast({
         title: "Error",
@@ -107,7 +110,13 @@ export default function Login() {
           <CardDescription>Import Goods Management System</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(value as "login" | "register")
+            }
+            className="w-full"
+          >
             <TabsList variant="muted" className="grid w-full grid-cols-2">
               <TabsTrigger variant="muted" value="login">
                 Sign In
