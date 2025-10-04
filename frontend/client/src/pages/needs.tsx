@@ -39,7 +39,7 @@ export default function Needs() {
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = "/login";
       }, 500);
       return;
     }
@@ -59,7 +59,7 @@ export default function Needs() {
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = "/login";
       }, 500);
     }
   }, [error, toast]);
@@ -78,7 +78,7 @@ export default function Needs() {
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -106,7 +106,7 @@ export default function Needs() {
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -134,7 +134,7 @@ export default function Needs() {
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -159,7 +159,7 @@ export default function Needs() {
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }

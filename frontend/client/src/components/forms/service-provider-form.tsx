@@ -135,7 +135,7 @@ export default function ServiceProviderForm({ provider, onSuccess, onCancel }: S
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
