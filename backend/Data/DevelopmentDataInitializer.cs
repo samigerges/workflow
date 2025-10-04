@@ -14,13 +14,19 @@ public static class DevelopmentDataInitializer
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var adminEmail = configuration["ADMIN_EMAIL"];
-        var adminPassword = configuration["ADMIN_PASSWORD"];
+        var adminEmail = configuration["ADMIN_EMAIL"]
+                          ?? configuration["Auth:DefaultAdmin:Email"]
+                          ?? "admin@example.com";
+        var adminPassword = configuration["ADMIN_PASSWORD"]
+                             ?? configuration["Auth:DefaultAdmin:Password"]
+                             ?? "ChangeMe123!";
 
         if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
         {
             return;
         }
+
+        adminEmail = adminEmail.Trim().ToLowerInvariant();
 
         if (!await db.Users.AnyAsync())
         {
