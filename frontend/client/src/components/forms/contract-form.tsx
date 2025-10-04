@@ -380,7 +380,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -423,7 +423,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
