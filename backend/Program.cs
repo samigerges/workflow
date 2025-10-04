@@ -17,8 +17,16 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     {
         options.Cookie.Name = builder.Configuration["Auth:CookieName"] ?? "workflow_auth";
         options.Cookie.HttpOnly = true;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+
+        // Allow the auth cookie to flow to the API when the frontend is hosted on a
+        // different origin (e.g. Vite dev server on a separate port). With the
+        // previous Lax setting browsers would drop the cookie on XHR/fetch
+        // requests, so the user would register successfully but still get a 401
+        // when trying to log in.
+        options.Cookie.SameSite = SameSiteMode.None;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.None
+            : CookieSecurePolicy.Always;
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(int.TryParse(builder.Configuration["Auth:ExpireDays"], out var d) ? d : 7);
 
