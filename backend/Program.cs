@@ -8,6 +8,27 @@ using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
+static bool RequestCameOverHttps(HttpContext context)
+{
+    if (context.Request.IsHttps)
+    {
+        return true;
+    }
+
+    if (context.Request.Headers.TryGetValue("X-Forwarded-Proto", out var protoValues))
+    {
+        foreach (var value in protoValues)
+        {
+            if (string.Equals(value, "https", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 // Add services
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection") ??
@@ -19,18 +40,39 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.Name = builder.Configuration["Auth:CookieName"] ?? "workflow_auth";
         options.Cookie.HttpOnly = true;
 
-        // Allow the auth cookie to flow to the API when the frontend is hosted on a
-        // different origin (e.g. Vite dev server on a separate port). With the
-        // previous Lax setting browsers would drop the cookie on XHR/fetch
-        // requests, so the user would register successfully but still get a 401
-        // when trying to log in.
-        options.Cookie.SameSite = SameSiteMode.None;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        // Configure defaults that work for both local HTTP development (where the
+        // frontend and backend often run on different ports) and production HTTPS
+        // deployments. We start with an "unspecified" SameSite mode so we can
+        // choose the appropriate value for each request inside the cookie events
+        // below. This avoids Chrome rejecting the cookie (SameSite=None requires
+        // Secure) while still allowing cross-origin requests once HTTPS is in
+        // place.
+        options.Cookie.SameSite = SameSiteMode.Unspecified;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.None;
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(int.TryParse(builder.Configuration["Auth:ExpireDays"], out var d) ? d : 7);
 
         options.Events = new CookieAuthenticationEvents
         {
+            // Ensure the cookie uses SameSite=None+Secure when the original
+            // request was served via HTTPS (including behind a proxy) so that it
+            // can flow to the API from a different origin. For plain HTTP
+            // development we fall back to Lax so the cookie is still accepted by
+            // modern browsers.
+            OnSigningIn = ctx =>
+            {
+                var isHttps = RequestCameOverHttps(ctx.HttpContext);
+                ctx.CookieOptions.SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax;
+                ctx.CookieOptions.Secure = isHttps;
+                return Task.CompletedTask;
+            },
+            OnSigningOut = ctx =>
+            {
+                var isHttps = RequestCameOverHttps(ctx.HttpContext);
+                ctx.CookieOptions.SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax;
+                ctx.CookieOptions.Secure = isHttps;
+                return Task.CompletedTask;
+            },
             OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; },
             OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; }
         };
