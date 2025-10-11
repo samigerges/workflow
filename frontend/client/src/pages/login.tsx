@@ -10,10 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Separator } from "@/components/ui/separator";
 
 const AUTH_QUERY_KEY = ["/api/auth/user"] as const;
 
@@ -135,8 +135,8 @@ export default function Login() {
                   IF
                 </span>
                 <div>
-                  <p className="text-sm text-slate-200/70">
-                    إدارة الشراء الموحد
+                  <p className="text-sm uppercase tracking-[0.35em] text-slate-200/70">
+                    ImportFlow
                   </p>
                   <h1 className="text-3xl font-semibold text-white">
                     Logistics without the chaos
