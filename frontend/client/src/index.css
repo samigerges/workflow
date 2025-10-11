@@ -54,26 +54,37 @@
 }
 
 .dark {
-  --background: hsl(240, 10%, 3.9%);
-  --foreground: hsl(0, 0%, 98%);
-  --muted: hsl(240, 3.7%, 15.9%);
-  --muted-foreground: hsl(240, 5%, 64.9%);
-  --popover: hsl(240, 10%, 3.9%);
-  --popover-foreground: hsl(0, 0%, 98%);
-  --card: hsl(240, 10%, 3.9%);
-  --card-foreground: hsl(0, 0%, 98%);
-  --border: hsl(240, 3.7%, 15.9%);
-  --input: hsl(240, 3.7%, 15.9%);
-  --primary: hsl(207, 90%, 54%);
-  --primary-foreground: hsl(211, 100%, 99%);
-  --secondary: hsl(240, 3.7%, 15.9%);
-  --secondary-foreground: hsl(0, 0%, 98%);
-  --accent: hsl(240, 3.7%, 15.9%);
-  --accent-foreground: hsl(0, 0%, 98%);
-  --destructive: hsl(0, 62.8%, 30.6%);
+  --background: hsl(222, 60%, 6%);
+  --foreground: hsl(215, 33%, 92%);
+  --muted: hsla(220, 45%, 18%, 0.7);
+  --muted-foreground: hsl(220, 18%, 70%);
+  --popover: hsla(220, 50%, 10%, 0.92);
+  --popover-foreground: hsl(210, 40%, 95%);
+  --card: hsla(222, 60%, 12%, 0.8);
+  --card-foreground: hsl(215, 33%, 92%);
+  --border: hsla(217, 45%, 22%, 0.6);
+  --input: hsla(217, 45%, 22%, 0.6);
+  --primary: hsl(204, 94%, 68%);
+  --primary-foreground: hsl(210, 100%, 97%);
+  --secondary: hsla(221, 60%, 16%, 0.9);
+  --secondary-foreground: hsl(210, 40%, 95%);
+  --accent: hsla(222, 60%, 22%, 0.85);
+  --accent-foreground: hsl(210, 40%, 95%);
+  --destructive: hsl(0, 72%, 46%);
   --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(240, 4.9%, 83.9%);
+  --ring: hsla(204, 94%, 68%, 0.45);
   --radius: 0.5rem;
+
+  --gradient-secondary: linear-gradient(
+    160deg,
+    rgba(4, 13, 33, 0.95) 0%,
+    rgba(7, 16, 45, 0.92) 45%,
+    rgba(8, 18, 62, 0.9) 100%
+  );
+  --shadow-soft: 0 12px 36px -24px rgba(56, 189, 248, 0.35);
+  --shadow-medium: 0 24px 64px -24px rgba(99, 102, 241, 0.35);
+  --shadow-strong: 0 32px 80px -24px rgba(59, 130, 246, 0.45);
+  --shadow-colored: 0 24px 80px -32px rgba(56, 189, 248, 0.55);
 }
 
 @layer base {
@@ -328,6 +339,28 @@
 .btn-primary-gradient:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-colored);
+}
+
+/* Dark mode adaptations for utility-heavy components */
+.dark .bg-white,
+.dark .bg-white\/80,
+.dark .bg-white\/90,
+.dark .bg-white\/95 {
+  background-color: hsla(222, 60%, 14%, 0.78) !important;
+  color: hsl(215, 33%, 92%);
+}
+
+.dark .border-secondary-100\/50,
+.dark .border-secondary-200,
+.dark .border-secondary-200\/50,
+.dark .border-secondary-300 {
+  border-color: hsla(217, 40%, 28%, 0.6) !important;
+}
+
+.dark .text-secondary-600,
+.dark .text-secondary-700,
+.dark .text-secondary-900 {
+  color: hsl(215, 30%, 85%) !important;
 }
 
 /* Icon container enhancements */
