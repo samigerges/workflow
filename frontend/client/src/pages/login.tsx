@@ -109,9 +109,6 @@ export default function Login() {
     }
   };
 
-  const hintClass =
-    "text-sm text-slate-300/80 transition-colors duration-300 group-hover:text-white";
-
   const gradientOrb =
     "pointer-events-none absolute -inset-[40%] origin-center rounded-full bg-gradient-to-br from-sky-500/30 via-indigo-500/20 to-transparent blur-3xl";
 
@@ -150,20 +147,6 @@ export default function Login() {
                 operations.
               </p>
 
-              <div className="grid gap-6 sm:grid-cols-3">
-                <div className="group rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-                  <p className="text-3xl font-semibold text-white">12k+</p>
-                  <p className={hintClass}>Documents processed monthly</p>
-                </div>
-                <div className="group rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-                  <p className="text-3xl font-semibold text-white">98%</p>
-                  <p className={hintClass}>On-time clearance success rate</p>
-                </div>
-                <div className="group rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-                  <p className="text-3xl font-semibold text-white">40+</p>
-                  <p className={hintClass}>Global freight partners</p>
-                </div>
-              </div>
             </div>
 
             <div className="space-y-4">
