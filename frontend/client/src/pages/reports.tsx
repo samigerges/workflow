@@ -731,115 +731,182 @@ export default function Reports() {
 
   return (
     <MainLayout title="Reports & Analytics" subtitle="Comprehensive import workflow analytics and forecasting">
-      <div className="p-6 space-y-8">
-        <div className="space-y-6">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="h-6 w-6 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Import Analytics Dashboard</h1>
+      <div className="space-y-10 bg-slate-50/60 p-6 lg:p-10">
+        <section className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-sky-600 via-blue-600 to-indigo-600 text-white shadow-2xl">
+          <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(circle at top, rgba(255,255,255,0.7), transparent 60%)" }} />
+          <div className="relative grid gap-10 p-8 md:grid-cols-[1.35fr,1fr] lg:p-12">
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/70">
+                <BarChart3 className="h-4 w-4" />
+                Executive intelligence
+              </div>
+              <div className="space-y-3">
+                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                  Import analytics, at a glance
+                </h1>
+                <p className="max-w-2xl text-base text-white/80">
+                  Monitor performance across contracts, letters of credit, and vessel activity in one connected
+                  workspace. Pinpoint imbalances instantly and align teams around the same, always-fresh data.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3 pt-2 text-sm text-white/80">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 backdrop-blur">
+                  <Ship className="h-4 w-4" />
+                  {activeVesselCount.toLocaleString()} vessels being tracked
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 backdrop-blur">
+                  <FileText className="h-4 w-4" />
+                  {contractAnalytics.length.toLocaleString()} active contracts
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 backdrop-blur">
+                  <University className="h-4 w-4" />
+                  {lcAnalytics.length.toLocaleString()} letters of credit
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/30 bg-white/10 p-5 shadow-lg backdrop-blur">
+                <p className="text-sm font-medium text-white/80">LC coverage</p>
+                <p className="mt-3 text-3xl font-semibold">{lcCoverageRate.toFixed(1)}%</p>
+                <p className="mt-1 text-xs text-white/70">Across {lcAnalytics.length.toLocaleString()} letters of credit</p>
+              </div>
+              <div className="rounded-2xl border border-white/30 bg-white/10 p-5 shadow-lg backdrop-blur">
+                <p className="text-sm font-medium text-white/80">Forecast horizon</p>
+                <p className="mt-3 text-3xl font-semibold">
+                  {forecastMonthsCount ? `${forecastMonthsCount}-month` : "No"}
+                </p>
+                <p className="mt-1 text-xs text-white/70">{forecastHorizonLabel}</p>
+              </div>
+              <div className="rounded-2xl border border-white/30 bg-white/10 p-5 shadow-lg backdrop-blur sm:col-span-2">
+                <p className="text-sm font-medium text-white/80">Focus mode</p>
+                <p className="mt-3 text-2xl font-semibold">Curate the analysis with adaptive filters</p>
+                <p className="mt-2 text-xs text-white/70">
+                  Choose a supplier, port, or time window and the dashboards below will instantly reshape to your
+                  scenario.
+                </p>
+              </div>
             </div>
           </div>
+        </section>
 
-          <p className="text-sm text-muted-foreground max-w-3xl">
-            Explore contracts, vessels, letters of credit, needs, and shipment activity pulled in with
-            authenticated analytics queries. Use the contextual filters below to focus on the slice of your
-            workflow you care about, or reset them at any time for a fresh view.
-          </p>
+        <Card className="border-2 border-dashed border-slate-200 bg-white/80 shadow-none backdrop-blur">
+          <CardHeader className="space-y-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-lg font-semibold">Interactive filters</CardTitle>
+                <CardDescription>
+                  Tailor the workspace by supplier, port of discharge, letters of credit, or time frame. Reset to
+                  return to the system view.
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                className="border-white/60 bg-white text-slate-700 hover:bg-slate-100"
+                onClick={() => {
+                  setSelectedSupplierFilter("");
+                  setSelectedPortFilter("");
+                  setSelectedLCFilter("");
+                  setFromDate("");
+                  setToDate("");
+                }}
+              >
+                Reset all
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-2">
+                <Label htmlFor="supplier-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Supplier
+                </Label>
+                <Select value={selectedSupplierFilter} onValueChange={setSelectedSupplierFilter}>
+                  <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white text-left">
+                    <SelectValue placeholder="All suppliers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__ALL__">All Suppliers</SelectItem>
+                    {uniqueSuppliers.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">Filters</CardTitle>
-              <CardDescription>
-                Narrow the dashboard by supplier, port, letter of credit, or a custom date window. Use the
-                reset action to clear all selections instantly.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="port-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Port
+                </Label>
+                <Select value={selectedPortFilter} onValueChange={setSelectedPortFilter}>
+                  <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white text-left">
+                    <SelectValue placeholder="All ports" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__ALL__">All Ports</SelectItem>
+                    {uniquePorts.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lc-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Letter of credit
+                </Label>
+                <Select value={selectedLCFilter} onValueChange={setSelectedLCFilter}>
+                  <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white text-left">
+                    <SelectValue placeholder="All LCs" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__ALL__">All LCs</SelectItem>
+                    {uniqueLCs.map((lc) => (
+                      <SelectItem key={String(lc.id)} value={String(lc.id)}>
+                        {lc.number}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="supplier-filter">Supplier</Label>
-                  <Select value={selectedSupplierFilter} onValueChange={setSelectedSupplierFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All suppliers" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__ALL__">All Suppliers</SelectItem>
-                      {uniqueSuppliers.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="from-date">From Date</Label>
+                  <Label htmlFor="from-date" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    From date
+                  </Label>
                   <Input
                     id="from-date"
                     type="date"
                     value={fromDate}
                     onChange={(e) => setFromDate(e.target.value)}
+                    className="h-12 rounded-xl border-slate-200 bg-white"
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="to-date">To Date</Label>
-                  <Input id="to-date" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="port-filter">Port</Label>
-                  <Select value={selectedPortFilter} onValueChange={setSelectedPortFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All ports" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__ALL__">All Ports</SelectItem>
-                      {uniquePorts.map((p) => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lc-filter">Letter of Credit</Label>
-                  <Select value={selectedLCFilter} onValueChange={setSelectedLCFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All LCs" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__ALL__">All LCs</SelectItem>
-                      {uniqueLCs.map((lc) => (
-                        <SelectItem key={String(lc.id)} value={String(lc.id)}>
-                          {lc.number}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="to-date" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    To date
+                  </Label>
+                  <Input
+                    id="to-date"
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="h-12 rounded-xl border-slate-200 bg-white"
+                  />
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="flex gap-2 mt-4">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setSelectedSupplierFilter("");
-                    setSelectedPortFilter("");
-                    setSelectedLCFilter("");
-                    setFromDate("");
-                    setToDate("");
-                  }}
-                >
-                  Reset
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-10">
           <div className="w-full overflow-x-auto">
-            <TabsList className="flex w-full min-w-max flex-nowrap gap-3 bg-transparent p-0">
+            <TabsList className="flex w-full min-w-max flex-nowrap gap-3 rounded-2xl bg-white/90 p-2 shadow-sm backdrop-blur">
               {reportTabs.map(({ value, label, icon: Icon, metric, description }) => (
                 <TabsTrigger
                   key={value}
