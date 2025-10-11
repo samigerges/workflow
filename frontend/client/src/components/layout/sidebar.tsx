@@ -162,15 +162,15 @@ export default function Sidebar() {
       <div className={`${isCollapsed ? 'p-3' : 'p-6'} border-b border-secondary-200/50 flex items-center justify-between bg-white/50`}>
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-medium">
-            <img 
-              src={logoPath} 
-              alt="ImportFlow Logo" 
+            <img
+              src={logoPath}
+              alt="شعار إدارة الشراء الموحد"
               className="w-8 h-8 object-contain"
             />
           </div>
           {!isCollapsed && (
             <div>
-              <h1 className="text-xl font-bold text-secondary-900 bg-gradient-to-r from-secondary-900 to-secondary-700 bg-clip-text text-transparent">ImportFlow</h1>
+              <h1 className="text-xl font-bold text-secondary-900 bg-gradient-to-r from-secondary-900 to-secondary-700 bg-clip-text text-transparent">إدارة الشراء الموحد</h1>
               <p className="text-sm text-secondary-600">Management System</p>
             </div>
           )}
