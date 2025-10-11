@@ -11,14 +11,14 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-3">
-              <img 
-                src={logoPath} 
-                alt="ImportFlow Logo" 
+              <img
+                src={logoPath}
+                alt="شعار إدارة الشراء الموحد"
                 className="w-12 h-12 object-contain"
               />
               <div>
-                <h1 className="text-xl font-bold text-secondary-900">ImportFlow</h1>
-                <p className="text-sm text-secondary-600">Management System</p>
+                <h1 className="text-xl font-bold text-secondary-900">إدارة الشراء الموحد</h1>
+                <p className="text-sm text-secondary-600">Unified Procurement Management System</p>
               </div>
             </div>
             <Button 
@@ -141,7 +141,7 @@ export default function Landing() {
       <footer className="bg-white border-t border-secondary-200 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-secondary-600">
-            © 2024 ImportFlow Management System. All rights reserved.
+            © 2024 إدارة الشراء الموحد. All rights reserved.
           </p>
         </div>
       </footer>

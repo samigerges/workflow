@@ -86,7 +86,7 @@ export default function Login() {
 
       toast({
         title: "Account created",
-        description: "Your ImportFlow account is ready. Sign in to get started!",
+        description: "Your إدارة الشراء الموحد account is ready. Sign in to get started!",
       });
 
       setRegEmail("");
@@ -133,7 +133,7 @@ export default function Login() {
                 </span>
                 <div>
                   <p className="text-sm uppercase tracking-[0.35em] text-slate-200/70">
-                    ImportFlow
+                    إدارة الشراء الموحد
                   </p>
                   <h1 className="text-3xl font-semibold text-white">
                     Logistics without the chaos
@@ -158,7 +158,7 @@ export default function Login() {
                 <div>
                   <p className="font-medium text-slate-200">Trusted by operations teams</p>
                   <p className="text-xs text-slate-300/70">
-                    "ImportFlow consolidates everything from requests to fulfillment in
+                    "إدارة الشراء الموحد consolidates everything from requests to fulfillment in
                     one workspace. Our team hasn't missed a deadline since."
                   </p>
                 </div>
@@ -172,7 +172,7 @@ export default function Login() {
           <Card className="relative z-10 w-full max-w-md border-white/10 bg-slate-950/70 shadow-[0_40px_120px_-40px_rgba(15,118,255,0.35)] backdrop-blur">
             <CardHeader className="space-y-6 text-center">
               <div className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-4 py-1 text-xs uppercase tracking-[0.3em] text-slate-200/80">
-                ImportFlow Portal
+                إدارة الشراء الموحد Portal
               </div>
               <div className="space-y-2">
                 <CardTitle className="text-3xl font-semibold text-white">
