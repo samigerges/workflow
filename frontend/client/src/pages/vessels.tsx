@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Ship, Edit, MapPin, Calendar, Eye, Activity, Trash } from "lucide-react";
 import { normalizeLc, type NormalizedLC } from "@/lib/lc";
+import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 const formatCurrency = (value: unknown): string | null => {
   if (value === null || value === undefined) {
@@ -97,6 +98,10 @@ function VesselLCDisplay({
 export default function Vessels() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { redirectToLogin } = useUnauthorizedRedirect({
+    isAuthenticated,
+    isLoading,
+  });
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -111,7 +116,7 @@ export default function Vessels() {
   const deleteVesselMutation = useMutation({
       mutationFn: async (vesselId: number) => {
         const response = await apiRequest("DELETE", `/api/vessels/${vesselId}`);
-      
+
       if (!response.ok) {
         let errorMessage = `${response.status}: ${response.statusText}`;
         try {
@@ -122,7 +127,7 @@ export default function Vessels() {
         }
         throw new Error(errorMessage);
       }
-      
+
         // For DELETE requests, the response might be empty or not JSON
         const text = await response.text();
         try {
@@ -147,6 +152,10 @@ export default function Vessels() {
       });
     },
     onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        redirectToLogin();
+        return;
+      }
       console.error("Delete vessel error:", error);
       toast({
         title: "Error",
@@ -155,21 +164,6 @@ export default function Vessels() {
       });
     },
   });
-
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
 
   const { data: vessels, isLoading: vesselsLoading } = useQuery({
     queryKey: ["/api/vessels", statusFilter !== "all" ? { status: statusFilter } : {}],

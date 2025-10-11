@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, FileText, Upload, Download, Vote, Trash2 } from "lucide-react";
+import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 // Document types for different stages of import
 const DOCUMENT_TYPES = [
@@ -40,6 +41,10 @@ const formatRequestPreview = (description?: string) => {
 export default function Documents() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { redirectToLogin } = useUnauthorizedRedirect({
+    isAuthenticated,
+    isLoading,
+  });
   const queryClient = useQueryClient();
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showVotingDialog, setShowVotingDialog] = useState(false);
@@ -49,21 +54,6 @@ export default function Documents() {
   const [documentTitle, setDocumentTitle] = useState("");
   const [relatedEntity, setRelatedEntity] = useState("");
   const [relatedEntityId, setRelatedEntityId] = useState("");
-
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
 
   // Fetch requests for linking documents
   const { data: requests = [] } = useQuery<any[]>({
@@ -166,14 +156,7 @@ export default function Documents() {
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       toast({

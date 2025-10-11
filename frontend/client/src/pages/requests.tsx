@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, FileText, Edit, Trash, Settings, Vote, Eye, MessageSquare } from "lucide-react";
+import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 const formatRequestPreview = (description?: string) => {
   if (!description) return "No additional notes";
@@ -32,6 +33,10 @@ const getRequestLabel = (request?: any) => {
 export default function Requests() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { redirectToLogin } = useUnauthorizedRedirect({
+    isAuthenticated,
+    isLoading,
+  });
   const queryClient = useQueryClient();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingRequest, setEditingRequest] = useState<any>(null);
@@ -42,21 +47,6 @@ export default function Requests() {
   const [votingRequest, setVotingRequest] = useState<any>(null);
   const [showSummaryDialog, setShowSummaryDialog] = useState(false);
   const [summaryRequest, setSummaryRequest] = useState<any>(null);
-
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
 
   const { data: requests, isLoading: requestsLoading } = useQuery({
     queryKey: ["/api/requests"],
@@ -76,14 +66,7 @@ export default function Requests() {
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       toast({
@@ -109,14 +92,7 @@ export default function Requests() {
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       toast({

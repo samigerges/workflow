@@ -18,10 +18,15 @@ import { Label } from "@/components/ui/label";
 import { Plus, Edit, Trash, Settings, Eye, Calendar, Package, TrendingUp } from "lucide-react";
 import { format, isValid } from "date-fns";
 import type { Need } from "@/lib/schemas";
+import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 export default function Needs() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { redirectToLogin } = useUnauthorizedRedirect({
+    isAuthenticated,
+    isLoading,
+  });
   const queryClient = useQueryClient();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -29,21 +34,6 @@ export default function Needs() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [statusEditingNeed, setStatusEditingNeed] = useState<any>(null);
-
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
 
   // Fetch needs
   const { data: needs = [], isLoading: needsLoading, error } = useQuery<Need[]>({
@@ -53,16 +43,9 @@ export default function Needs() {
 
   useEffect(() => {
     if (error && isUnauthorizedError(error)) {
-      toast({
-        title: "Session Expired",
-        description: "Please log in again.",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
+      redirectToLogin();
     }
-  }, [error, toast]);
+  }, [error, redirectToLogin]);
 
   // Create need mutation
   const createNeedMutation = useMutation({
@@ -77,9 +60,7 @@ export default function Needs() {
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       console.error("Error creating need:", error);
@@ -105,9 +86,7 @@ export default function Needs() {
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       toast({
@@ -133,9 +112,7 @@ export default function Needs() {
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       toast({
@@ -158,9 +135,7 @@ export default function Needs() {
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       toast({

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ import {
   CONTRACT_SHIPPING_METHODS,
 } from "@/lib/constants";
 import { getOptionLabel } from "@/lib/utils";
+import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 type ContractWithFile = ContractRecord & {
   fileName?: string | null;
@@ -47,6 +48,10 @@ const normalizeContract = (contract: any): ContractWithFile => {
 export default function Contracts() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { redirectToLogin } = useUnauthorizedRedirect({
+    isAuthenticated,
+    isLoading,
+  });
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -58,21 +63,6 @@ export default function Contracts() {
   const [contractForVoting, setContractForVoting] = useState<any>(null);
   const [showContractSummaryDialog, setShowContractSummaryDialog] = useState(false);
   const [contractForSummary, setContractForSummary] = useState<any>(null);
-
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
 
   const { data: allContracts, isLoading: contractsLoading } = useQuery({
     queryKey: ["/api/contracts"],
@@ -117,14 +107,7 @@ export default function Contracts() {
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       toast({
@@ -148,14 +131,7 @@ export default function Contracts() {
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       toast({
@@ -184,14 +160,7 @@ export default function Contracts() {
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
       toast({

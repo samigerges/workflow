@@ -25,6 +25,7 @@ import {
 } from "@/lib/lc";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 type FlowKey = NormalizedLC["flowKey"];
 
@@ -64,6 +65,10 @@ const STATUS_OPTIONS = [
 export default function LettersCredit() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { redirectToLogin } = useUnauthorizedRedirect({
+    isAuthenticated,
+    isLoading,
+  });
   const queryClient = useQueryClient();
   const [journeyFilter, setJourneyFilter] = useState<FlowKey>("gasc_to_upf");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -99,6 +104,10 @@ export default function LettersCredit() {
       });
     },
     onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        redirectToLogin();
+        return;
+      }
       toast({
         title: "Error",
         description: "Failed to delete Letter of Credit",
@@ -106,21 +115,6 @@ export default function LettersCredit() {
       });
     },
   });
-
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
 
   const selectedJourney = useMemo(
     () => JOURNEY_SEGMENTS.find((segment) => segment.value === journeyFilter) ?? JOURNEY_SEGMENTS[0],
@@ -188,14 +182,7 @@ export default function LettersCredit() {
       });
     } catch (error) {
       if (error instanceof Error && isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 500);
+        redirectToLogin();
         return;
       }
 
