@@ -155,11 +155,11 @@ export default function Sidebar() {
       
       <aside className={`${
         isCollapsed ? 'w-16' : 'w-64'
-      } bg-white/95 backdrop-blur-xl shadow-strong border-r border-secondary-100/50 fixed h-full z-30 flex flex-col transition-all duration-300 ease-in-out ${
+      } bg-white/95 backdrop-blur-xl shadow-strong border-r border-secondary-100/50 dark:bg-slate-950/80 dark:border-slate-800/70 dark:shadow-[0_24px_80px_-32px_rgba(37,99,235,0.45)] fixed h-full z-30 flex flex-col transition-all duration-300 ease-in-out ${
         isMobile && isCollapsed ? '-translate-x-full' : 'translate-x-0'
       } md:translate-x-0`}>
       {/* Header with toggle button */}
-      <div className={`${isCollapsed ? 'p-3' : 'p-6'} border-b border-secondary-200/50 flex items-center justify-between bg-white/50`}>
+      <div className={`${isCollapsed ? 'p-3' : 'p-6'} border-b border-secondary-200/50 flex items-center justify-between bg-white/50 dark:bg-slate-900/60 dark:border-slate-800/70`}>
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'}`}>
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-medium">
             <img
@@ -170,8 +170,8 @@ export default function Sidebar() {
           </div>
           {!isCollapsed && (
             <div>
-              <h1 className="text-xl font-bold text-secondary-900 bg-gradient-to-r from-secondary-900 to-secondary-700 bg-clip-text text-transparent">إدارة الشراء الموحد</h1>
-              <p className="text-sm text-secondary-600">Management System</p>
+              <h1 className="text-xl font-bold text-secondary-900 bg-gradient-to-r from-secondary-900 to-secondary-700 bg-clip-text text-transparent dark:text-white">إدارة الشراء الموحد</h1>
+              <p className="text-sm text-secondary-600 dark:text-slate-400">Management System</p>
             </div>
           )}
         </div>
@@ -179,7 +179,7 @@ export default function Sidebar() {
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-3 hover:bg-primary-50 hover:text-primary-600 transition-all duration-200 rounded-xl group shadow-soft hover:shadow-medium"
+          className="p-3 hover:bg-primary-50 hover:text-primary-600 transition-all duration-200 rounded-xl group shadow-soft hover:shadow-medium dark:hover:bg-slate-900/70 dark:text-slate-300"
         >
           {isCollapsed ? (
             <Menu size={18} className="transition-transform duration-200 group-hover:scale-110" />
@@ -196,31 +196,42 @@ export default function Sidebar() {
           const isActive = location === item.href;
           
           return (
-            <Link 
-              key={item.name} 
+            <Link
+              key={item.name}
               href={item.href}
               className={`group flex items-center ${isCollapsed ? 'justify-center px-2 py-3' : 'space-x-3 px-4 py-3'} rounded-xl font-medium transition-all duration-200 card-hover ${
-                isActive 
-                  ? 'bg-gradient-to-r from-primary-50 to-primary-100 text-primary-700 font-bold shadow-soft border border-primary-200' 
-                  : 'text-secondary-700 hover:bg-white/60 hover:shadow-soft'
+                isActive
+                  ? 'bg-gradient-to-r from-primary-50 to-primary-100 text-primary-700 font-bold shadow-soft border border-primary-200 dark:bg-slate-900/70 dark:border-white/10 dark:text-slate-100'
+                  : 'text-secondary-700 hover:bg-white/60 hover:shadow-soft dark:text-slate-300 dark:hover:bg-slate-900/50'
               }`}
               title={isCollapsed ? item.name : undefined}
             >
-              <Icon size={20} className={`flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${
-                isActive ? 'text-primary-700' : 'text-secondary-600'
-              }`} />
-              {!isCollapsed && <span className={`truncate ${
-                isActive ? 'text-primary-700 font-bold' : 'group-hover:text-secondary-900'
-              }`}>{item.name}</span>}
+              <Icon
+                size={20}
+                className={`flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                  isActive ? 'text-primary-700 dark:text-slate-100' : 'text-secondary-600 dark:text-slate-400'
+                }`}
+              />
+              {!isCollapsed && (
+                <span
+                  className={`truncate ${
+                    isActive
+                      ? 'text-primary-700 font-bold dark:text-slate-100'
+                      : 'group-hover:text-secondary-900 dark:text-slate-300 dark:group-hover:text-slate-100'
+                  }`}
+                >
+                  {item.name}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
       
       {/* User section */}
-      <div className={`mt-auto ${isCollapsed ? 'p-2' : 'p-4'} border-t border-secondary-200/50 bg-white/30 backdrop-blur-sm`}>
+      <div className={`mt-auto ${isCollapsed ? 'p-2' : 'p-4'} border-t border-secondary-200/50 bg-white/30 backdrop-blur-sm dark:bg-slate-900/60 dark:border-slate-800/70`}>
         <div className={`flex items-center ${isCollapsed ? 'justify-center mb-2' : 'space-x-3 mb-4'}`}>
-          <Avatar className="w-10 h-10 flex-shrink-0 ring-2 ring-primary-100 ring-offset-2">
+          <Avatar className="w-10 h-10 flex-shrink-0 ring-2 ring-primary-100 ring-offset-2 dark:ring-offset-slate-900">
             <AvatarImage src={(user as any)?.profileImageUrl} alt={(user as any)?.firstName || "User"} />
             <AvatarFallback className="bg-gradient-to-br from-primary-500 to-primary-600 text-white font-semibold">
               {(user as any)?.firstName?.charAt(0)}{(user as any)?.lastName?.charAt(0)}
@@ -228,19 +239,19 @@ export default function Sidebar() {
           </Avatar>
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-secondary-900 truncate">
+              <p className="text-sm font-semibold text-secondary-900 truncate dark:text-slate-100">
                 {(user as any)?.firstName} {(user as any)?.lastName}
               </p>
-              <p className="text-xs text-secondary-600 capitalize truncate bg-secondary-100/50 px-2 py-1 rounded-full">
+              <p className="text-xs text-secondary-600 capitalize truncate bg-secondary-100/50 px-2 py-1 rounded-full dark:bg-slate-900/70 dark:text-slate-300">
                 {(user as any)?.role?.replace('_', ' ')}
               </p>
             </div>
           )}
         </div>
-        <Button 
+        <Button
           onClick={handleSignOut}
           variant="ghost"
-          className={`${isCollapsed ? 'w-8 h-8 p-0 opacity-60 hover:opacity-100' : 'w-full'} flex items-center justify-center ${isCollapsed ? '' : 'space-x-2'} text-secondary-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200 rounded-xl`}
+          className={`${isCollapsed ? 'w-8 h-8 p-0 opacity-60 hover:opacity-100' : 'w-full'} flex items-center justify-center ${isCollapsed ? '' : 'space-x-2'} text-secondary-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200 rounded-xl dark:text-slate-300 dark:hover:bg-red-500/10 dark:hover:text-red-300`}
           title={isCollapsed ? "Sign Out" : undefined}
         >
           <LogOut size={isCollapsed ? 14 : 16} />
