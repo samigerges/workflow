@@ -135,8 +135,8 @@ export default function Login() {
                   IF
                 </span>
                 <div>
-                  <p className="text-sm uppercase tracking-[0.35em] text-slate-200/70">
-                    ImportFlow
+                  <p className="text-sm text-slate-200/70">
+                    إدارة الشراء الموحد
                   </p>
                   <h1 className="text-3xl font-semibold text-white">
                     Logistics without the chaos
