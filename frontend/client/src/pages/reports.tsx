@@ -56,6 +56,7 @@ import {
   Ship,
   TrendingUp,
   University,
+  X,
 } from "lucide-react";
 import {
   addMonths,
@@ -64,6 +65,7 @@ import {
   format,
   parseISO,
   startOfMonth,
+  isValid,
 } from "date-fns";
 import { normalizeLc, formatLcCurrency } from "@/lib/lc";
 
@@ -113,6 +115,13 @@ interface Shipment {
   vesselId?: string | number;
   dischargeEndDate?: string; // ISO
   quantityUnloaded?: number; // tons
+}
+
+type ActiveFilterKey = "supplier" | "port" | "lc" | "from" | "to";
+
+interface ActiveFilter {
+  key: ActiveFilterKey;
+  label: string;
 }
 
 // ---------- Helpers ----------
@@ -170,6 +179,42 @@ export default function Reports() {
   const [forecastChartType, setForecastChartType] = useState<"line" | "bar">("line");
   const [monthlyTrendSeries, setMonthlyTrendSeries] =
     useState<"needed" | "received">("needed");
+
+  const handleClearAllFilters = useCallback(() => {
+    setSelectedSupplierFilter("");
+    setSelectedPortFilter("");
+    setSelectedLCFilter("");
+    setFromDate("");
+    setToDate("");
+  }, []);
+
+  const handleRemoveFilter = useCallback((filterKey: ActiveFilterKey) => {
+    switch (filterKey) {
+      case "supplier":
+        setSelectedSupplierFilter("");
+        break;
+      case "port":
+        setSelectedPortFilter("");
+        break;
+      case "lc":
+        setSelectedLCFilter("");
+        break;
+      case "from":
+        setFromDate("");
+        break;
+      case "to":
+        setToDate("");
+        break;
+      default:
+        break;
+    }
+  }, []);
+
+  const formatDateLabel = useCallback((value: string) => {
+    if (!value) return "";
+    const parsed = parseISO(value);
+    return isValid(parsed) ? format(parsed, "MMM d, yyyy") : value;
+  }, []);
 
   // ---- Data ----
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery<LetterOfCredit[]>({
@@ -684,6 +729,38 @@ export default function Reports() {
     return Array.from(uniqueById.values());
   }, [normalizedLcEntries]);
 
+  const activeFilters = useMemo<ActiveFilter[]>(() => {
+    const filters: ActiveFilter[] = [];
+
+    if (selectedSupplierFilter && selectedSupplierFilter !== "__ALL__") {
+      filters.push({ key: "supplier", label: `Supplier: ${selectedSupplierFilter}` });
+    }
+
+    if (selectedPortFilter && selectedPortFilter !== "__ALL__") {
+      filters.push({ key: "port", label: `Port: ${selectedPortFilter}` });
+    }
+
+    if (selectedLcEntry) {
+      const number =
+        selectedLcEntry.normalized.number ||
+        selectedLcEntry.raw?.lcNumber ||
+        `LC ${selectedLcEntry.normalized.id ?? selectedLcEntry.raw?.id ?? ""}`;
+      filters.push({ key: "lc", label: `Letter of Credit: ${number}` });
+    }
+
+    if (fromDate) {
+      filters.push({ key: "from", label: `From: ${formatDateLabel(fromDate)}` });
+    }
+
+    if (toDate) {
+      filters.push({ key: "to", label: `To: ${formatDateLabel(toDate)}` });
+    }
+
+    return filters;
+  }, [formatDateLabel, fromDate, selectedLcEntry, selectedPortFilter, selectedSupplierFilter, toDate]);
+
+  const hasActiveFilters = activeFilters.length > 0;
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -820,18 +897,45 @@ export default function Reports() {
               </div>
 
               <div className="flex gap-2 mt-4">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setSelectedSupplierFilter("");
-                    setSelectedPortFilter("");
-                    setSelectedLCFilter("");
-                    setFromDate("");
-                    setToDate("");
-                  }}
-                >
+                <Button variant="secondary" onClick={handleClearAllFilters}>
                   Reset
                 </Button>
+              </div>
+
+              <div className="mt-6 border-t pt-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  {hasActiveFilters ? (
+                    <>
+                      {activeFilters.map((filter) => (
+                        <Badge
+                          key={filter.key}
+                          variant="secondary"
+                          className="flex items-center gap-2 rounded-full px-3 py-1 text-sm"
+                        >
+                          <span>{filter.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFilter(filter.key)}
+                            className="rounded-full p-0.5 transition hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                            aria-label={`Remove ${filter.label}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={handleClearAllFilters}
+                      >
+                        Clear all filters
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No active filters applied.</p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
