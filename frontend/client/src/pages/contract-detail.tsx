@@ -8,20 +8,32 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import VesselSummary from "@/components/vessel-summary";
-import { 
+import {
   ArrowLeft,
-  FileText, 
-  Ship, 
+  FileText,
+  Ship,
   Calendar,
   Package,
-  Building,
   User
 } from "lucide-react";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
+import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 export default function ContractDetail() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  useUnauthorizedRedirect({
+    isAuthenticated,
+    isLoading,
+  });
   const [selectedVessel, setSelectedVessel] = useState<any>(null);
   const [showVesselDialog, setShowVesselDialog] = useState(false);
 
@@ -37,13 +49,29 @@ export default function ContractDetail() {
     enabled: isAuthenticated,
   });
 
-  const isLoading = contractsLoading || vesselsLoading;
+  const isFetchingPrimaryData = contractsLoading || vesselsLoading;
 
   // Find the specific contract
   const contractData = useMemo(() => {
     const contractsArray = Array.isArray(contracts) ? contracts : [];
     return contractsArray.find((contract: any) => contract.id.toString() === id);
   }, [contracts, id]);
+
+  const contractId = contractData?.id;
+
+  const {
+    data: contractDocuments = [],
+    isLoading: documentsLoading,
+  } = useQuery({
+    queryKey: ["/api/document-votes/contract", contractId],
+    enabled: isAuthenticated && !!contractId,
+    retry: false,
+  });
+
+  const contractDocumentList = useMemo(
+    () => (Array.isArray(contractDocuments) ? contractDocuments : []),
+    [contractDocuments],
+  );
 
   // Find vessels associated with this contract
   const contractVessels = useMemo(() => {
@@ -99,7 +127,7 @@ export default function ContractDetail() {
     setShowVesselDialog(true);
   };
 
-  if (isLoading) {
+  if (isFetchingPrimaryData) {
     return (
       <MainLayout title="Contract Details" subtitle="Loading...">
         <div className="p-6">
@@ -115,13 +143,13 @@ export default function ContractDetail() {
         <div className="p-6">
           <div className="text-center py-8">
             <p className="text-gray-500">Contract not found</p>
-            <Button 
-              onClick={() => setLocation("/reports")}
+            <Button
+              onClick={() => setLocation("/contracts")}
               className="mt-4"
               variant="outline"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Reports
+              Back to Contracts
             </Button>
           </div>
         </div>
@@ -132,16 +160,28 @@ export default function ContractDetail() {
   return (
     <MainLayout title={`Contract ${contractAnalytics.contractId}`} subtitle="Detailed view with associated vessels">
       <div className="p-6 space-y-6">
-        {/* Header with Back Button */}
-        <div className="flex items-center justify-between">
-          <Button 
-            onClick={() => setLocation("/reports")}
-            variant="outline"
-            size="sm"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Reports
-          </Button>
+        <div className="flex flex-col space-y-4">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/contracts">Contracts</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{contractAnalytics.contractId}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <div className="flex items-center justify-between">
+            <Button
+              onClick={() => setLocation("/contracts")}
+              variant="outline"
+              size="sm"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Contracts
+            </Button>
+          </div>
         </div>
 
         {/* Contract Information Header */}
@@ -279,8 +319,47 @@ export default function ContractDetail() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              <span>Supporting Documents</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {documentsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((index) => (
+                  <div key={index} className="h-10 w-full rounded-md bg-secondary-100 animate-pulse" />
+                ))}
+              </div>
+            ) : contractDocumentList.length === 0 ? (
+              <p className="text-sm text-secondary-500">No documents have been uploaded for this contract yet.</p>
+            ) : (
+              <ul className="space-y-3">
+                {contractDocumentList.map((doc: any) => (
+                  <li
+                    key={doc.id}
+                    className="flex items-center justify-between rounded-xl border border-secondary-100/60 bg-secondary-50/40 px-4 py-3"
+                  >
+                    <div>
+                      <p className="font-medium text-secondary-900">{doc.fileName ?? `Document ${doc.id}`}</p>
+                      {doc.status && (
+                        <p className="text-xs text-secondary-500">Status: {doc.status}</p>
+                      )}
+                    </div>
+                    <Badge variant="outline" className="text-xs uppercase tracking-wide">
+                      {(doc.votes?.length ?? 0).toString()} votes
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Vessel Details Modal */}
-        <VesselSummary 
+        <VesselSummary
           vessel={selectedVessel}
           isOpen={showVesselDialog}
           onClose={() => setShowVesselDialog(false)}

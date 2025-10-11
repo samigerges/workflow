@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -10,43 +10,37 @@ import { Progress } from "@/components/ui/progress";
 import WorkflowProgress from "@/components/ui/workflow-progress";
 import LCSummary from "@/components/lc-summary";
 import ContractSummary from "@/components/contract-summary";
-import { 
-  FileText, 
-  Ship, 
-  University, 
-  CheckCircle, 
+import {
+  FileText,
+  Ship,
+  University,
+  CheckCircle,
   Box,
   Leaf,
   Microchip,
   Plus
 } from "lucide-react";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { normalizeLc, formatLcCurrency } from "@/lib/lc";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  useUnauthorizedRedirect({
+    isAuthenticated,
+    isLoading,
+  });
   const [selectedLC, setSelectedLC] = useState<any>(null);
   const [showLCSummary, setShowLCSummary] = useState(false);
   const [selectedContract, setSelectedContract] = useState<any>(null);
   const [showContractSummary, setShowContractSummary] = useState(false);
 
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
-
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsError,
+  } = useQuery<Record<string, number>>({
     queryKey: ["/api/dashboard/stats"],
     retry: false,
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -76,6 +70,26 @@ export default function Dashboard() {
     refetchInterval: 30000,
   });
 
+  useEffect(() => {
+    if (statsError) {
+      toast({
+        title: "Failed to load metrics",
+        description: "We couldn't refresh the dashboard KPIs. Showing the latest available data.",
+        variant: "destructive",
+      });
+    }
+  }, [statsError, toast]);
+
+  const kpiValues = useMemo(
+    () => ({
+      requests: stats?.requests ?? null,
+      contracts: stats?.contracts ?? null,
+      lettersOfCredit: stats?.lettersOfCredit ?? null,
+      vessels: stats?.vessels ?? null,
+    }),
+    [stats],
+  );
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -94,7 +108,13 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wide">Active Requests</p>
                     <p className="text-3xl font-bold text-secondary-900 mt-2">
-                      {(recentContracts as any[])?.length || 0}
+                      {statsLoading ? (
+                        <Skeleton className="h-8 w-16" />
+                      ) : statsError ? (
+                        <span className="text-secondary-400">--</span>
+                      ) : (
+                        (kpiValues.requests ?? 0).toLocaleString()
+                      )}
                     </p>
                   </div>
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-colored">
@@ -110,7 +130,13 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wide">Active Contracts</p>
                     <p className="text-3xl font-bold text-secondary-900 mt-2">
-                      {(contracts as any[])?.filter((c: any) => c.status === 'approved').length || 0}
+                      {statsLoading ? (
+                        <Skeleton className="h-8 w-16" />
+                      ) : statsError ? (
+                        <span className="text-secondary-400">--</span>
+                      ) : (
+                        (kpiValues.contracts ?? 0).toLocaleString()
+                      )}
                     </p>
                   </div>
                   <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-colored">
@@ -126,7 +152,13 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wide">Active LCs</p>
                     <p className="text-3xl font-bold text-secondary-900 mt-2">
-                      {(lettersOfCredit as any[])?.filter((lc: any) => lc.status === 'issued').length || 0}
+                      {statsLoading ? (
+                        <Skeleton className="h-8 w-16" />
+                      ) : statsError ? (
+                        <span className="text-secondary-400">--</span>
+                      ) : (
+                        (kpiValues.lettersOfCredit ?? 0).toLocaleString()
+                      )}
                     </p>
                   </div>
                   <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-colored">
@@ -142,7 +174,13 @@ export default function Dashboard() {
                   <div>
                     <p className="text-sm font-semibold text-secondary-600 uppercase tracking-wide">Ships in Transit</p>
                     <p className="text-3xl font-bold text-secondary-900 mt-2">
-                      {(upcomingVessels as any[])?.length || 0}
+                      {statsLoading ? (
+                        <Skeleton className="h-8 w-16" />
+                      ) : statsError ? (
+                        <span className="text-secondary-400">--</span>
+                      ) : (
+                        (kpiValues.vessels ?? 0).toLocaleString()
+                      )}
                     </p>
                   </div>
                   <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-colored">

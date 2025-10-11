@@ -21,6 +21,7 @@ import { SERVICE_PROVIDER_TYPES } from "@/lib/constants";
 import ServiceProviderForm from "@/components/forms/service-provider-form";
 import ServiceProviderPriceForm from "@/components/forms/service-provider-price-form";
 import type { ServiceProvider, ServiceProviderQuote } from "@/types/service-provider";
+import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 interface QuoteSummary {
   provider: ServiceProvider;
@@ -82,6 +83,16 @@ export default function ServiceProviders() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { redirectToLogin } = useUnauthorizedRedirect(
+    {
+      isAuthenticated,
+      isLoading: authLoading,
+    },
+    {
+      title: t("auth.sessionExpiredTitle"),
+      message: t("auth.sessionExpiredDescription"),
+    },
+  );
   const queryClient = useQueryClient();
 
   const [activeType, setActiveType] = useState("all");
@@ -89,19 +100,6 @@ export default function ServiceProviders() {
   const [editProviderId, setEditProviderId] = useState<number | null>(null);
   const [viewProviderId, setViewProviderId] = useState<number | null>(null);
   const [priceProviderId, setPriceProviderId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast({
-        title: t("auth.sessionExpiredTitle"),
-        description: t("auth.sessionExpiredDescription"),
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
-    }
-  }, [authLoading, isAuthenticated, toast, t]);
 
   const {
     data: providers = [],
@@ -116,14 +114,7 @@ export default function ServiceProviders() {
   useEffect(() => {
     if (!providersError) return;
     if (providersError instanceof Error && isUnauthorizedError(providersError)) {
-      toast({
-        title: t("auth.sessionExpiredTitle"),
-        description: t("auth.sessionExpiredDescription"),
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 500);
+      redirectToLogin();
       return;
     }
 
@@ -135,7 +126,7 @@ export default function ServiceProviders() {
           : t("serviceProviders.notifications.loadError"),
       variant: "destructive",
     });
-  }, [providersError, toast, t]);
+  }, [providersError, redirectToLogin, toast, t]);
 
   const editingProvider = useMemo(
     () => providers.find((provider) => provider.id === editProviderId) ?? null,
