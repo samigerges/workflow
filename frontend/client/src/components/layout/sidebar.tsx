@@ -201,23 +201,23 @@ export default function Sidebar() {
               href={item.href}
               className={`group flex items-center ${isCollapsed ? 'justify-center px-2 py-3' : 'space-x-3 px-4 py-3'} rounded-xl font-medium transition-all duration-200 card-hover ${
                 isActive
-                  ? 'bg-gradient-to-r from-primary-50 to-primary-100 text-primary-700 font-bold shadow-soft border border-primary-200 dark:bg-slate-900/70 dark:border-white/10 dark:text-slate-100'
-                  : 'text-secondary-700 hover:bg-white/60 hover:shadow-soft dark:text-slate-300 dark:hover:bg-slate-900/50'
+                  ? 'bg-gradient-to-r from-primary-50 to-primary-100 text-primary-700 font-bold shadow-soft border border-primary-200 dark:from-slate-200/85 dark:via-slate-200/80 dark:to-slate-300/70 dark:text-slate-900 dark:border-slate-300/70 dark:shadow-[0_16px_40px_-25px_rgba(15,23,42,0.55)]'
+                  : 'text-secondary-700 hover:bg-white/60 hover:shadow-soft dark:text-slate-300 dark:hover:bg-slate-900/50 dark:hover:text-slate-200'
               }`}
               title={isCollapsed ? item.name : undefined}
             >
               <Icon
                 size={20}
                 className={`flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${
-                  isActive ? 'text-primary-700 dark:text-slate-100' : 'text-secondary-600 dark:text-slate-400'
+                  isActive ? 'text-primary-700 dark:text-slate-900' : 'text-secondary-600 dark:text-slate-400 group-hover:text-secondary-900 dark:group-hover:text-slate-200'
                 }`}
               />
               {!isCollapsed && (
                 <span
                   className={`truncate ${
                     isActive
-                      ? 'text-primary-700 font-bold dark:text-slate-100'
-                      : 'group-hover:text-secondary-900 dark:text-slate-300 dark:group-hover:text-slate-100'
+                      ? 'text-primary-700 font-bold dark:text-slate-900'
+                      : 'group-hover:text-secondary-900 dark:text-slate-300 dark:group-hover:text-slate-200'
                   }`}
                 >
                   {item.name}
