@@ -36,6 +36,81 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  const parseErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error) {
+      const rawMessage = error.message.trim();
+      const bodyMatch = /^\d+:\s*([\s\S]*)$/.exec(rawMessage);
+      const maybeBody = (bodyMatch?.[1] ?? rawMessage).trim();
+
+      if (maybeBody) {
+        try {
+          const parsed = JSON.parse(maybeBody);
+          if (typeof parsed === "string" && parsed) {
+            return parsed;
+          }
+
+          if (parsed && typeof parsed === "object") {
+            const candidateMessage = (() => {
+              const data = parsed as Record<string, unknown>;
+
+              const directMessage = data.message;
+              if (typeof directMessage === "string" && directMessage.trim()) {
+                return directMessage.trim();
+              }
+
+              const detail = data.detail;
+              if (typeof detail === "string" && detail.trim()) {
+                return detail.trim();
+              }
+
+              const title = data.title;
+              if (typeof title === "string" && title.trim()) {
+                return title.trim();
+              }
+
+              const errors = data.errors;
+              if (errors && typeof errors === "object") {
+                for (const value of Object.values(errors)) {
+                  if (typeof value === "string" && value.trim()) {
+                    return value.trim();
+                  }
+
+                  if (Array.isArray(value)) {
+                    const firstMessage = value.find(
+                      (item): item is string =>
+                        typeof item === "string" && item.trim() !== "",
+                    );
+                    if (firstMessage) {
+                      return firstMessage.trim();
+                    }
+                  }
+                }
+              }
+
+              return undefined;
+            })();
+
+            if (candidateMessage) {
+              return candidateMessage;
+            }
+          }
+        } catch {
+          // Ignore JSON parse errors – we'll fall back to the raw message.
+        }
+
+        if (!/^{.+}$/.test(maybeBody)) {
+          return maybeBody;
+        }
+      }
+    }
+
+    if (typeof error === "string" && error.trim()) {
+      return error.trim();
+    }
+
+    return fallback;
+  };
+
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
@@ -57,9 +132,13 @@ export default function Login() {
       });
     } catch (error) {
       console.error(error);
+      const description = parseErrorMessage(
+        error,
+        "Please double-check your credentials and try again.",
+      );
       toast({
         title: "Unable to sign in",
-        description: "Please double-check your credentials and try again.",
+        description,
         variant: "destructive",
       });
     } finally {
@@ -99,9 +178,13 @@ export default function Login() {
       setLoginPassword(nextPassword);
     } catch (error) {
       console.error(error);
+      const description = parseErrorMessage(
+        error,
+        "We couldn't create your account. Please try again.",
+      );
       toast({
         title: "Registration failed",
-        description: "We couldn't create your account. Please try again.",
+        description,
         variant: "destructive",
       });
     } finally {
