@@ -32,27 +32,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  MapPin,
-  Ship,
-  Navigation,
-  Clock,
-  Anchor,
-  Eye,
-  Edit,
-  TrendingUp,
-  CheckCircle,
-} from "lucide-react";
-import VesselStepper from "@/components/vessel-stepper";
+import { MapPin, Ship, Eye, Edit, TrendingUp, CheckCircle } from "lucide-react";
+import VesselStepper, {
+  VESSEL_STAGES,
+  findStageByStatus,
+  normalizeStageId,
+} from "@/components/vessel-stepper";
 
 /* ----------------------------- Types & helpers ---------------------------- */
 
-type VesselStatus =
-  | "nominated"
-  | "in_transit"
-  | "arrived"
-  | "discharging"
-  | "completed";
+type VesselStatus = string;
 
 interface Vessel {
   id: number;
@@ -94,19 +83,16 @@ const getETAChip = (eta?: string | null) => {
   return `${diffDays} days`;
 };
 
+const stageIconMap = new Map(
+  VESSEL_STAGES.map((stage) => [stage.id, stage.icon])
+);
+
 const getStatusIcon = (status: VesselStatus) => {
-  switch (status) {
-    case "nominated":
-      return <Navigation className="h-4 w-4" />;
-    case "in_transit":
-      return <Ship className="h-4 w-4" />;
-    case "arrived":
-      return <Anchor className="h-4 w-4" />;
-    case "discharging":
-      return <Clock className="h-4 w-4" />;
-    default:
-      return <Ship className="h-4 w-4" />;
+  const Icon = stageIconMap.get(normalizeStageId(status));
+  if (Icon) {
+    return <Icon className="h-4 w-4" />;
   }
+  return <Ship className="h-4 w-4" />;
 };
 
 /* ----------------------------- Zod + RHF types ---------------------------- */
@@ -397,19 +383,31 @@ export default function VesselTracking() {
 
   const filteredVessels = useMemo(() => {
     const list = vessels ?? [];
-    return selectedStatus === "all"
-      ? list
-      : list.filter((v) => v.status === selectedStatus);
+    if (selectedStatus === "all") {
+      return list;
+    }
+    return list.filter(
+      (v) => normalizeStageId(v.status ?? "") === selectedStatus
+    );
   }, [vessels, selectedStatus]);
 
-  const counts = useMemo(() => {
-    const base = { in_transit: 0, arrived: 0, discharging: 0 };
-    for (const v of filteredVessels) {
-      if (v.status === "in_transit") base.in_transit++;
-      else if (v.status === "arrived") base.arrived++;
-      else if (v.status === "discharging") base.discharging++;
+  const { stageCounts, unmatchedCount } = useMemo(() => {
+    const base = VESSEL_STAGES.reduce<Record<string, number>>((acc, stage) => {
+      acc[stage.id] = 0;
+      return acc;
+    }, {});
+
+    let other = 0;
+    for (const vessel of filteredVessels) {
+      const key = normalizeStageId(vessel.status ?? "");
+      if (key && key in base) {
+        base[key] += 1;
+      } else if (vessel.status) {
+        other += 1;
+      }
     }
-    return base;
+
+    return { stageCounts: base, unmatchedCount: other };
   }, [filteredVessels]);
 
   if (isLoading) {
@@ -449,11 +447,11 @@ export default function VesselTracking() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Vessels</SelectItem>
-                    <SelectItem value="nominated">Nominated</SelectItem>
-                    <SelectItem value="in_transit">In Transit</SelectItem>
-                    <SelectItem value="arrived">Arrived</SelectItem>
-                    <SelectItem value="discharging">Discharging</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
+                    {VESSEL_STAGES.map((stage) => (
+                      <SelectItem key={stage.id} value={stage.id}>
+                        {stage.title}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Badge variant="outline" className="text-sm">
@@ -469,7 +467,7 @@ export default function VesselTracking() {
           <CardHeader>
             <CardTitle>Quick Stats</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
                 {filteredVessels.length}
@@ -477,26 +475,30 @@ export default function VesselTracking() {
               <div className="text-sm text-secondary-600">Total Vessels</div>
             </div>
 
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
-                {counts.in_transit}
-              </div>
-              <div className="text-sm text-secondary-600">In Transit</div>
-            </div>
+            {VESSEL_STAGES.map((stage) => {
+              const value = stageCounts[stage.id] ?? 0;
+              return (
+                <div key={stage.id} className="text-center">
+                  <div
+                    className={`text-2xl font-bold ${
+                      stage.statTextColor ?? "text-primary-600"
+                    }`}
+                  >
+                    {value}
+                  </div>
+                  <div className="text-sm text-secondary-600">{stage.title}</div>
+                </div>
+              );
+            })}
 
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {counts.arrived}
+            {unmatchedCount > 0 && (
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-600">
+                  {unmatchedCount}
+                </div>
+                <div className="text-sm text-secondary-600">Other Statuses</div>
               </div>
-              <div className="text-sm text-secondary-600">Arrived</div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {counts.discharging}
-              </div>
-              <div className="text-sm text-secondary-600">Discharging</div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -527,6 +529,7 @@ export default function VesselTracking() {
                   </TableHeader>
                   <TableBody>
                     {filteredVessels.map((vessel) => {
+                      const stageMeta = findStageByStatus(vessel.status);
                       const contractualQty = vessel.quantity ?? 0;
                       const dischargedQty = vessel.discharged_quantity ?? 0;
                       const progressPercent =
@@ -545,6 +548,11 @@ export default function VesselTracking() {
                               <div>
                                 <div>{vessel.vesselName}</div>
                                 <div className="text-xs text-gray-500">{vessel.cargoType}</div>
+                                {stageMeta && (
+                                  <div className="text-xs text-gray-400">
+                                    {stageMeta.title}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </TableCell>
