@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import FileUpload from "@/components/ui/file-upload";
 import { CARGO_TYPES, COUNTRIES, PORTS } from "@/lib/constants";
 import { Plus, Trash2 } from "lucide-react";
 import { normalizeLc } from "@/lib/lc";
@@ -88,7 +87,6 @@ function FormSection({ title, description, children }: FormSectionProps) {
 export default function VesselNominationForm({ onSuccess, onCancel, contracts, lcs, vessel }: VesselNominationFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [vesselLCs, setVesselLCs] = useState<VesselLC[]>(
     vessel ? [] : [{ lcId: "", quantity: 0 }]
   );
@@ -187,55 +185,26 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
 
   const createMutation = useMutation({
     mutationFn: async (data: VesselFormData) => {
-      const hasFile = selectedFiles.length > 0;
       const method = vessel ? "PUT" : "POST";
 
-      let payload: FormData | Record<string, unknown>;
-
-      if (hasFile) {
-        const formData = new FormData();
-
-        Object.entries(data).forEach(([key, value]) => {
+      const payload = Object.entries(data).reduce(
+        (acc, [key, value]) => {
           if (
-            value !== undefined &&
-            value !== null &&
-            value !== "" &&
-            !(typeof value === "number" && Number.isNaN(value))
+            value === undefined ||
+            value === null ||
+            value === "" ||
+            (typeof value === "number" && Number.isNaN(value))
           ) {
-            formData.append(key, String(value));
-          }
-        });
-
-        formData.append("instructionsFile", selectedFiles[0]);
-        payload = formData;
-      } else {
-        const sanitizedData = Object.entries(data).reduce(
-          (acc, [key, value]) => {
-            if (
-              value === undefined ||
-              value === null ||
-              value === "" ||
-              (typeof value === "number" && Number.isNaN(value))
-            ) {
-              return acc;
-            }
-
-            acc[key] = value;
             return acc;
-          },
-          {} as Record<string, unknown>,
-        );
+          }
 
-        payload = sanitizedData;
-      }
+          acc[key] = value;
+          return acc;
+        },
+        {} as Record<string, unknown>,
+      );
 
-      const url = hasFile
-        ? vessel
-          ? `/api/vessels/${vessel.id}/upload`
-          : "/api/vessels/upload"
-        : vessel
-          ? `/api/vessels/${vessel.id}`
-          : "/api/vessels";
+      const url = vessel ? `/api/vessels/${vessel.id}` : "/api/vessels";
 
       const response = await apiRequest(method, url, payload);
       const createdVessel = await response.json();
@@ -809,15 +778,6 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                   {...register("shippingInstructions")}
                   rows={4}
                   placeholder="Special handling instructions, cargo details, loading requirements..."
-                />
-              </div>
-              <div>
-                <Label>Shipping Instructions Document</Label>
-                <FileUpload
-                  accept=".pdf,.doc,.docx"
-                  onFileSelect={setSelectedFiles}
-                  existingFile={vessel?.instructionsFile}
-                  description="PDF, DOC, DOCX up to 5MB"
                 />
               </div>
             </div>
