@@ -817,16 +817,6 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<decimal?>("InsuranceCost")
                         .HasColumnType("numeric");
 
-                    b.Property<string>("InvoiceNumber")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<decimal?>("InvoiceTotalPrice")
-                        .HasPrecision(18, 2);
-
-                    b.Property<decimal?>("InvoiceUnitPrice")
-                        .HasPrecision(18, 2);
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)

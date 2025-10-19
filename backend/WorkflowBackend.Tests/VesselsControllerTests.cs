@@ -51,8 +51,6 @@ public class VesselsControllerTests
             Status = "nominated",
             Eta = DateTime.Parse("2025-09-18T13:20:00"),
             Quantity = 20m,
-            InvoiceNumber = "INV-001",
-            InvoiceUnitPrice = 250m,
         };
 
         var createResult = await controller.CreateJson(createReq);
@@ -60,9 +58,7 @@ public class VesselsControllerTests
 
         var created = await db.Vessels.FindAsync(vesselId);
         Assert.NotNull(created);
-        Assert.Equal("INV-001", created!.InvoiceNumber);
-        Assert.Equal(250m, created.InvoiceUnitPrice);
-        Assert.Equal(5000m, created.InvoiceTotalPrice);
+        Assert.Equal(20m, created!.Quantity);
 
         var linkResult = await controller.LinkLc(vesselId, new VesselLcLinkRequest(lc.Id));
         Assert.IsType<Microsoft.AspNetCore.Mvc.NoContentResult>(linkResult);

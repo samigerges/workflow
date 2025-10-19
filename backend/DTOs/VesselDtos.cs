@@ -41,12 +41,6 @@ namespace WorkflowBackend.Api.DTOs
         public decimal? InspectionCost { get; set; }
         public decimal? ShippingCost { get; set; }
 
-        [MaxLength(100)]
-        public string? InvoiceNumber { get; set; }
-
-        public decimal? InvoiceUnitPrice { get; set; }
-        public decimal? InvoiceTotalPrice { get; set; }
-
         public string? ShippingInstructions { get; set; }
 
         public DateTime? ArrivalDate { get; set; }
@@ -90,9 +84,6 @@ namespace WorkflowBackend.Api.DTOs
         decimal? InsuranceCost,
         decimal? InspectionCost,
         decimal? ShippingCost,
-        decimal? InvoiceUnitPrice,
-        string? InvoiceNumber,
-        decimal? InvoiceTotalPrice,
         string? ShippingInstructions,
         DateTime? ArrivalDate,
         DateTime? DischargeStartDate,

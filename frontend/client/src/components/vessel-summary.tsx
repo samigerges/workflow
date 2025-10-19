@@ -9,28 +9,6 @@ import StatusBadge from "@/components/ui/status-badge";
 import VesselDocuments from "@/components/vessel-documents";
 import { normalizeLc, type NormalizedLC, formatLcCurrency } from "@/lib/lc";
 
-const formatCurrency = (value: unknown): string | null => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-
-  const normalized =
-    typeof value === "number"
-      ? value
-      : typeof value === "string" && value.trim() !== ""
-        ? Number(value)
-        : NaN;
-
-  if (!Number.isFinite(normalized)) {
-    return null;
-  }
-
-  return normalized.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-};
-
 function extractLcId(link: any): string | null {
   if (!link) return null;
 
@@ -99,42 +77,6 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
   }, [lcsArray]);
 
   const associatedContract = contractsArray.find((contract: any) => contract.id === vessel.contractId);
-
-  const invoiceUnitPriceNumber =
-    typeof vessel.invoiceUnitPrice === "number"
-      ? vessel.invoiceUnitPrice
-      : typeof vessel.invoiceUnitPrice === "string"
-        ? Number(vessel.invoiceUnitPrice)
-        : null;
-  const invoiceTotalPriceNumber =
-    typeof vessel.invoiceTotalPrice === "number"
-      ? vessel.invoiceTotalPrice
-      : typeof vessel.invoiceTotalPrice === "string"
-        ? Number(vessel.invoiceTotalPrice)
-        : null;
-  const plannedQuantityNumber =
-    typeof vessel.quantity === "number"
-      ? vessel.quantity
-      : typeof vessel.quantity === "string"
-        ? Number(vessel.quantity)
-        : null;
-  const calculatedInvoiceTotal =
-    plannedQuantityNumber !== null && invoiceUnitPriceNumber !== null
-      ? plannedQuantityNumber * invoiceUnitPriceNumber
-      : null;
-  const invoiceTotalWarning =
-    invoiceTotalPriceNumber !== null &&
-    calculatedInvoiceTotal !== null &&
-    Math.abs(invoiceTotalPriceNumber - calculatedInvoiceTotal) > 0.5;
-  const unitPriceLabel = formatCurrency(invoiceUnitPriceNumber);
-  const totalPriceLabel = formatCurrency(invoiceTotalPriceNumber);
-  const calculatedInvoiceLabel = formatCurrency(calculatedInvoiceTotal);
-  const quantityLabel =
-    plannedQuantityNumber !== null
-      ? plannedQuantityNumber.toLocaleString(undefined, {
-          maximumFractionDigits: 2,
-        })
-      : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -330,48 +272,6 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Commercial Invoice */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Commercial Invoice</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Invoice Number:</span>
-                  <p className="text-gray-900">{vessel.invoiceNumber || "Not provided"}</p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Unit Price:</span>
-                  <p className="text-gray-900">
-                    {unitPriceLabel ? `$${unitPriceLabel} USD / ton` : "Not provided"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Total Price:</span>
-                  <p className="text-gray-900">
-                    {totalPriceLabel ? `$${totalPriceLabel} USD` : "Not provided"}
-                  </p>
-                </div>
-              </div>
-              {calculatedInvoiceLabel && (
-                <p
-                  className={`text-xs ${
-                    invoiceTotalWarning ? "text-orange-600" : "text-muted-foreground"
-                  }`}
-                >
-                  Planned total ({quantityLabel ?? "0"} tons × ${unitPriceLabel ?? "0.00"}): $
-                  {calculatedInvoiceLabel}.{' '}
-                  {totalPriceLabel
-                    ? invoiceTotalWarning
-                      ? "Recorded invoice total differs from the planned amount."
-                      : "Recorded invoice total matches the planned amount."
-                    : "Invoice total has not been recorded yet."}
-                </p>
-              )}
             </CardContent>
           </Card>
 
