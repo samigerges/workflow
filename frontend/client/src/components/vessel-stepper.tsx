@@ -1,4 +1,18 @@
-import { CheckCircle, Circle, Ship, Navigation, Anchor, Clock, Package, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeftRight,
+  CheckCircle,
+  FileCheck,
+  FileSignature,
+  FileText,
+  Fingerprint,
+  MapPin,
+  Send,
+  Settings2,
+  ShieldCheck,
+  Ship,
+  X,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,51 +20,141 @@ import { Button } from "@/components/ui/button";
 // Define vessel stages with their properties
 export const VESSEL_STAGES = [
   {
-    id: 'nominated',
-    title: 'Nominated',
-    description: 'Vessel selected for cargo',
-    icon: Navigation,
-    color: 'bg-blue-500',
-    lightColor: 'bg-blue-100',
-    textColor: 'text-blue-800'
+    id: "letter_of_guarantee",
+    title: "Letter of Guarantee",
+    description: "Guarantee letter issued",
+    icon: FileSignature,
+    color: "bg-indigo-500",
+    lightColor: "bg-indigo-100",
+    textColor: "text-indigo-800",
+    statTextColor: "text-indigo-600",
   },
   {
-    id: 'in_transit',
-    title: 'In Transit',
-    description: 'En route to destination',
+    id: "lc_opend",
+    title: "LC Opened",
+    description: "Letter of credit activated",
+    icon: FileCheck,
+    color: "bg-blue-500",
+    lightColor: "bg-blue-100",
+    textColor: "text-blue-800",
+    statTextColor: "text-blue-600",
+  },
+  {
+    id: "transaction",
+    title: "Transaction",
+    description: "Financial transaction initiated",
+    icon: ArrowLeftRight,
+    color: "bg-emerald-500",
+    lightColor: "bg-emerald-100",
+    textColor: "text-emerald-800",
+    statTextColor: "text-emerald-600",
+  },
+  {
+    id: "modifications",
+    title: "Modifications",
+    description: "Trade terms adjusted",
+    icon: Settings2,
+    color: "bg-amber-500",
+    lightColor: "bg-amber-100",
+    textColor: "text-amber-800",
+    statTextColor: "text-amber-600",
+  },
+  {
+    id: "acid_no",
+    title: "ACID No.",
+    description: "ACID documentation verified",
+    icon: Fingerprint,
+    color: "bg-rose-500",
+    lightColor: "bg-rose-100",
+    textColor: "text-rose-800",
+    statTextColor: "text-rose-600",
+  },
+  {
+    id: "ip",
+    title: "IP",
+    description: "Import permit confirmed",
+    icon: ShieldCheck,
+    color: "bg-teal-500",
+    lightColor: "bg-teal-100",
+    textColor: "text-teal-800",
+    statTextColor: "text-teal-600",
+  },
+  {
+    id: "loading_port",
+    title: "Loading Port",
+    description: "Cargo prepared at origin port",
     icon: Ship,
-    color: 'bg-yellow-500',
-    lightColor: 'bg-yellow-100',
-    textColor: 'text-yellow-800'
+    color: "bg-sky-500",
+    lightColor: "bg-sky-100",
+    textColor: "text-sky-800",
+    statTextColor: "text-sky-600",
   },
   {
-    id: 'arrived',
-    title: 'Arrived',
-    description: 'Reached destination port',
-    icon: Anchor,
-    color: 'bg-green-500',
-    lightColor: 'bg-green-100',
-    textColor: 'text-green-800'
+    id: "document",
+    title: "Document",
+    description: "Shipping documents compiled",
+    icon: FileText,
+    color: "bg-slate-500",
+    lightColor: "bg-slate-100",
+    textColor: "text-slate-800",
+    statTextColor: "text-slate-600",
   },
   {
-    id: 'discharging',
-    title: 'Discharging',
-    description: 'Cargo being unloaded',
-    icon: Package,
-    color: 'bg-purple-500',
-    lightColor: 'bg-purple-100',
-    textColor: 'text-purple-800'
+    id: "destination_port",
+    title: "Destination Port",
+    description: "Arrival preparations underway",
+    icon: MapPin,
+    color: "bg-lime-500",
+    lightColor: "bg-lime-100",
+    textColor: "text-lime-800",
+    statTextColor: "text-lime-600",
   },
   {
-    id: 'completed',
-    title: 'Completed',
-    description: 'Process finished',
+    id: "conflicts",
+    title: "Conflicts",
+    description: "Issues being resolved",
+    icon: AlertTriangle,
+    color: "bg-orange-500",
+    lightColor: "bg-orange-100",
+    textColor: "text-orange-800",
+    statTextColor: "text-orange-600",
+  },
+  {
+    id: "invoice",
+    title: "Invoice",
+    description: "Invoice issued and reviewed",
     icon: CheckCircle,
-    color: 'bg-gray-500',
-    lightColor: 'bg-gray-100',
-    textColor: 'text-gray-800'
-  }
+    color: "bg-violet-500",
+    lightColor: "bg-violet-100",
+    textColor: "text-violet-800",
+    statTextColor: "text-violet-600",
+  },
+  {
+    id: "swift",
+    title: "Swift",
+    description: "SWIFT confirmation received",
+    icon: Send,
+    color: "bg-fuchsia-500",
+    lightColor: "bg-fuchsia-100",
+    textColor: "text-fuchsia-800",
+    statTextColor: "text-fuchsia-600",
+  },
 ];
+
+export type VesselStageId = (typeof VESSEL_STAGES)[number]["id"];
+
+export const normalizeStageId = (status: string) =>
+  status
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+export const findStageByStatus = (status?: string | null) => {
+  if (!status) return undefined;
+  const normalized = normalizeStageId(status);
+  return VESSEL_STAGES.find((stage) => stage.id === normalized);
+};
 
 interface VesselStepperProps {
   selectedVessel: any;
@@ -60,14 +164,9 @@ interface VesselStepperProps {
 
 export default function VesselStepper({ selectedVessel, vessels, onClose }: VesselStepperProps) {
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'nominated': return 'bg-blue-100 text-blue-800';
-      case 'in_transit': return 'bg-yellow-100 text-yellow-800';
-      case 'arrived': return 'bg-green-100 text-green-800';
-      case 'discharging': return 'bg-purple-100 text-purple-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+    const stage = findStageByStatus(status);
+    if (!stage) return "bg-gray-100 text-gray-800";
+    return `${stage.lightColor} ${stage.textColor}`;
   };
 
   const getETA = (vessel: any) => {
@@ -84,7 +183,9 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
 
   const getCurrentStageIndex = (vessel: any) => {
     if (!vessel || !vessel.status) return 0;
-    const stageIndex = VESSEL_STAGES.findIndex(stage => stage.id === vessel.status.toLowerCase());
+    const stage = findStageByStatus(vessel.status);
+    if (!stage) return 0;
+    const stageIndex = VESSEL_STAGES.findIndex((item) => item.id === stage.id);
     return stageIndex >= 0 ? stageIndex : 0;
   };
 
@@ -101,7 +202,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-primary-900">
-            Vessel Details - {selectedVessel.vesselName}
+            Vessel Details - {selectedVessel?.vesselName ?? ""}
           </CardTitle>
           <Button
             variant="ghost"
@@ -212,7 +313,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
                 <Badge className={getStatusColor(selectedVessel.status)}>
-                  {selectedVessel.status}
+                  {findStageByStatus(selectedVessel.status)?.title ?? selectedVessel.status ?? "-"}
                 </Badge>
               </div>
               <div className="flex justify-between">
