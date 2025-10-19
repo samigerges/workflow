@@ -100,12 +100,17 @@ export const LC_STATUSES = {
 };
 
 export const VESSEL_STATUSES = {
+  planned: { label: 'Planned', color: 'bg-slate-100 text-slate-800' },
   nominated: { label: 'Nominated', color: 'bg-blue-100 text-blue-800' },
   confirmed: { label: 'Confirmed', color: 'bg-green-100 text-green-800' },
+  loading: { label: 'Loading', color: 'bg-amber-100 text-amber-800' },
+  sailing: { label: 'Sailing', color: 'bg-cyan-100 text-cyan-800' },
   in_transit: { label: 'In Transit', color: 'bg-orange-100 text-orange-800' },
   arrived: { label: 'Arrived', color: 'bg-purple-100 text-purple-800' },
   discharged: { label: 'Discharged', color: 'bg-gray-100 text-gray-800' },
-  completed: { label: 'Completed', color: 'bg-emerald-100 text-emerald-800' }
+  completed: { label: 'Finished', color: 'bg-emerald-100 text-emerald-800' },
+  closed: { label: 'Closed', color: 'bg-gray-200 text-gray-800' },
+  archived: { label: 'Archived', color: 'bg-slate-200 text-slate-800' }
 };
 
 export const CARGO_TYPES = [
