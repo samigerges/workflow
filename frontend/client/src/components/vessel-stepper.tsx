@@ -302,8 +302,12 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
 
   const stageRowDescriptors = useMemo(() => {
     let processed = 0;
-    return stageRows.map((row) => {
-      const descriptor = { stages: row, startIndex: processed };
+    return stageRows.map((row, index) => {
+      const descriptor = {
+        stages: row,
+        startIndex: processed,
+        isReversed: index % 2 === 1,
+      };
       processed += row.length;
       return descriptor;
     });
@@ -334,138 +338,164 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
           <h4 className="font-semibold text-gray-900 mb-6 text-center">Import Progress</h4>
 
           <div className="space-y-12">
-            {stageRowDescriptors.map(({ stages, startIndex }, rowIdx) => (
-              <div key={`row-${rowIdx}`} className="relative pb-20 md:pb-24">
-                <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
-                  {stages.map((stage, index) => {
-                    const stageId = stage.id as VesselStageId;
-                    const Icon = stage.icon;
-                    const globalIndex = startIndex + index;
-                    const status = getStageStatus(globalIndex, currentStageIndex);
-                    const hasStageDocument = documentsByStage.has(stageId);
-                    const isCurrent = status === 'current' && !hasStageDocument;
-                    const isCompleted = status === 'completed' || hasStageDocument;
-                    const nodeBaseClasses =
-                      "z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 transition-all duration-300 shadow-sm";
-                    const nodeStateClasses = hasStageDocument
-                      ? "bg-green-500 border-green-500 text-white"
-                      : isCurrent
-                        ? "bg-blue-500 border-blue-500 text-white ring-4 ring-blue-200"
-                        : status === 'completed'
-                          ? "bg-green-100 border-green-300 text-green-800"
-                          : "bg-white border-gray-300 text-gray-500";
-                    const nodeClasses = [
-                      nodeBaseClasses,
-                      nodeStateClasses,
-                      documentsLoading ? "cursor-wait" : "cursor-pointer",
-                    ].join(" ");
-                    const isLastOverall = globalIndex === VESSEL_STAGES.length - 1;
-                    const isLastInRow = index === stages.length - 1;
-                    const showHorizontalConnector = !isLastOverall && !isLastInRow;
-                    const showVerticalConnector =
-                      !isLastOverall && isLastInRow && rowIdx < stageRowDescriptors.length - 1;
+            {stageRowDescriptors.map(({ stages, startIndex, isReversed }, rowIdx) => {
+              const stageIndexMap = new Map(stages.map((stage, idx) => [stage.id, idx] as const));
+              const displayStages = isReversed ? [...stages].reverse() : stages;
 
-                    const labelOffsetClass = isCurrent ? '-bottom-20 md:-bottom-24' : '-bottom-14 md:-bottom-16';
-                    const iconColorClass = isCompleted || isCurrent ? 'text-white' : 'text-gray-400';
-                    const titleColorClass = isCompleted
-                      ? 'text-green-900'
-                      : isCurrent
-                        ? 'text-blue-900'
-                        : 'text-gray-700';
-                    const descriptionColorClass = isCompleted
-                      ? 'text-green-700'
-                      : isCurrent
-                        ? 'text-blue-700'
-                        : 'text-gray-500';
+              return (
+                <div key={`row-${rowIdx}`} className="relative pb-20 md:pb-24">
+                  <div className="flex w-full flex-wrap items-center justify-center gap-4 md:justify-between md:gap-6">
+                    {displayStages.map((stage, displayIndex) => {
+                      const stageId = stage.id as VesselStageId;
+                      const Icon = stage.icon;
+                      const originalIndex = stageIndexMap.get(stage.id) ?? displayIndex;
+                      const globalIndex = startIndex + originalIndex;
+                      const status = getStageStatus(globalIndex, currentStageIndex);
+                      const hasStageDocument = documentsByStage.has(stageId);
+                      const isCurrent = status === 'current' && !hasStageDocument;
+                      const isCompleted = status === 'completed' || hasStageDocument;
+                      const nodeBaseClasses =
+                        "z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 transition-all duration-300 shadow-sm";
+                      const nodeStateClasses = hasStageDocument
+                        ? "bg-green-500 border-green-500 text-white"
+                        : isCurrent
+                          ? "bg-blue-500 border-blue-500 text-white ring-4 ring-blue-200"
+                          : status === 'completed'
+                            ? "bg-green-100 border-green-300 text-green-800"
+                            : "bg-white border-gray-300 text-gray-500";
+                      const nodeClasses = [
+                        nodeBaseClasses,
+                        nodeStateClasses,
+                        documentsLoading ? "cursor-wait" : "cursor-pointer",
+                      ].join(" ");
+                      const isLastOverall = globalIndex === VESSEL_STAGES.length - 1;
+                      const isFirstDisplay = displayIndex === 0;
+                      const isLastDisplay = displayIndex === displayStages.length - 1;
+                      const hasNextStageInRow = isReversed ? !isFirstDisplay : !isLastDisplay;
+                      const showHorizontalConnector = !isLastOverall && hasNextStageInRow;
+                      const isTransitionStage = isReversed ? isFirstDisplay : isLastDisplay;
+                      const showVerticalConnector =
+                        !isLastOverall && isTransitionStage && rowIdx < stageRowDescriptors.length - 1;
+                      const connectorAlignment: 'left' | 'right' = isReversed ? 'left' : 'right';
 
-                    return (
-                      <div key={stage.id} className="flex items-center">
-                        <button
-                          type="button"
-                          onClick={() => handleStageClick(stageId)}
-                          className="relative flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                      const labelOffsetClass = isCurrent ? '-bottom-20 md:-bottom-24' : '-bottom-14 md:-bottom-16';
+                      const iconColorClass = isCompleted || isCurrent ? 'text-white' : 'text-gray-400';
+                      const titleColorClass = isCompleted
+                        ? 'text-green-900'
+                        : isCurrent
+                          ? 'text-blue-900'
+                          : 'text-gray-700';
+                      const descriptionColorClass = isCompleted
+                        ? 'text-green-700'
+                        : isCurrent
+                          ? 'text-blue-700'
+                          : 'text-gray-500';
+
+                      const renderHorizontalConnector = () => (
+                        <div
+                          className="relative mx-3 h-0.5 grow basis-12 sm:basis-16 md:basis-20 lg:basis-24 overflow-hidden rounded-full bg-gray-200"
+                          aria-hidden
                         >
-                          <div className="relative">
-                            <div className={nodeClasses}>
-                              <Icon className={`${iconColorClass} w-6 h-6`} />
-                            </div>
-                            {hasStageDocument && (
-                              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow">
-                                <Check className="h-3 w-3" />
-                              </span>
-                            )}
-                          </div>
-
                           <div
-                            className={`absolute ${labelOffsetClass} left-1/2 -translate-x-1/2 w-32 text-center pointer-events-none`}
+                            className={`absolute inset-y-0 ${
+                              connectorAlignment === 'left' ? 'right-0' : 'left-0'
+                            } transition-all duration-500 ${
+                              hasStageDocument || globalIndex < currentStageIndex
+                                ? 'w-full bg-green-500'
+                                : status === 'current'
+                                  ? 'w-full bg-blue-500'
+                                  : 'w-0'
+                            }`}
+                          />
+                        </div>
+                      );
+
+                      const renderVerticalConnector = () => (
+                        <div className="mx-3 flex flex-col items-center" aria-hidden>
+                          <div className="relative h-8 w-0.5 overflow-hidden rounded-full bg-gray-200">
+                            <div
+                              className={`absolute inset-x-0 bottom-0 transition-all duration-500 ${
+                                hasStageDocument || globalIndex < currentStageIndex
+                                  ? 'h-full bg-green-500'
+                                  : status === 'current'
+                                    ? 'h-full bg-blue-500'
+                                    : 'h-0'
+                              }`}
+                            />
+                          </div>
+                          <div
+                            className={`mt-1 h-2 w-2 rotate-45 ${
+                              hasStageDocument || globalIndex < currentStageIndex
+                                ? 'bg-green-500'
+                                : status === 'current'
+                                  ? 'bg-blue-500'
+                                  : 'bg-gray-300'
+                            }`}
+                          />
+                        </div>
+                      );
+
+                      return (
+                        <div key={stage.id} className="flex items-center">
+                          {isReversed && (
+                            <>
+                              {showVerticalConnector && renderVerticalConnector()}
+                              {showHorizontalConnector && renderHorizontalConnector()}
+                            </>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleStageClick(stageId)}
+                            className="relative flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                           >
-                            <h3
-                              className={`text-sm font-semibold mb-1 transition-colors
+                            <div className="relative">
+                              <div className={nodeClasses}>
+                                <Icon className={`${iconColorClass} h-6 w-6`} />
+                              </div>
+                              {hasStageDocument && (
+                                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow">
+                                  <Check className="h-3 w-3" />
+                                </span>
+                              )}
+                            </div>
+
+                            <div
+                              className={`pointer-events-none absolute ${labelOffsetClass} left-1/2 w-32 -translate-x-1/2 text-center`}
+                            >
+                              <h3
+                                className={`mb-1 text-sm font-semibold transition-colors
                                 ${titleColorClass}`}
-                            >
-                              {stage.title}
-                            </h3>
-                            <p
-                              className={`text-[11px] leading-tight transition-colors
+                              >
+                                {stage.title}
+                              </h3>
+                              <p
+                                className={`text-[11px] leading-tight transition-colors
                                 ${descriptionColorClass}`}
-                            >
-                              {stage.description}
-                            </p>
-                            {status === 'current' && !hasStageDocument && (
-                              <Badge className="mt-2 border-0 bg-blue-100 text-blue-800 text-[10px]">
-                                Current
-                              </Badge>
-                            )}
-                          </div>
-                        </button>
-
-                        {showHorizontalConnector && (
-                          <div
-                            className="relative mx-3 h-0.5 grow basis-12 sm:basis-16 md:basis-20 lg:basis-24 rounded-full bg-gray-200 overflow-hidden"
-                            aria-hidden
-                          >
-                            <div
-                              className={`absolute inset-y-0 left-0 transition-all duration-500 ${
-                                hasStageDocument || globalIndex < currentStageIndex
-                                  ? 'w-full bg-green-500'
-                                  : status === 'current'
-                                    ? 'w-full bg-blue-500'
-                                    : 'w-0'
-                              }`}
-                            />
-                          </div>
-                        )}
-
-                        {showVerticalConnector && (
-                          <div className="flex flex-col items-center mx-3" aria-hidden>
-                            <div className="relative h-8 w-0.5 rounded-full bg-gray-200 overflow-hidden">
-                              <div
-                                className={`absolute inset-x-0 bottom-0 transition-all duration-500 ${
-                                  hasStageDocument || globalIndex < currentStageIndex
-                                    ? 'h-full bg-green-500'
-                                    : status === 'current'
-                                      ? 'h-full bg-blue-500'
-                                      : 'h-0'
-                                }`}
-                              />
+                              >
+                                {stage.description}
+                              </p>
+                              {status === 'current' && !hasStageDocument && (
+                                <Badge className="mt-2 border-0 bg-blue-100 text-[10px] text-blue-800">
+                                  Current
+                                </Badge>
+                              )}
                             </div>
-                            <div
-                              className={`mt-1 h-2 w-2 rotate-45 ${
-                                hasStageDocument || globalIndex < currentStageIndex
-                                  ? 'bg-green-500'
-                                  : status === 'current'
-                                    ? 'bg-blue-500'
-                                    : 'bg-gray-300'
-                              }`}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          </button>
+
+                          {!isReversed && (
+                            <>
+                              {showHorizontalConnector && renderHorizontalConnector()}
+                              {showVerticalConnector && renderVerticalConnector()}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-8 text-center">
