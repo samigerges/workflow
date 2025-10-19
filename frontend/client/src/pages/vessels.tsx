@@ -15,7 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Ship, Edit, MapPin, Calendar, Eye, Activity, Trash } from "lucide-react";
+import { VESSEL_STATUSES } from "@/lib/constants";
+import { Plus, Ship, Edit, MapPin, Calendar, Eye, Activity, Trash, Loader2 } from "lucide-react";
 import { normalizeLc, type NormalizedLC } from "@/lib/lc";
 import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
@@ -37,6 +38,61 @@ function extractLcId(link: any): string | null {
   const idString = String(possibleId);
   return idString.length > 0 ? idString : null;
 }
+
+const VESSEL_STATUS_SEQUENCE = [
+  "planned",
+  "nominated",
+  "confirmed",
+  "loading",
+  "sailing",
+  "in_transit",
+  "arrived",
+  "discharged",
+  "completed",
+  "closed",
+  "archived",
+] as const;
+
+const VESSEL_STATUS_TRANSITIONS: Record<string, string[]> = {
+  planned: ["nominated", "confirmed", "loading", "archived"],
+  nominated: ["confirmed", "loading", "in_transit", "sailing", "archived"],
+  confirmed: ["in_transit", "loading", "archived"],
+  loading: ["sailing", "in_transit", "arrived", "archived"],
+  sailing: ["arrived", "in_transit", "archived"],
+  in_transit: ["arrived", "discharged", "archived"],
+  arrived: ["discharged", "completed", "closed", "archived"],
+  discharged: ["completed", "closed", "archived"],
+  completed: ["closed", "archived"],
+  closed: ["archived"],
+  archived: [],
+};
+
+const statusKeyFromStatus = (status: unknown): string => {
+  if (status === null || status === undefined) return "unknown";
+  const cleaned = String(status).trim().toLowerCase();
+  if (!cleaned) return "unknown";
+  return cleaned.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+};
+
+const statusKeyToTitleCase = (statusKey: string): string =>
+  statusKey
+    .split("_")
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+
+const getStatusLabel = (statusKey: string): string =>
+  VESSEL_STATUSES[statusKey as keyof typeof VESSEL_STATUSES]?.label ??
+  statusKeyToTitleCase(statusKey);
+
+const getStatusOptionsForKey = (statusKey: string): string[] => {
+  const allowed = VESSEL_STATUS_TRANSITIONS[statusKey];
+  if (allowed) {
+    const unique = new Set([statusKey, ...allowed]);
+    return VESSEL_STATUS_SEQUENCE.filter((key) => unique.has(key));
+  }
+  return [statusKey];
+};
 
 // Component to display LC numbers for a vessel
 function VesselLCDisplay({
@@ -90,6 +146,11 @@ export default function Vessels() {
   const [trackingVessel, setTrackingVessel] = useState<any>(null);
   const [showTrackingDialog, setShowTrackingDialog] = useState(false);
 
+  const statusQueryArg = useMemo(
+    () => (statusFilter === "all" ? {} : { status: statusKeyToTitleCase(statusFilter) }),
+    [statusFilter],
+  );
+
   // Delete vessel mutation
   const deleteVesselMutation = useMutation({
       mutationFn: async (vesselId: number) => {
@@ -119,9 +180,9 @@ export default function Vessels() {
       queryClient.removeQueries({ queryKey: ["/api/vessels"] });
       queryClient.removeQueries({ predicate: (query) => query.queryKey[0] === "/api/vessels" });
       queryClient.removeQueries({ queryKey: ["/api/dashboard/stats"] });
-      
+
       // Force immediate refetch
-      queryClient.refetchQueries({ queryKey: ["/api/vessels", statusFilter !== "all" ? { status: statusFilter } : {}] });
+      queryClient.refetchQueries({ queryKey: ["/api/vessels", statusQueryArg] });
       queryClient.refetchQueries({ queryKey: ["/api/dashboard/stats"] });
       
       toast({
@@ -143,8 +204,38 @@ export default function Vessels() {
     },
   });
 
+  const updateStatusMutation = useMutation<any, Error, { vesselId: number; statusKey: string }>({
+    mutationFn: async ({ vesselId, statusKey }) => {
+      const response = await apiRequest("POST", `/api/vessels/${vesselId}/status`, {
+        status: statusKeyToTitleCase(statusKey),
+      });
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/vessels" });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({
+        title: "Status updated",
+        description: `Vessel status set to ${getStatusLabel(variables.statusKey)}.`,
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        redirectToLogin();
+        return;
+      }
+      const rawMessage = error instanceof Error ? error.message : "Failed to update vessel status.";
+      const description = rawMessage.replace(/^[0-9]{3}:\s*/, "").trim() || "Failed to update vessel status.";
+      toast({
+        title: "Update failed",
+        description,
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: vessels, isLoading: vesselsLoading } = useQuery({
-    queryKey: ["/api/vessels", statusFilter !== "all" ? { status: statusFilter } : {}],
+    queryKey: ["/api/vessels", statusQueryArg],
     retry: false,
   });
 
@@ -162,6 +253,15 @@ export default function Vessels() {
   const contractsArray = Array.isArray(contracts) ? contracts : [];
   const lcsArray = Array.isArray(lcs) ? lcs : [];
 
+  const vesselsWithStatusKeys = useMemo(
+    () =>
+      vesselsArray.map((vessel: any) => ({
+        ...vessel,
+        statusKey: statusKeyFromStatus(vessel?.status ?? vessel?.Status ?? ""),
+      })),
+    [vesselsArray],
+  );
+
   const normalizedLcMap = useMemo(() => {
     const map = new Map<string, NormalizedLC>();
     lcsArray.forEach((lc: any) => {
@@ -173,6 +273,12 @@ export default function Vessels() {
     });
     return map;
   }, [lcsArray]);
+
+  const handleStatusChange = (vessel: any, nextStatusKey: string) => {
+    if (!vessel?.id) return;
+    if (nextStatusKey === vessel.statusKey) return;
+    updateStatusMutation.mutate({ vesselId: vessel.id, statusKey: nextStatusKey });
+  };
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -198,6 +304,7 @@ export default function Vessels() {
                   <SelectItem value="in_transit">In Transit</SelectItem>
                   <SelectItem value="arrived">Arrived</SelectItem>
                   <SelectItem value="discharged">Discharged</SelectItem>
+                  <SelectItem value="completed">Finished</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -273,7 +380,7 @@ export default function Vessels() {
                   <div>
                     <p className="text-sm font-medium text-secondary-600">Total Vessels</p>
                     <p className="text-3xl font-bold text-secondary-900">
-                      {vesselsArray.length}
+                      {vesselsWithStatusKeys.length}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -289,7 +396,7 @@ export default function Vessels() {
                   <div>
                     <p className="text-sm font-medium text-secondary-600">In Transit</p>
                     <p className="text-3xl font-bold text-secondary-900">
-                      {vesselsArray.filter((vessel: any) => vessel.status === 'in_transit').length}
+                      {vesselsWithStatusKeys.filter((vessel: any) => vessel.statusKey === 'in_transit').length}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -305,7 +412,7 @@ export default function Vessels() {
                   <div>
                     <p className="text-sm font-medium text-secondary-600">Arriving Soon</p>
                     <p className="text-3xl font-bold text-secondary-900">
-                      {vesselsArray.filter((vessel: any) => {
+                      {vesselsWithStatusKeys.filter((vessel: any) => {
                         if (!vessel.eta) return false;
                         const eta = new Date(vessel.eta);
                         const now = new Date();
@@ -325,9 +432,9 @@ export default function Vessels() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-secondary-600">Completed</p>
+                    <p className="text-sm font-medium text-secondary-600">Finished</p>
                     <p className="text-3xl font-bold text-secondary-900">
-                      {vesselsArray.filter((vessel: any) => vessel.status === 'discharged').length}
+                      {vesselsWithStatusKeys.filter((vessel: any) => vessel.statusKey === 'completed').length}
                     </p>
                   </div>
                   <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -352,7 +459,7 @@ export default function Vessels() {
                     <div key={i} className="h-16 bg-secondary-100 rounded-lg animate-pulse" />
                   ))}
                 </div>
-              ) : vesselsArray.length > 0 ? (
+              ) : vesselsWithStatusKeys.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -367,7 +474,7 @@ export default function Vessels() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vesselsArray.map((vessel: any) => {
+                    {vesselsWithStatusKeys.map((vessel: any) => {
                       const relatedContract = contractsArray.find(
                         (contract: any) => contract.id === vessel.contractId,
                       );
@@ -377,6 +484,11 @@ export default function Vessels() {
                           : typeof vessel.quantity === "string"
                             ? Number(vessel.quantity)
                             : null;
+                      const statusOptions = getStatusOptionsForKey(vessel.statusKey);
+                      const isStatusLocked = ["completed", "closed", "archived"].includes(vessel.statusKey);
+                      const isStatusUpdating =
+                        updateStatusMutation.isPending && updateStatusMutation.variables?.vesselId === vessel.id;
+                      const canChangeStatus = statusOptions.some((option) => option !== vessel.statusKey);
 
                       return (
                         <TableRow key={vessel.id}>
@@ -415,9 +527,33 @@ export default function Vessels() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <StatusBadge status={vessel.status} type="vessel" />
-                            <span className="text-xs text-secondary-500">Status updates automatically</span>
+                          <div className="flex flex-col gap-1">
+                            <Select
+                              value={vessel.statusKey}
+                              onValueChange={(value) => handleStatusChange(vessel, value)}
+                            >
+                              <SelectTrigger
+                                className="w-44 justify-between"
+                                disabled={isStatusLocked || isStatusUpdating || !canChangeStatus}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <StatusBadge status={vessel.statusKey} type="vessel" />
+                                  {isStatusUpdating && (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-secondary-500" />
+                                  )}
+                                </div>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {statusOptions.map((option) => (
+                                  <SelectItem key={option} value={option} disabled={option === vessel.statusKey}>
+                                    {getStatusLabel(option)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <span className="text-xs text-secondary-500 leading-snug">
+                              Update manually. The final SWIFT document marks a vessel as finished and locks the status.
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -446,7 +582,7 @@ export default function Vessels() {
                             >
                               <Edit size={14} />
                             </Button>
-                            {vessel.status !== 'draft' && ['admin', 'shipping_officer'].includes((user as any)?.role || '') && (
+                            {vessel.statusKey !== 'draft' && ['admin', 'shipping_officer'].includes((user as any)?.role || '') && (
                               <Button 
                                 size="sm" 
                                 className="bg-orange-500 hover:bg-orange-600 text-white"
@@ -484,9 +620,9 @@ export default function Vessels() {
                   <Ship className="mx-auto h-12 w-12 text-secondary-400" />
                   <h3 className="mt-4 text-lg font-semibold text-secondary-900">No vessels found</h3>
                   <p className="mt-2 text-secondary-600">
-                    {statusFilter === "all" 
-                      ? "Get started by nominating your first vessel." 
-                      : `No vessels with status "${statusFilter}" found.`}
+                    {statusFilter === "all"
+                      ? "Get started by nominating your first vessel."
+                      : `No vessels with status "${getStatusLabel(statusFilter)}" found.`}
                   </p>
                   {['admin', 'shipping_officer'].includes((user as any)?.role || '') && (
                     <Button 

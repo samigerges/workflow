@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Linq;
 using System.Security.Claims;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
@@ -65,6 +66,13 @@ namespace WorkflowBackend.Api.Controllers
             var cleaned = status.Replace('_', ' ').Replace('-', ' ').Trim();
             if (cleaned.Length == 0) return null;
             return StatusTextInfo.ToTitleCase(cleaned.ToLowerInvariant());
+        }
+
+        private static string? NormalizeStageType(string? type)
+        {
+            if (string.IsNullOrWhiteSpace(type)) return null;
+            var cleaned = type.Trim().Replace('-', '_').Replace(' ', '_').Trim('_');
+            return string.IsNullOrWhiteSpace(cleaned) ? null : cleaned.ToLowerInvariant();
         }
 
         private static string? NormalizePath(string? path) =>
@@ -227,10 +235,11 @@ namespace WorkflowBackend.Api.Controllers
             await file.CopyToAsync(stream);
 
             var rel = Path.Combine("uploads", "vessel-documents", safeName).Replace("\\", "/");
+            var normalizedType = NormalizeStageType(type);
             var doc = new VesselDocument
             {
                 VesselId = vesselId,
-                Type = string.IsNullOrWhiteSpace(type) ? null : type.Trim(),
+                Type = normalizedType ?? (string.IsNullOrWhiteSpace(type) ? null : type.Trim()),
                 FileName = Path.GetFileName(file.FileName),
                 FilePath = rel
             };
@@ -533,8 +542,8 @@ namespace WorkflowBackend.Api.Controllers
         [Consumes("multipart/form-data")]
         public async Task<ActionResult<VesselDocumentResponse>> UploadDocument(Guid id, [FromForm] IFormFile file, [FromForm] string? type)
         {
-            var exists = await _db.Vessels.AnyAsync(x => x.Id == id);
-            if (!exists) return NotFound();
+            var vessel = await _db.Vessels.FindAsync(id);
+            if (vessel is null) return NotFound();
             if (file is null || file.Length == 0) return BadRequest(new { message = "File required." });
 
             VesselDocumentResponse res;
@@ -546,6 +555,16 @@ namespace WorkflowBackend.Api.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
+
+            var normalizedType = NormalizeStageType(type);
+            if (string.Equals(normalizedType, "swift", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(vessel.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+            {
+                vessel.Status = "Completed";
+                vessel.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+
             return CreatedAtAction(nameof(GetDocuments), new { id }, res);
         }
 
@@ -652,6 +671,18 @@ namespace WorkflowBackend.Api.Controllers
 
             var v = await _db.Vessels.FindAsync(id);
             if (v is null) return NotFound();
+
+            if (string.Equals(v.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+            {
+                var finalStageTypes = await _db.VesselDocuments
+                    .Where(d => d.VesselId == id && d.Type != null)
+                    .Select(d => d.Type!)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                if (finalStageTypes.Any(t => string.Equals(t, "swift", StringComparison.OrdinalIgnoreCase)))
+                    return BadRequest(new { message = "Completed vessels cannot have their status modified." });
+            }
 
             var current = v.Status;
             var nexts = AllowedTransitions.TryGetValue(current, out var allowed) ? allowed : Array.Empty<string>();
