@@ -342,24 +342,41 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                     const Icon = stage.icon;
                     const globalIndex = startIndex + index;
                     const status = getStageStatus(globalIndex, currentStageIndex);
-                    const isCurrent = status === 'current';
                     const hasStageDocument = documentsByStage.has(stageId);
+                    const isCurrent = status === 'current' && !hasStageDocument;
+                    const isCompleted = status === 'completed' || hasStageDocument;
+                    const nodeBaseClasses =
+                      "z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 transition-all duration-300 shadow-sm";
+                    const nodeStateClasses = hasStageDocument
+                      ? "bg-green-500 border-green-500 text-white"
+                      : isCurrent
+                        ? "bg-blue-500 border-blue-500 text-white ring-4 ring-blue-200"
+                        : status === 'completed'
+                          ? "bg-green-100 border-green-300 text-green-800"
+                          : "bg-white border-gray-300 text-gray-500";
+                    const nodeClasses = [
+                      nodeBaseClasses,
+                      nodeStateClasses,
+                      documentsLoading ? "cursor-wait" : "cursor-pointer",
+                    ].join(" ");
                     const isLastOverall = globalIndex === VESSEL_STAGES.length - 1;
                     const isLastInRow = index === stages.length - 1;
                     const showHorizontalConnector = !isLastOverall && !isLastInRow;
                     const showVerticalConnector =
                       !isLastOverall && isLastInRow && rowIdx < stageRowDescriptors.length - 1;
 
-                    const nodeClasses = `
-                      z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 transition-all duration-300
-                      ${status === 'completed'
-                        ? 'bg-green-500 border-green-500'
-                        : isCurrent
-                          ? `${stage.color} border-white ring-4 ring-blue-200`
-                          : 'bg-white border-gray-300'}
-                    `;
-
                     const labelOffsetClass = isCurrent ? '-bottom-20 md:-bottom-24' : '-bottom-14 md:-bottom-16';
+                    const iconColorClass = isCompleted || isCurrent ? 'text-white' : 'text-gray-400';
+                    const titleColorClass = isCompleted
+                      ? 'text-green-900'
+                      : isCurrent
+                        ? 'text-blue-900'
+                        : 'text-gray-700';
+                    const descriptionColorClass = isCompleted
+                      ? 'text-green-700'
+                      : isCurrent
+                        ? 'text-blue-700'
+                        : 'text-gray-500';
 
                     return (
                       <div key={stage.id} className="flex items-center">
@@ -369,8 +386,8 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                           className="relative flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                         >
                           <div className="relative">
-                            <div className={`${nodeClasses} ${documentsLoading ? 'cursor-wait' : 'cursor-pointer'} shadow-sm`}>
-                              <Icon className={`${(status === 'completed' || isCurrent) ? 'text-white' : 'text-gray-400'} w-6 h-6`} />
+                            <div className={nodeClasses}>
+                              <Icon className={`${iconColorClass} w-6 h-6`} />
                             </div>
                             {hasStageDocument && (
                               <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow">
@@ -384,18 +401,18 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                           >
                             <h3
                               className={`text-sm font-semibold mb-1 transition-colors
-                                ${isCurrent ? 'text-blue-900' : status === 'completed' ? 'text-green-900' : 'text-gray-700'}`}
+                                ${titleColorClass}`}
                             >
                               {stage.title}
                             </h3>
                             <p
                               className={`text-[11px] leading-tight transition-colors
-                                ${isCurrent ? 'text-blue-700' : status === 'completed' ? 'text-green-700' : 'text-gray-500'}`}
+                                ${descriptionColorClass}`}
                             >
                               {stage.description}
                             </p>
-                            {isCurrent && (
-                              <Badge className={`${stage.lightColor} ${stage.textColor} border-0 mt-2 text-[10px]`}>
+                            {status === 'current' && !hasStageDocument && (
+                              <Badge className="mt-2 border-0 bg-blue-100 text-blue-800 text-[10px]">
                                 Current
                               </Badge>
                             )}
@@ -404,11 +421,17 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
 
                         {showHorizontalConnector && (
                           <div
-                            className="relative h-0.5 mx-3 rounded-full bg-gray-200 overflow-hidden w-16 sm:w-20 md:w-24 lg:w-28"
+                            className="relative mx-3 h-0.5 grow basis-12 sm:basis-16 md:basis-20 lg:basis-24 rounded-full bg-gray-200 overflow-hidden"
                             aria-hidden
                           >
                             <div
-                              className={`absolute inset-y-0 left-0 bg-blue-500 transition-all duration-500 ${globalIndex < currentStageIndex ? 'w-full' : 'w-0'}`}
+                              className={`absolute inset-y-0 left-0 transition-all duration-500 ${
+                                hasStageDocument || globalIndex < currentStageIndex
+                                  ? 'w-full bg-green-500'
+                                  : status === 'current'
+                                    ? 'w-full bg-blue-500'
+                                    : 'w-0'
+                              }`}
                             />
                           </div>
                         )}
@@ -417,11 +440,23 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                           <div className="flex flex-col items-center mx-3" aria-hidden>
                             <div className="relative h-8 w-0.5 rounded-full bg-gray-200 overflow-hidden">
                               <div
-                                className={`absolute inset-x-0 bottom-0 bg-blue-500 transition-all duration-500 ${globalIndex < currentStageIndex ? 'h-full' : 'h-0'}`}
+                                className={`absolute inset-x-0 bottom-0 transition-all duration-500 ${
+                                  hasStageDocument || globalIndex < currentStageIndex
+                                    ? 'h-full bg-green-500'
+                                    : status === 'current'
+                                      ? 'h-full bg-blue-500'
+                                      : 'h-0'
+                                }`}
                               />
                             </div>
                             <div
-                              className={`mt-1 h-2 w-2 rotate-45 ${globalIndex < currentStageIndex ? 'bg-blue-500' : 'bg-gray-300'}`}
+                              className={`mt-1 h-2 w-2 rotate-45 ${
+                                hasStageDocument || globalIndex < currentStageIndex
+                                  ? 'bg-green-500'
+                                  : status === 'current'
+                                    ? 'bg-blue-500'
+                                    : 'bg-gray-300'
+                              }`}
                             />
                           </div>
                         )}
