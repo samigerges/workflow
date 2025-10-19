@@ -38,6 +38,7 @@ import VesselStepper, {
   findStageByStatus,
   normalizeStageId,
 } from "@/components/vessel-stepper";
+import { normalizeLc, type NormalizedLC } from "@/lib/lc";
 
 /* ----------------------------- Types & helpers ---------------------------- */
 
@@ -45,6 +46,7 @@ type VesselStatus = string;
 
 interface Vessel {
   id: number;
+  contractId?: string | number | null;
   vesselName: string;
   cargoType?: string;
   status: VesselStatus;
@@ -53,6 +55,27 @@ interface Vessel {
   dischargeStartDate?: string | null; // ISO string
   quantity?: number; // contractual quantity (tons)
   discharged_quantity?: number; // cumulative discharged so far (tons)
+}
+
+interface ContractSummary {
+  id: string | number;
+  title?: string | null;
+  publicId?: string | null;
+  supplierName?: string | null;
+}
+
+interface LetterOfCredit {
+  id: string | number;
+  number?: string | null;
+  contractId?: string | number | null;
+  flow?: string | null;
+}
+
+interface SupplierLcOption {
+  value: string;
+  label: string;
+  contractId: string | null;
+  flowKey: NormalizedLC["flowKey"];
 }
 
 const formatDate = (iso?: string | null) =>
@@ -368,7 +391,8 @@ function DischargeUpdateDialog({
 /* --------------------------------- Page ---------------------------------- */
 
 export default function VesselTracking() {
-  const [selectedStatus, setSelectedStatus] = useState<VesselStatus | "all">("all");
+  const [selectedContractId, setSelectedContractId] = useState<string>("all");
+  const [selectedLcId, setSelectedLcId] = useState<string>("all");
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [updateVessel, setUpdateVessel] = useState<Vessel | null>(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
@@ -381,34 +405,120 @@ export default function VesselTracking() {
     select: (d) => d as Vessel[] | undefined,
   });
 
+  const { data: contracts } = useQuery({
+    queryKey: ["/api/contracts"],
+    staleTime: 30_000,
+    select: (d) => d as ContractSummary[] | undefined,
+  });
+
+  const { data: lettersOfCredit } = useQuery({
+    queryKey: ["/api/letters-of-credit"],
+    staleTime: 30_000,
+    select: (d) => d as LetterOfCredit[] | undefined,
+  });
+
+  const supplierLcOptions = useMemo<SupplierLcOption[]>(() => {
+    const list = Array.isArray(lettersOfCredit) ? lettersOfCredit : [];
+    const options: SupplierLcOption[] = [];
+    for (const lc of list) {
+      const normalized = normalizeLc(lc);
+      const value = normalized.id ?? lc.id;
+      if (value === undefined || value === null) {
+        continue;
+      }
+      options.push({
+        value: String(value),
+        label: normalized.number ?? `LC-${String(value)}`,
+        contractId:
+          normalized.contractId ??
+          (lc.contractId !== undefined && lc.contractId !== null
+            ? String(lc.contractId)
+            : null),
+        flowKey: normalized.flowKey,
+      });
+    }
+    return options;
+  }, [lettersOfCredit]);
+
+  const upfSupplierLcOptions = useMemo(
+    () =>
+      supplierLcOptions.filter(
+        (lc) => lc.flowKey === "upf_to_supplier",
+      ),
+    [supplierLcOptions],
+  );
+
+  const filteredLcOptions = useMemo(
+    () =>
+      upfSupplierLcOptions.filter(
+        (lc) =>
+          selectedContractId === "all" ||
+          (lc.contractId ? lc.contractId === selectedContractId : false),
+      ),
+    [upfSupplierLcOptions, selectedContractId],
+  );
+
+  useEffect(() => {
+    if (selectedLcId === "all") return;
+    const stillValid = filteredLcOptions.some((option) => option.value === selectedLcId);
+    if (!stillValid) {
+      setSelectedLcId("all");
+    }
+  }, [filteredLcOptions, selectedLcId]);
+
+  const contractOptions = useMemo(() => {
+    const list = Array.isArray(contracts) ? contracts : [];
+    return list
+      .map((contract) => {
+        const value = contract.id;
+        if (value === undefined || value === null) {
+          return null;
+        }
+        const label =
+          contract.title?.trim() ||
+          contract.publicId?.trim() ||
+          contract.supplierName?.trim() ||
+          `Contract ${String(value)}`;
+        return { value: String(value), label };
+      })
+      .filter((entry): entry is { value: string; label: string } => Boolean(entry));
+  }, [contracts]);
+
   const filteredVessels = useMemo(() => {
     const list = vessels ?? [];
-    if (selectedStatus === "all") {
-      return list;
-    }
-    return list.filter(
-      (v) => normalizeStageId(v.status ?? "") === selectedStatus
-    );
-  }, [vessels, selectedStatus]);
-
-  const { stageCounts, unmatchedCount } = useMemo(() => {
-    const base = VESSEL_STAGES.reduce<Record<string, number>>((acc, stage) => {
-      acc[stage.id] = 0;
-      return acc;
-    }, {});
-
-    let other = 0;
-    for (const vessel of filteredVessels) {
-      const key = normalizeStageId(vessel.status ?? "");
-      if (key && key in base) {
-        base[key] += 1;
-      } else if (vessel.status) {
-        other += 1;
+    return list.filter((v) => {
+      const contractId =
+        v.contractId !== undefined && v.contractId !== null
+          ? String(v.contractId)
+          : null;
+      if (selectedContractId !== "all" && contractId !== selectedContractId) {
+        return false;
       }
-    }
 
-    return { stageCounts: base, unmatchedCount: other };
-  }, [filteredVessels]);
+      if (selectedLcId !== "all") {
+        const selectedLc = upfSupplierLcOptions.find(
+          (lc) => lc.value === selectedLcId,
+        );
+        if (!selectedLc) {
+          return false;
+        }
+        if (selectedLc.contractId) {
+          return selectedLc.contractId === contractId;
+        }
+        return false;
+      }
+
+      return true;
+    });
+  }, [vessels, selectedContractId, selectedLcId, upfSupplierLcOptions]);
+
+  useEffect(() => {
+    if (!selectedVessel) return;
+    const stillVisible = filteredVessels.some((v) => v.id === selectedVessel.id);
+    if (!stillVisible) {
+      setSelectedVessel(null);
+    }
+  }, [filteredVessels, selectedVessel]);
 
   if (isLoading) {
     return (
@@ -432,73 +542,65 @@ export default function VesselTracking() {
         {/* Controls */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center space-x-2">
                 <MapPin className="h-5 w-5 text-primary-600" />
-                <CardTitle>Vessel Status Filter</CardTitle>
+                <CardTitle>Vessel Filters</CardTitle>
               </div>
-              <div className="flex items-center space-x-4">
+              <Badge variant="outline" className="text-sm">
+                {filteredVessels.length} vessels
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="space-y-1">
+                <Label>Contract</Label>
                 <Select
-                  value={selectedStatus}
-                  onValueChange={(v) => setSelectedStatus(v as VesselStatus | "all")}
+                  value={selectedContractId}
+                  onValueChange={(value) => setSelectedContractId(value)}
                 >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="All Vessels" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a contract" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Vessels</SelectItem>
-                    {VESSEL_STAGES.map((stage) => (
-                      <SelectItem key={stage.id} value={stage.id}>
-                        {stage.title}
+                    <SelectItem value="all">All Contracts</SelectItem>
+                    {contractOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Badge variant="outline" className="text-sm">
-                  {filteredVessels.length} vessels
-                </Badge>
+              </div>
+
+              <div className="space-y-1">
+                <Label>UPF → Supplier LCs</Label>
+                <Select
+                  value={selectedLcId}
+                  onValueChange={(value) => setSelectedLcId(value)}
+                  disabled={filteredLcOptions.length === 0}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue
+                      placeholder={
+                        filteredLcOptions.length === 0
+                          ? "No supplier LCs"
+                          : "Select a letter of credit"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Supplier LCs</SelectItem>
+                    {filteredLcOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </CardHeader>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Stats</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {filteredVessels.length}
-              </div>
-              <div className="text-sm text-secondary-600">Total Vessels</div>
-            </div>
-
-            {VESSEL_STAGES.map((stage) => {
-              const value = stageCounts[stage.id] ?? 0;
-              return (
-                <div key={stage.id} className="text-center">
-                  <div
-                    className={`text-2xl font-bold ${
-                      stage.statTextColor ?? "text-primary-600"
-                    }`}
-                  >
-                    {value}
-                  </div>
-                  <div className="text-sm text-secondary-600">{stage.title}</div>
-                </div>
-              );
-            })}
-
-            {unmatchedCount > 0 && (
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-600">
-                  {unmatchedCount}
-                </div>
-                <div className="text-sm text-secondary-600">Other Statuses</div>
-              </div>
-            )}
           </CardContent>
         </Card>
 
