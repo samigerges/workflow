@@ -19,28 +19,6 @@ import { Plus, Ship, Edit, MapPin, Calendar, Eye, Activity, Trash } from "lucide
 import { normalizeLc, type NormalizedLC } from "@/lib/lc";
 import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
-const formatCurrency = (value: unknown): string | null => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-
-  const normalized =
-    typeof value === "number"
-      ? value
-      : typeof value === "string" && value.trim() !== ""
-        ? Number(value)
-        : NaN;
-
-  if (!Number.isFinite(normalized)) {
-    return null;
-  }
-
-  return normalized.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-};
-
 function extractLcId(link: any): string | null {
   if (!link) return null;
 
@@ -382,7 +360,6 @@ export default function Vessels() {
                       <TableHead>Contract ID</TableHead>
                       <TableHead>LC Number</TableHead>
                       <TableHead>Quantity</TableHead>
-                      <TableHead>Invoice</TableHead>
                       <TableHead>Route</TableHead>
                       <TableHead>ETA</TableHead>
                       <TableHead>Status</TableHead>
@@ -394,35 +371,12 @@ export default function Vessels() {
                       const relatedContract = contractsArray.find(
                         (contract: any) => contract.id === vessel.contractId,
                       );
-                      const unitPriceLabel = formatCurrency(vessel.invoiceUnitPrice);
-                      const totalPriceLabel = formatCurrency(vessel.invoiceTotalPrice);
                       const quantityNumber =
                         typeof vessel.quantity === "number"
                           ? vessel.quantity
                           : typeof vessel.quantity === "string"
                             ? Number(vessel.quantity)
                             : null;
-                      const unitPriceNumber =
-                        typeof vessel.invoiceUnitPrice === "number"
-                          ? vessel.invoiceUnitPrice
-                          : typeof vessel.invoiceUnitPrice === "string"
-                            ? Number(vessel.invoiceUnitPrice)
-                            : null;
-                      const totalPriceNumber =
-                        typeof vessel.invoiceTotalPrice === "number"
-                          ? vessel.invoiceTotalPrice
-                          : typeof vessel.invoiceTotalPrice === "string"
-                            ? Number(vessel.invoiceTotalPrice)
-                            : null;
-                      const calculatedInvoiceTotal =
-                        quantityNumber !== null && unitPriceNumber !== null
-                          ? quantityNumber * unitPriceNumber
-                          : null;
-                      const calculatedInvoiceLabel = formatCurrency(calculatedInvoiceTotal);
-                      const invoiceTotalsDiffer =
-                        totalPriceNumber !== null &&
-                        calculatedInvoiceTotal !== null &&
-                        Math.abs(totalPriceNumber - calculatedInvoiceTotal) > 0.5;
 
                       return (
                         <TableRow key={vessel.id}>
@@ -438,24 +392,6 @@ export default function Vessels() {
                             <VesselLCDisplay vesselId={vessel.id} normalizedLcMap={normalizedLcMap} />
                           </TableCell>
                           <TableCell>{vessel.quantity || 0} tons</TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="text-sm font-medium text-secondary-900">
-                                {vessel.invoiceNumber || "—"}
-                              </div>
-                              <div className="text-xs text-secondary-500">
-                                {unitPriceLabel ? `$${unitPriceLabel} / ton` : "Unit pending"}
-                              </div>
-                              <div className="text-xs font-semibold text-secondary-700">
-                                {totalPriceLabel ? `$${totalPriceLabel} USD` : "Total pending"}
-                              </div>
-                              {invoiceTotalsDiffer && calculatedInvoiceLabel && (
-                                <div className="text-[11px] text-orange-600">
-                                  Planned: ${calculatedInvoiceLabel}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
                           <TableCell>
                             <div className="space-y-1">
                               <div className="flex items-center space-x-1 text-sm">
