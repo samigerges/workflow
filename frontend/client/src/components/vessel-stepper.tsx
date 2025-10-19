@@ -392,7 +392,8 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                       const isFirstDisplay = displayIndex === 0;
                       const isLastDisplay = displayIndex === displayStages.length - 1;
                       const hasNextStageInRow = isReversed ? !isFirstDisplay : !isLastDisplay;
-                      const showHorizontalConnector = !isLastOverall && hasNextStageInRow;
+                      const isFinalStage = stageId === "swift";
+                      const showHorizontalConnector = !isFinalStage && !isLastOverall && hasNextStageInRow;
                       const isTransitionStage = isReversed ? isFirstDisplay : isLastDisplay;
                       const showVerticalConnector =
                         !isLastOverall && isTransitionStage && rowIdx < stageRowDescriptors.length - 1;
@@ -413,13 +414,13 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
 
                       const renderHorizontalConnector = () => (
                         <div
-                          className="relative mx-3 h-0.5 grow basis-12 sm:basis-16 md:basis-20 lg:basis-24 overflow-hidden rounded-full bg-gray-200"
+                          className="relative mx-3 h-0.5 min-w-[2.75rem] flex-1 overflow-visible rounded-full bg-gray-200 md:min-w-[4rem] lg:min-w-[5rem]"
                           aria-hidden
                         >
                           <div
                             className={`absolute inset-y-0 ${
                               connectorAlignment === "left" ? "right-0" : "left-0"
-                            } transition-all duration-500 ${
+                            } h-0.5 transition-all duration-500 ${
                               shouldHighlightConnector
                                 ? "w-full bg-green-500"
                                 : isCurrent
@@ -435,7 +436,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                           className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2"
                           aria-hidden
                         >
-                          <div className="mt-6 flex h-16 flex-col items-center md:mt-8 md:h-20">
+                          <div className="mt-16 flex h-24 flex-col items-center md:mt-20 md:h-28">
                             <div className="relative h-full w-0.5 overflow-hidden rounded-full bg-gray-200">
                               <div
                                 className={`absolute inset-x-0 top-0 transition-all duration-500 ${
