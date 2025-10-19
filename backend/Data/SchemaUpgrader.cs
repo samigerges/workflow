@@ -85,6 +85,36 @@ BEGIN
         ADD COLUMN "PublicId" character varying(50) NOT NULL DEFAULT '';
     END IF;
 
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'Vessels'
+          AND column_name = 'InvoiceNumber'
+    ) THEN
+        ALTER TABLE "Vessels"
+        ADD COLUMN "InvoiceNumber" character varying(100);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'Vessels'
+          AND column_name = 'InvoiceUnitPrice'
+    ) THEN
+        ALTER TABLE "Vessels"
+        ADD COLUMN "InvoiceUnitPrice" numeric(18,2);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'Vessels'
+          AND column_name = 'InvoiceTotalPrice'
+    ) THEN
+        ALTER TABLE "Vessels"
+        ADD COLUMN "InvoiceTotalPrice" numeric(18,2);
+    END IF;
+
 END $$;
 """,
                 cancellationToken);
@@ -210,6 +240,24 @@ BEGIN
     ADD [PublicId] NVARCHAR(50) NOT NULL CONSTRAINT DF_Contracts_PublicId DEFAULT '';
 END;
 
+IF COL_LENGTH('Vessels', 'InvoiceNumber') IS NULL
+BEGIN
+    ALTER TABLE [Vessels]
+    ADD [InvoiceNumber] NVARCHAR(100) NULL;
+END;
+
+IF COL_LENGTH('Vessels', 'InvoiceUnitPrice') IS NULL
+BEGIN
+    ALTER TABLE [Vessels]
+    ADD [InvoiceUnitPrice] DECIMAL(18,2) NULL;
+END;
+
+IF COL_LENGTH('Vessels', 'InvoiceTotalPrice') IS NULL
+BEGIN
+    ALTER TABLE [Vessels]
+    ADD [InvoiceTotalPrice] DECIMAL(18,2) NULL;
+END;
+
 """,
                 cancellationToken);
 
@@ -289,6 +337,9 @@ ALTER TABLE "Requests" ADD COLUMN IF NOT EXISTS "PublicId" TEXT NOT NULL DEFAULT
 ALTER TABLE "Requests" ADD COLUMN IF NOT EXISTS "WheatPercentage" REAL;
 ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "SequenceNumber" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "PublicId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Vessels" ADD COLUMN IF NOT EXISTS "InvoiceNumber" TEXT;
+ALTER TABLE "Vessels" ADD COLUMN IF NOT EXISTS "InvoiceUnitPrice" REAL;
+ALTER TABLE "Vessels" ADD COLUMN IF NOT EXISTS "InvoiceTotalPrice" REAL;
 """,
                 cancellationToken);
 
