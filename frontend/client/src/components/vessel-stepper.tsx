@@ -284,12 +284,30 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
   };
 
   const getStageStatus = (stageIndex: number, currentStageIndex: number) => {
-    if (stageIndex < currentStageIndex) return 'completed';
-    if (stageIndex === currentStageIndex) return 'current';
-    return 'pending';
+    if (stageIndex < currentStageIndex) return "completed";
+    if (stageIndex === currentStageIndex) return "current";
+    return "pending";
   };
 
-  const currentStageIndex = selectedVessel ? getCurrentStageIndex(selectedVessel) : 0;
+  const statusStageIndex = selectedVessel ? getCurrentStageIndex(selectedVessel) : 0;
+
+  const highestDocumentStageIndex = useMemo(() => {
+    let highest = -1;
+    for (let index = 0; index < VESSEL_STAGES.length; index += 1) {
+      const stage = VESSEL_STAGES[index];
+      if (!documentsByStage.has(stage.id as VesselStageId)) {
+        break;
+      }
+      highest = index;
+    }
+    return highest;
+  }, [documentsByStage]);
+
+  const currentStageIndex = useMemo(() => {
+    const documentDrivenIndex = highestDocumentStageIndex + 1;
+    const effectiveIndex = Math.max(statusStageIndex, documentDrivenIndex);
+    return Math.min(effectiveIndex, VESSEL_STAGES.length - 1);
+  }, [highestDocumentStageIndex, statusStageIndex]);
 
   const stageRows = useMemo(() => {
     const midpoint = Math.ceil(VESSEL_STAGES.length / 2);
@@ -352,15 +370,17 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                       const globalIndex = startIndex + originalIndex;
                       const status = getStageStatus(globalIndex, currentStageIndex);
                       const hasStageDocument = documentsByStage.has(stageId);
-                      const isCurrent = status === 'current' && !hasStageDocument;
-                      const isCompleted = status === 'completed' || hasStageDocument;
+                      const isCurrent = status === "current" && !hasStageDocument;
+                      const isCompleted = hasStageDocument || status === "completed";
+                      const shouldHighlightConnector =
+                        hasStageDocument || globalIndex < currentStageIndex;
                       const nodeBaseClasses =
                         "z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 transition-all duration-300 shadow-sm";
                       const nodeStateClasses = hasStageDocument
                         ? "bg-green-500 border-green-500 text-white"
                         : isCurrent
                           ? "bg-blue-500 border-blue-500 text-white ring-4 ring-blue-200"
-                          : status === 'completed'
+                          : isCompleted
                             ? "bg-green-100 border-green-300 text-green-800"
                             : "bg-white border-gray-300 text-gray-500";
                       const nodeClasses = [
@@ -376,20 +396,20 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                       const isTransitionStage = isReversed ? isFirstDisplay : isLastDisplay;
                       const showVerticalConnector =
                         !isLastOverall && isTransitionStage && rowIdx < stageRowDescriptors.length - 1;
-                      const connectorAlignment: 'left' | 'right' = isReversed ? 'left' : 'right';
+                      const connectorAlignment: "left" | "right" = isReversed ? "left" : "right";
 
                       const labelOffsetClass = isCurrent ? '-bottom-20 md:-bottom-24' : '-bottom-14 md:-bottom-16';
                       const iconColorClass = isCompleted || isCurrent ? 'text-white' : 'text-gray-400';
                       const titleColorClass = isCompleted
-                        ? 'text-green-900'
+                        ? "text-green-900"
                         : isCurrent
-                          ? 'text-blue-900'
-                          : 'text-gray-700';
+                          ? "text-blue-900"
+                          : "text-gray-700";
                       const descriptionColorClass = isCompleted
-                        ? 'text-green-700'
+                        ? "text-green-700"
                         : isCurrent
-                          ? 'text-blue-700'
-                          : 'text-gray-500';
+                          ? "text-blue-700"
+                          : "text-gray-500";
 
                       const renderHorizontalConnector = () => (
                         <div
@@ -398,45 +418,50 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                         >
                           <div
                             className={`absolute inset-y-0 ${
-                              connectorAlignment === 'left' ? 'right-0' : 'left-0'
+                              connectorAlignment === "left" ? "right-0" : "left-0"
                             } transition-all duration-500 ${
-                              hasStageDocument || globalIndex < currentStageIndex
-                                ? 'w-full bg-green-500'
-                                : status === 'current'
-                                  ? 'w-full bg-blue-500'
-                                  : 'w-0'
+                              shouldHighlightConnector
+                                ? "w-full bg-green-500"
+                                : isCurrent
+                                  ? "w-full bg-blue-500"
+                                  : "w-0"
                             }`}
                           />
                         </div>
                       );
 
                       const renderVerticalConnector = () => (
-                        <div className="mx-3 flex flex-col items-center" aria-hidden>
-                          <div className="relative h-8 w-0.5 overflow-hidden rounded-full bg-gray-200">
+                        <div
+                          className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2"
+                          aria-hidden
+                        >
+                          <div className="mt-6 flex h-16 flex-col items-center md:mt-8 md:h-20">
+                            <div className="relative h-full w-0.5 overflow-hidden rounded-full bg-gray-200">
+                              <div
+                                className={`absolute inset-x-0 top-0 transition-all duration-500 ${
+                                  shouldHighlightConnector
+                                    ? "h-full bg-green-500"
+                                    : isCurrent
+                                      ? "h-full bg-blue-500"
+                                      : "h-0"
+                                }`}
+                              />
+                            </div>
                             <div
-                              className={`absolute inset-x-0 bottom-0 transition-all duration-500 ${
-                                hasStageDocument || globalIndex < currentStageIndex
-                                  ? 'h-full bg-green-500'
-                                  : status === 'current'
-                                    ? 'h-full bg-blue-500'
-                                    : 'h-0'
+                              className={`mt-1 h-2 w-2 rotate-45 ${
+                                shouldHighlightConnector
+                                  ? "bg-green-500"
+                                  : isCurrent
+                                    ? "bg-blue-500"
+                                    : "bg-gray-300"
                               }`}
                             />
                           </div>
-                          <div
-                            className={`mt-1 h-2 w-2 rotate-45 ${
-                              hasStageDocument || globalIndex < currentStageIndex
-                                ? 'bg-green-500'
-                                : status === 'current'
-                                  ? 'bg-blue-500'
-                                  : 'bg-gray-300'
-                            }`}
-                          />
                         </div>
                       );
 
                       return (
-                        <div key={stage.id} className="flex items-center">
+                        <div key={stage.id} className="relative flex items-center">
                           {isReversed && (
                             <>
                               {showVerticalConnector && renderVerticalConnector()}
@@ -475,7 +500,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                               >
                                 {stage.description}
                               </p>
-                              {status === 'current' && !hasStageDocument && (
+                              {isCurrent && (
                                 <Badge className="mt-2 border-0 bg-blue-100 text-[10px] text-blue-800">
                                   Current
                                 </Badge>
