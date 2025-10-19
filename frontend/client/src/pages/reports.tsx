@@ -732,64 +732,6 @@ export default function Reports() {
   return (
     <MainLayout title="Reports & Analytics" subtitle="Comprehensive import workflow analytics and forecasting">
       <div className="space-y-10 bg-slate-50/60 p-6 lg:p-10">
-        <section className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-sky-600 via-blue-600 to-indigo-600 text-white shadow-2xl">
-          <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(circle at top, rgba(255,255,255,0.7), transparent 60%)" }} />
-          <div className="relative grid gap-10 p-8 md:grid-cols-[1.35fr,1fr] lg:p-12">
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/70">
-                <BarChart3 className="h-4 w-4" />
-                Executive intelligence
-              </div>
-              <div className="space-y-3">
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Import analytics, at a glance
-                </h1>
-                <p className="max-w-2xl text-base text-white/80">
-                  Monitor performance across contracts, letters of credit, and vessel activity in one connected
-                  workspace. Pinpoint imbalances instantly and align teams around the same, always-fresh data.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3 pt-2 text-sm text-white/80">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 backdrop-blur">
-                  <Ship className="h-4 w-4" />
-                  {activeVesselCount.toLocaleString()} vessels being tracked
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 backdrop-blur">
-                  <FileText className="h-4 w-4" />
-                  {contractAnalytics.length.toLocaleString()} active contracts
-                </div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 backdrop-blur">
-                  <University className="h-4 w-4" />
-                  {lcAnalytics.length.toLocaleString()} letters of credit
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/30 bg-white/10 p-5 shadow-lg backdrop-blur">
-                <p className="text-sm font-medium text-white/80">LC coverage</p>
-                <p className="mt-3 text-3xl font-semibold">{lcCoverageRate.toFixed(1)}%</p>
-                <p className="mt-1 text-xs text-white/70">Across {lcAnalytics.length.toLocaleString()} letters of credit</p>
-              </div>
-              <div className="rounded-2xl border border-white/30 bg-white/10 p-5 shadow-lg backdrop-blur">
-                <p className="text-sm font-medium text-white/80">Forecast horizon</p>
-                <p className="mt-3 text-3xl font-semibold">
-                  {forecastMonthsCount ? `${forecastMonthsCount}-month` : "No"}
-                </p>
-                <p className="mt-1 text-xs text-white/70">{forecastHorizonLabel}</p>
-              </div>
-              <div className="rounded-2xl border border-white/30 bg-white/10 p-5 shadow-lg backdrop-blur sm:col-span-2">
-                <p className="text-sm font-medium text-white/80">Focus mode</p>
-                <p className="mt-3 text-2xl font-semibold">Curate the analysis with adaptive filters</p>
-                <p className="mt-2 text-xs text-white/70">
-                  Choose a supplier, port, or time window and the dashboards below will instantly reshape to your
-                  scenario.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <Card className="border-2 border-dashed border-slate-200 bg-white/80 shadow-none backdrop-blur">
           <CardHeader className="space-y-2">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
