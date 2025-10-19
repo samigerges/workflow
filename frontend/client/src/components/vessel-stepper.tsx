@@ -1,6 +1,8 @@
+import { ChangeEvent, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeftRight,
+  Check,
   CheckCircle,
   FileCheck,
   FileSignature,
@@ -11,11 +13,25 @@ import {
   Settings2,
   ShieldCheck,
   Ship,
+  Upload,
   X,
 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 // Define vessel stages with their properties
 export const VESSEL_STAGES = [
@@ -163,6 +179,102 @@ interface VesselStepperProps {
 }
 
 export default function VesselStepper({ selectedVessel, vessels, onClose }: VesselStepperProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [activeStageId, setActiveStageId] = useState<VesselStageId | null>(null);
+  const [showDocumentDialog, setShowDocumentDialog] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const vesselId = selectedVessel?.id;
+
+  const { data: documents = [], isLoading: documentsLoading } = useQuery<any[]>({
+    queryKey: ["/api/vessels", vesselId, "documents"],
+    enabled: Boolean(vesselId),
+  });
+
+  const documentsByStage = useMemo(() => {
+    const map = new Map<VesselStageId, any>();
+    if (!Array.isArray(documents)) return map;
+
+    documents.forEach((doc: any) => {
+      if (!doc?.type) return;
+      const normalized = normalizeStageId(String(doc.type));
+      const stage = VESSEL_STAGES.find((s) => s.id === normalized);
+      if (stage) {
+        map.set(stage.id as VesselStageId, doc);
+      }
+    });
+
+    return map;
+  }, [documents]);
+
+  const uploadMutation = useMutation({
+    mutationFn: async ({ file, stageId }: { file: File; stageId: VesselStageId }) => {
+      if (!vesselId) throw new Error("Missing vessel identifier");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", stageId);
+      const response = await apiRequest("POST", `/api/vessels/${vesselId}/documents`, formData);
+      return response.json();
+    },
+    onSuccess: () => {
+      if (vesselId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/vessels", vesselId, "documents"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/vessels"] });
+      toast({
+        title: "Document uploaded",
+        description: "The stage document was uploaded successfully.",
+      });
+      handleDialogClose();
+    },
+    onError: (error: any) => {
+      console.error("Error uploading stage document", error);
+      toast({
+        title: "Upload failed",
+        description: "We couldn't upload this document. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStageClick = (stageId: VesselStageId) => {
+    setActiveStageId(stageId);
+    setSelectedFile(null);
+    setShowDocumentDialog(true);
+  };
+
+  const handleDialogClose = () => {
+    setShowDocumentDialog(false);
+    setActiveStageId(null);
+    setSelectedFile(null);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      handleDialogClose();
+    } else {
+      setShowDocumentDialog(true);
+    }
+  };
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setSelectedFile(file ?? null);
+  };
+
+  const handleUpload = () => {
+    if (!selectedFile || !activeStageId) return;
+    uploadMutation.mutate({ file: selectedFile, stageId: activeStageId });
+  };
+
+  const activeStage = activeStageId
+    ? VESSEL_STAGES.find((stage) => stage.id === activeStageId)
+    : undefined;
+  const existingStageDocument = activeStageId
+    ? documentsByStage.get(activeStageId)
+    : undefined;
+
   const getStatusColor = (status: string) => {
     const stage = findStageByStatus(status);
     if (!stage) return "bg-gray-100 text-gray-800";
@@ -198,12 +310,13 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
   const currentStageIndex = selectedVessel ? getCurrentStageIndex(selectedVessel) : 0;
 
   return (
-    <Card className="border-primary-200 bg-primary-50/30">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-primary-900">
-            Vessel Details - {selectedVessel?.vesselName ?? ""}
-          </CardTitle>
+    <>
+      <Card className="border-primary-200 bg-primary-50/30">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-primary-900">
+              Vessel Details - {selectedVessel?.vesselName ?? ""}
+            </CardTitle>
           <Button
             variant="ghost"
             size="sm"
@@ -225,10 +338,12 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
             <div className="max-w-5xl mx-auto">
               <ol className="flex items-center justify-center gap-0">
                 {VESSEL_STAGES.map((stage, index) => {
+                  const stageId = stage.id as VesselStageId;
                   const Icon = stage.icon;
                   const status = getStageStatus(index, currentStageIndex);
                   const isLast = index === VESSEL_STAGES.length - 1;
                   const isCurrent = status === 'current';
+                  const hasStageDocument = documentsByStage.has(stageId);
 
                   const nodeClasses = `
                     z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 transition-all duration-300
@@ -246,9 +361,20 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                   return (
                     <li key={stage.id} className="relative flex items-center">
                       {/* Node + label wrapper (relative so label centers under node) */}
-                      <div className="relative flex items-center justify-center">
-                        <div className={nodeClasses}>
-                          <Icon className={`${(status === 'completed' || isCurrent) ? 'text-white' : 'text-gray-400'} w-6 h-6`} />
+                      <button
+                        type="button"
+                        onClick={() => handleStageClick(stageId)}
+                        className="relative flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                      >
+                        <div className="relative">
+                          <div className={`${nodeClasses} ${documentsLoading ? 'cursor-wait' : 'cursor-pointer'} shadow-sm`}>
+                            <Icon className={`${(status === 'completed' || isCurrent) ? 'text-white' : 'text-gray-400'} w-6 h-6`} />
+                          </div>
+                          {hasStageDocument && (
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow">
+                              <Check className="h-3 w-3" />
+                            </span>
+                          )}
                         </div>
 
                         {/* Label centered under the node */}
@@ -273,7 +399,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                             </Badge>
                           )}
                         </div>
-                      </div>
+                      </button>
 
                       {/* Connector AFTER this node (only between steps; fixed width keeps the whole stepper centered) */}
                       {!isLast && (
@@ -391,6 +517,95 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
           </div>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+
+      <Dialog open={showDocumentDialog} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {activeStage?.title ?? "Upload document"}
+            </DialogTitle>
+            <DialogDescription>
+              {activeStage
+                ? `Add supporting documentation for the ${activeStage.title} stage.`
+                : "Select a vessel stage to upload a document."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {existingStageDocument ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <div className="font-medium text-emerald-900">
+                  {existingStageDocument.fileName}
+                </div>
+                <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">
+                  Uploaded
+                </Badge>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-emerald-700">
+                <span>
+                  Uploaded {new Date(existingStageDocument.uploadedAt).toLocaleString()}
+                </span>
+                {existingStageDocument.fileUrl && (
+                  <Button
+                    variant="link"
+                    className="h-auto px-0 text-emerald-900"
+                    onClick={() => window.open(existingStageDocument.fileUrl, "_blank")}
+                  >
+                    View document
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-4 text-sm text-gray-600">
+              No document has been uploaded for this stage yet.
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="stage-document">Upload file</Label>
+            <Input
+              id="stage-document"
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              onChange={handleFileChange}
+              disabled={uploadMutation.isPending}
+            />
+            {selectedFile && (
+              <p className="text-xs text-gray-500">Selected file: {selectedFile.name}</p>
+            )}
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDialogClose}
+              disabled={uploadMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleUpload}
+              disabled={!selectedFile || uploadMutation.isPending}
+            >
+              {uploadMutation.isPending ? (
+                <>
+                  <Upload className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload document
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
