@@ -12,9 +12,9 @@ namespace WorkflowBackend.Api.Migrations
         {
             if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
             {
-                migrationBuilder.Sql(@"ALTER TABLE \"Vessels\" ADD COLUMN IF NOT EXISTS \"InvoiceNumber\" character varying(100);");
-                migrationBuilder.Sql(@"ALTER TABLE \"Vessels\" ADD COLUMN IF NOT EXISTS \"InvoiceUnitPrice\" numeric(18,2);");
-                migrationBuilder.Sql(@"ALTER TABLE \"Vessels\" ADD COLUMN IF NOT EXISTS \"InvoiceTotalPrice\" numeric(18,2);");
+                migrationBuilder.Sql(@"ALTER TABLE ""Vessels"" ADD COLUMN IF NOT EXISTS ""InvoiceNumber"" character varying(100);");
+                migrationBuilder.Sql(@"ALTER TABLE ""Vessels"" ADD COLUMN IF NOT EXISTS ""InvoiceUnitPrice"" numeric(18,2);");
+                migrationBuilder.Sql(@"ALTER TABLE ""Vessels"" ADD COLUMN IF NOT EXISTS ""InvoiceTotalPrice"" numeric(18,2);");
             }
         }
 
@@ -23,9 +23,9 @@ namespace WorkflowBackend.Api.Migrations
         {
             if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
             {
-                migrationBuilder.Sql(@"ALTER TABLE \"Vessels\" DROP COLUMN IF EXISTS \"InvoiceNumber\";");
-                migrationBuilder.Sql(@"ALTER TABLE \"Vessels\" DROP COLUMN IF EXISTS \"InvoiceUnitPrice\";");
-                migrationBuilder.Sql(@"ALTER TABLE \"Vessels\" DROP COLUMN IF EXISTS \"InvoiceTotalPrice\";");
+                migrationBuilder.Sql(@"ALTER TABLE ""Vessels"" DROP COLUMN IF EXISTS ""InvoiceNumber"";");
+                migrationBuilder.Sql(@"ALTER TABLE ""Vessels"" DROP COLUMN IF EXISTS ""InvoiceUnitPrice"";");
+                migrationBuilder.Sql(@"ALTER TABLE ""Vessels"" DROP COLUMN IF EXISTS ""InvoiceTotalPrice"";");
             }
         }
     }
