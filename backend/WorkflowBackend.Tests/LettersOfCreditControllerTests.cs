@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -831,7 +832,10 @@ public class LettersOfCreditControllerTests
 
     private static LettersOfCreditController CreateController(AppDbContext context, IWebHostEnvironment? environment = null)
     {
-        var controller = new LettersOfCreditController(context, environment ?? new FakeWebHostEnvironment());
+        var controller = new LettersOfCreditController(
+            context,
+            environment ?? new FakeWebHostEnvironment(),
+            NullLogger<LettersOfCreditController>.Instance);
 
         var identity = new ClaimsIdentity(
             new[] { new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) },
