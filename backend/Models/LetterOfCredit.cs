@@ -1,7 +1,8 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace WorkflowBackend.Api.Models
-{
+{ 
     public class LetterOfCredit
     {
         public Guid Id { get; set; } = Guid.NewGuid();
