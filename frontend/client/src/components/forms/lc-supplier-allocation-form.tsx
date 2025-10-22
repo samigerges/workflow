@@ -162,22 +162,19 @@ export default function LCSupplierAllocationDialog({
     return rows.reduce(
       (acc, row) => {
         const quantity = typeof row.quantity === "number" ? row.quantity : 0;
-        const percentage = typeof row.percentage === "number" ? row.percentage : 0;
         const amount = typeof row.amount === "number" ? row.amount : 0;
 
         return {
           quantity: acc.quantity + quantity,
-          percentage: acc.percentage + percentage,
           amount: acc.amount + amount,
         };
       },
-      { quantity: 0, percentage: 0, amount: 0 },
+      { quantity: 0, amount: 0 },
     );
   }, [rows]);
 
   const quantityExceeded =
     typeof lcQuantity === "number" && lcQuantity !== null && totals.quantity > lcQuantity + 1e-6;
-  const percentageExceeded = totals.percentage > 100 + 1e-6;
 
   const hasEmptySupplier = rows.some((row) => row.supplierName.trim().length === 0);
 
@@ -186,12 +183,6 @@ export default function LCSupplierAllocationDialog({
   if (quantityExceeded) {
     validationErrors.push(
       `Allocated quantity (${totals.quantity.toLocaleString()}) exceeds LC quantity ${lcQuantity?.toLocaleString() ?? "0"}.`,
-    );
-  }
-
-  if (percentageExceeded) {
-    validationErrors.push(
-      `Allocated percentage (${totals.percentage.toFixed(2)}%) cannot exceed 100%.`,
     );
   }
 
@@ -387,7 +378,7 @@ export default function LCSupplierAllocationDialog({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid gap-4 rounded-lg border border-secondary-200 bg-secondary-50 p-4 text-sm text-secondary-700">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div className="space-y-1">
                   <span className="text-xs text-secondary-500">LC Number</span>
                   <span className="font-semibold text-secondary-900">{lc.number}</span>
@@ -400,18 +391,22 @@ export default function LCSupplierAllocationDialog({
                       : "—"}
                   </span>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <span className="text-xs text-secondary-500">Allocated Quantity</span>
-                  <span className={cn("font-semibold", quantityExceeded && "text-destructive")}> 
-                    {totals.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  <span className="text-xs text-secondary-500">Total Amount</span>
+                  <span className="font-semibold text-secondary-900">
+                    {typeof lc.amount === "number"
+                      ? lc.currency
+                        ? formatLcCurrency(lc.amount, lc.currency)
+                        : lc.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                      : "—"}
                   </span>
                 </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <span className="text-xs text-secondary-500">Allocated %</span>
-                  <span className={cn("font-semibold", percentageExceeded && "text-destructive")}>
-                    {totals.percentage.toFixed(2)}%
+                  <span className="text-xs text-secondary-500">Allocated Quantity</span>
+                  <span className={cn("font-semibold", quantityExceeded && "text-destructive")}>
+                    {totals.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="space-y-1">
@@ -466,56 +461,29 @@ export default function LCSupplierAllocationDialog({
                               autoComplete="off"
                             />
                           </div>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            <div className="space-y-2">
-                              <Label htmlFor={`quantity-${rowId}`}>Quantity</Label>
-                              <Input
-                                id={`quantity-${rowId}`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={row.quantity === "" ? "" : row.quantity}
-                                onChange={(event) => {
-                                  const value = event.target.value;
-                                  setRows((prev) =>
-                                    prev.map((current, idx) =>
-                                      idx === index
-                                        ? {
-                                            ...current,
-                                            quantity: value === "" ? "" : Number(value),
-                                          }
-                                        : current,
-                                    ),
-                                  );
-                                }}
-                                placeholder="0"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor={`percentage-${rowId}`}>Allocation %</Label>
-                              <Input
-                                id={`percentage-${rowId}`}
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                value={row.percentage === "" ? "" : row.percentage}
-                                onChange={(event) => {
-                                  const value = event.target.value;
-                                  setRows((prev) =>
-                                    prev.map((current, idx) =>
-                                      idx === index
-                                        ? {
-                                            ...current,
-                                            percentage: value === "" ? "" : Number(value),
-                                          }
-                                        : current,
-                                    ),
-                                  );
-                                }}
-                                placeholder="0"
-                              />
-                            </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`quantity-${rowId}`}>Quantity</Label>
+                            <Input
+                              id={`quantity-${rowId}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={row.quantity === "" ? "" : row.quantity}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setRows((prev) =>
+                                  prev.map((current, idx) =>
+                                    idx === index
+                                      ? {
+                                          ...current,
+                                          quantity: value === "" ? "" : Number(value),
+                                        }
+                                      : current,
+                                  ),
+                                );
+                              }}
+                              placeholder="0"
+                            />
                           </div>
                         </div>
                         <Button
