@@ -278,7 +278,7 @@ namespace WorkflowBackend.Api.Controllers
                 url = $"{req.Scheme}://{req.Host}/{lc.FilePath.Replace("\\", "/")}";
             }
 
-            var supplier = NormalizeString(lc.Contract?.SupplierName) ?? NormalizeString(lc.Beneficiary);
+            var supplier = NormalizeString(lc.Contract?.SupplierName);
 
             var allocations = lc.SupplierAllocations?
                 .OrderBy(a => a.CreatedAt)
@@ -295,10 +295,10 @@ namespace WorkflowBackend.Api.Controllers
                 lc.PricePerUnit,
                 lc.Currency,
                 lc.IssueDate,
-                lc.ShipmentPeriod,
+                lc.ShipmentPeriodStart,
+                lc.ShipmentPeriodEnd,
                 lc.ExpiryDate,
                 lc.Applicant,
-                lc.Beneficiary,
                 supplier,
                 lc.Status,
                 lc.ContractId,
@@ -424,10 +424,10 @@ namespace WorkflowBackend.Api.Controllers
                 Currency = string.IsNullOrWhiteSpace(req.Currency) ? null : req.Currency.Trim().ToUpperInvariant(),
                 CargoType = string.IsNullOrWhiteSpace(req.CargoType) ? null : req.CargoType.Trim(),
                 IssueDate = ToUtc(req.IssueDate),
-                ShipmentPeriod = ToUtc(req.ShipmentPeriod),
+                ShipmentPeriodStart = ToUtc(req.ShipmentPeriodStart),
+                ShipmentPeriodEnd = ToUtc(req.ShipmentPeriodEnd),
                 ExpiryDate = ToUtc(req.ExpiryDate),
                 Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim(),
-                Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim(),
                 ContractId = req.ContractId,
                 Status = "Issued",
                 CreatedByUserId = CurrentUserId(),
@@ -463,10 +463,10 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] string? currency,
             [FromForm] string? cargoType,
             [FromForm] DateTime? issueDate,
-            [FromForm] DateTime? shipmentPeriod,
+            [FromForm] DateTime? shipmentPeriodStart,
+            [FromForm] DateTime? shipmentPeriodEnd,
             [FromForm] DateTime? expiryDate,
             [FromForm] string? applicant,
-            [FromForm] string? beneficiary,
             [FromForm] Guid? contractId,
             [FromForm] string? flow,
             [FromForm(Name = "lcFile")] IFormFile? file)
@@ -486,10 +486,10 @@ namespace WorkflowBackend.Api.Controllers
                 Currency = string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant(),
                 CargoType = string.IsNullOrWhiteSpace(cargoType) ? null : cargoType.Trim(),
                 IssueDate = ToUtc(issueDate),
-                ShipmentPeriod = ToUtc(shipmentPeriod),
+                ShipmentPeriodStart = ToUtc(shipmentPeriodStart),
+                ShipmentPeriodEnd = ToUtc(shipmentPeriodEnd),
                 ExpiryDate = ToUtc(expiryDate),
                 Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim(),
-                Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim(),
                 ContractId = contractId,
                 Status = "Issued",
                 CreatedByUserId = CurrentUserId(),
@@ -566,10 +566,10 @@ namespace WorkflowBackend.Api.Controllers
             lc.Currency = string.IsNullOrWhiteSpace(req.Currency) ? null : req.Currency.Trim().ToUpperInvariant();
             lc.CargoType = string.IsNullOrWhiteSpace(req.CargoType) ? null : req.CargoType.Trim();
             lc.IssueDate = ToUtc(req.IssueDate);
-            lc.ShipmentPeriod = ToUtc(req.ShipmentPeriod);
+            lc.ShipmentPeriodStart = ToUtc(req.ShipmentPeriodStart);
+            lc.ShipmentPeriodEnd = ToUtc(req.ShipmentPeriodEnd);
             lc.ExpiryDate = ToUtc(req.ExpiryDate);
             lc.Applicant = string.IsNullOrWhiteSpace(req.Applicant) ? null : req.Applicant.Trim();
-            lc.Beneficiary = string.IsNullOrWhiteSpace(req.Beneficiary) ? null : req.Beneficiary.Trim();
             lc.ContractId = req.ContractId;
             lc.Flow = normalizedFlow;
 
@@ -604,10 +604,10 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] string? currency,
             [FromForm] string? cargoType,
             [FromForm] DateTime? issueDate,
-            [FromForm] DateTime? shipmentPeriod,
+            [FromForm] DateTime? shipmentPeriodStart,
+            [FromForm] DateTime? shipmentPeriodEnd,
             [FromForm] DateTime? expiryDate,
             [FromForm] string? applicant,
-            [FromForm] string? beneficiary,
             [FromForm] Guid? contractId,
             [FromForm] string? flow,
             [FromForm(Name = "lcFile")] IFormFile? file)
@@ -644,10 +644,10 @@ namespace WorkflowBackend.Api.Controllers
             lc.Currency = string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant();
             lc.CargoType = string.IsNullOrWhiteSpace(cargoType) ? null : cargoType.Trim();
             lc.IssueDate = ToUtc(issueDate);
-            lc.ShipmentPeriod = ToUtc(shipmentPeriod);
+            lc.ShipmentPeriodStart = ToUtc(shipmentPeriodStart);
+            lc.ShipmentPeriodEnd = ToUtc(shipmentPeriodEnd);
             lc.ExpiryDate = ToUtc(expiryDate);
             lc.Applicant = string.IsNullOrWhiteSpace(applicant) ? null : applicant.Trim();
-            lc.Beneficiary = string.IsNullOrWhiteSpace(beneficiary) ? null : beneficiary.Trim();
             lc.ContractId = contractId;
             lc.Flow = normalizedFlow;
 

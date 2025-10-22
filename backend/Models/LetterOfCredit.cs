@@ -26,14 +26,12 @@ namespace WorkflowBackend.Api.Models
         public string? CargoType { get; set; }
 
         public DateTime? IssueDate { get; set; }
-        public DateTime? ShipmentPeriod { get; set; }
+        public DateTime? ShipmentPeriodStart { get; set; }
+        public DateTime? ShipmentPeriodEnd { get; set; }
         public DateTime? ExpiryDate { get; set; }
 
         [MaxLength(200)]
         public string? Applicant { get; set; } // buyer
-
-        [MaxLength(200)]
-        public string? Beneficiary { get; set; } // seller
 
         [MaxLength(50)]
         public string Status { get; set; } = "Draft"; // Draft, Issued, Amended, Utilized, Expired, Cancelled, Archived
