@@ -13,6 +13,7 @@ import Requests from "@/pages/requests";
 import Contracts from "@/pages/contracts";
 import LettersCredit from "@/pages/letters-credit";
 import Vessels from "@/pages/vessels";
+import ContractJourneyReportPage from "@/pages/report-contract-journey";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -37,6 +38,7 @@ function Router() {
           <Route path="/contracts" component={Contracts} />
           <Route path="/letters-credit" component={LettersCredit} />
           <Route path="/vessels" component={Vessels} />
+          <Route path="/reports/contracts/:id" component={ContractJourneyReportPage} />
         </>
       )}
       <Route component={NotFound} />

@@ -907,6 +907,8 @@ namespace WorkflowBackend.Api.Migrations
 
                     b.HasIndex("ContractId");
 
+                    b.HasIndex("ContractId", "Eta", "Etd");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.ToTable("Vessels");

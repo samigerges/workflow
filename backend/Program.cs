@@ -83,6 +83,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", p => p.RequireRole(Roles.Admin));
     options.AddPolicy("ManagerOrAdmin", p => p.RequireRole(Roles.Admin, Roles.Manager));
+    options.AddPolicy("Reports.Read", p => p.RequireRole(Roles.Admin, Roles.Manager));
     // no policy needed for read-only; [Authorize] is enough
 });
 
