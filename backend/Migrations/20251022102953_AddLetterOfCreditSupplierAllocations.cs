@@ -17,7 +17,10 @@ namespace WorkflowBackend.Api.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     LetterOfCreditId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SupplierId = table.Column<Guid>(type: "uuid", nullable: true),
+                    SupplierName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     SupplierReference = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    Notes = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
                     Quantity = table.Column<decimal>(type: "numeric(18,3)", precision: 18, scale: 3, nullable: true),
                     Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
                     CreatedByUserId = table.Column<Guid>(type: "uuid", nullable: true),
