@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, University, Edit, Eye, Trash, Building2, Factory } from "lucide-react";
+import { Plus, University, Edit, Eye, Trash, Building2, Factory, ListPlus } from "lucide-react";
 import StatusBadge from "@/components/ui/status-badge";
 import {
   normalizeLc,
@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
+import LCSupplierAllocationDialog from "@/components/forms/lc-supplier-allocation-form";
 
 type FlowKey = NormalizedLC["flowKey"];
 
@@ -74,8 +75,10 @@ export default function LettersCredit() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showAllocationDialog, setShowAllocationDialog] = useState(false);
   const [editingLC, setEditingLC] = useState<any>(null);
   const [viewingLC, setViewingLC] = useState<any>(null);
+  const [allocationLC, setAllocationLC] = useState<NormalizedLC | null>(null);
   const [suppressJourneySelection, setSuppressJourneySelection] = useState(false);
 
   useEffect(() => {
@@ -303,6 +306,17 @@ export default function LettersCredit() {
           }}
         />
 
+        <LCSupplierAllocationDialog
+          lc={allocationLC}
+          open={showAllocationDialog}
+          onOpenChange={(open) => {
+            setShowAllocationDialog(open);
+            if (!open) {
+              setAllocationLC(null);
+            }
+          }}
+        />
+
         {/* LC Stats Cards */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
           <Card className="bg-white border border-secondary-200">
@@ -473,6 +487,21 @@ export default function LettersCredit() {
                                 <Eye size={14} className="mr-1" />
                                 View
                               </Button>
+                              {isUpfToSuppliers && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                                  onClick={() => {
+                                    setAllocationLC(normalized);
+                                    setShowAllocationDialog(true);
+                                  }}
+                                  title="Manage supplier allocations"
+                                >
+                                  <ListPlus size={14} className="mr-1" />
+                                  Allocate
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 className="bg-blue-500 hover:bg-blue-600 text-white"

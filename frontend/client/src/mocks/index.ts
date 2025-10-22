@@ -599,5 +599,31 @@ export const vesselLettersOfCredit: Record<number, any[]> = {
 };
 
 export const vesselLoadingPorts: Record<number, any[]> = {};
+export const lcSupplierAllocations: Record<number, any[]> = {
+  1: [
+    {
+      id: 1,
+      supplierId: null,
+      supplierName: "Global Commodities",
+      quantity: 2500,
+      allocationQuantity: 2500,
+      percentage: 40,
+      allocationPercentage: 40,
+      amount: 1500000,
+      allocationAmount: 1500000,
+    },
+    {
+      id: 2,
+      supplierId: null,
+      supplierName: "Eastern Supply Co.",
+      quantity: 2000,
+      allocationQuantity: 2000,
+      percentage: 32,
+      allocationPercentage: 32,
+      amount: 1200000,
+      allocationAmount: 1200000,
+    },
+  ],
+};
 export const shipments: any[] = [];
 export const finalSettlements: any[] = [];
