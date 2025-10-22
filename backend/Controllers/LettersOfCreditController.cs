@@ -318,6 +318,8 @@ namespace WorkflowBackend.Api.Controllers
                 allocation.SupplierName,
                 allocation.Quantity,
                 allocation.Amount,
+                allocation.SupplierReference,
+                allocation.CreatedByUserId,
                 allocation.Notes,
                 allocation.CreatedAt,
                 allocation.UpdatedAt
@@ -752,8 +754,10 @@ namespace WorkflowBackend.Api.Controllers
                 LetterOfCreditId = id,
                 SupplierId = request.SupplierId,
                 SupplierName = supplierName!,
+                SupplierReference = NormalizeString(request.SupplierReference),
                 Quantity = request.Quantity,
                 Amount = request.Amount,
+                CreatedByUserId = CurrentUserId(),
                 Notes = NormalizeString(request.Notes),
                 CreatedAt = now,
                 UpdatedAt = now

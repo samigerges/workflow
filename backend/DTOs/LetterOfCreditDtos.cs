@@ -76,7 +76,8 @@ namespace WorkflowBackend.Api.DTOs
         [param:Required, MaxLength(200)] string SupplierName,
         decimal? Quantity,
         decimal? Amount,
-        [param:MaxLength(2000)] string? Notes
+        [param:MaxLength(200)] string? SupplierReference = null,
+        [param:MaxLength(2000)] string? Notes = null
     );
 
     public record LetterOfCreditSupplierAllocationResponse(
@@ -86,6 +87,8 @@ namespace WorkflowBackend.Api.DTOs
         string SupplierName,
         decimal? Quantity,
         decimal? Amount,
+        string? SupplierReference,
+        Guid? CreatedByUserId,
         string? Notes,
         DateTime CreatedAt,
         DateTime UpdatedAt

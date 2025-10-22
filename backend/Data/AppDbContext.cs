@@ -114,12 +114,16 @@ namespace WorkflowBackend.Api.Data
                 .HasForeignKey(l => l.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<LetterOfCreditSupplierAllocation>().Property(a => a.SupplierName).HasMaxLength(200).IsRequired();
+            modelBuilder.Entity<LetterOfCreditSupplierAllocation>().Property(a => a.SupplierReference).HasMaxLength(200);
             modelBuilder.Entity<LetterOfCreditSupplierAllocation>().Property(a => a.Notes).HasMaxLength(2000);
             modelBuilder.Entity<LetterOfCreditSupplierAllocation>().Property(a => a.Quantity).HasPrecision(18, 3);
             modelBuilder.Entity<LetterOfCreditSupplierAllocation>().Property(a => a.Amount).HasPrecision(18, 2);
             modelBuilder.Entity<LetterOfCreditSupplierAllocation>()
                 .HasOne(a => a.LetterOfCredit).WithMany(l => l.SupplierAllocations)
                 .HasForeignKey(a => a.LetterOfCreditId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<LetterOfCreditSupplierAllocation>()
+                .HasOne(a => a.CreatedBy).WithMany()
+                .HasForeignKey(a => a.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
 
             // Vessel
             modelBuilder.Entity<Vessel>().Property(v => v.Name).HasMaxLength(200).IsRequired();

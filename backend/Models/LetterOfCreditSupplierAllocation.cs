@@ -15,8 +15,14 @@ namespace WorkflowBackend.Api.Models
         [Required, MaxLength(200)]
         public string SupplierName { get; set; } = string.Empty;
 
+        [MaxLength(200)]
+        public string? SupplierReference { get; set; }
+
         public decimal? Quantity { get; set; }
         public decimal? Amount { get; set; }
+
+        public Guid? CreatedByUserId { get; set; }
+        public User? CreatedBy { get; set; }
 
         [MaxLength(2000)]
         public string? Notes { get; set; }
