@@ -211,10 +211,6 @@ namespace WorkflowBackend.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("Beneficiary")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<string>("CargoType")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -268,7 +264,10 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<decimal?>("Quantity")
                         .HasColumnType("numeric");
 
-                    b.Property<DateTime?>("ShipmentPeriod")
+                    b.Property<DateTime?>("ShipmentPeriodEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ShipmentPeriodStart")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Status")

@@ -35,9 +35,9 @@ const lcFormSchema = z.object({
   currency: z.string().default("USD"),
   cargoType: z.string().optional(),
   issueDate: z.string().optional(),
-  shipmentPeriod: z.string().optional(),
+  shipmentPeriodStart: z.string().optional(),
+  shipmentPeriodEnd: z.string().optional(),
   expiryDate: z.string().optional(),
-  beneficiary: z.string().optional(),
   flow: z.enum(FLOW_VALUES).default("gasc_to_upf"),
   status: z.string().default("draft"),
   createdBy: z.string().optional(),
@@ -78,13 +78,15 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
           issueDate: normalizedLc.issueDate
             ? new Date(normalizedLc.issueDate).toISOString().split("T")[0]
             : "",
-          shipmentPeriod: normalizedLc.shipmentPeriod
-            ? new Date(normalizedLc.shipmentPeriod).toISOString().split("T")[0]
+          shipmentPeriodStart: normalizedLc.shipmentPeriodStart
+            ? new Date(normalizedLc.shipmentPeriodStart).toISOString().split("T")[0]
+            : "",
+          shipmentPeriodEnd: normalizedLc.shipmentPeriodEnd
+            ? new Date(normalizedLc.shipmentPeriodEnd).toISOString().split("T")[0]
             : "",
           expiryDate: normalizedLc.expiryDate
             ? new Date(normalizedLc.expiryDate).toISOString().split("T")[0]
             : "",
-          beneficiary: normalizedLc.beneficiary ?? "",
           flow: normalizedLc.flowKey,
           status: normalizedLc.statusKey ?? "draft",
         }
@@ -148,16 +150,16 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
         formData.append("issueDate", data.issueDate);
       }
 
-      if (data.shipmentPeriod) {
-        formData.append("shipmentPeriod", data.shipmentPeriod);
+      if (data.shipmentPeriodStart) {
+        formData.append("shipmentPeriodStart", data.shipmentPeriodStart);
+      }
+
+      if (data.shipmentPeriodEnd) {
+        formData.append("shipmentPeriodEnd", data.shipmentPeriodEnd);
       }
 
       if (data.expiryDate) {
         formData.append("expiryDate", data.expiryDate);
-      }
-
-      if (data.beneficiary) {
-        formData.append("beneficiary", data.beneficiary);
       }
 
       const normalizedFlow = data.flow === "upf_to_supplier" ? "UPF_TO_SUPPLIER" : "GASC_TO_UPF";
@@ -406,17 +408,9 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="beneficiary">Beneficiary</Label>
-              <Input
-                id="beneficiary"
-                {...register("beneficiary")}
-                placeholder="Beneficiary name"
-              />
-            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
               <Label htmlFor="issueDate">Issue Date *</Label>
               <Input
@@ -430,15 +424,27 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
               )}
             </div>
             <div>
-              <Label htmlFor="shipmentPeriod">Shipment Period Date</Label>
+              <Label htmlFor="shipmentPeriodStart">Shipment Period From</Label>
               <Input
-                id="shipmentPeriod"
+                id="shipmentPeriodStart"
                 type="date"
-                {...register("shipmentPeriod")}
-                className={errors.shipmentPeriod ? "border-red-500" : ""}
+                {...register("shipmentPeriodStart")}
+                className={errors.shipmentPeriodStart ? "border-red-500" : ""}
               />
-              {errors.shipmentPeriod && (
-                <p className="text-sm text-red-500 mt-1">{errors.shipmentPeriod.message}</p>
+              {errors.shipmentPeriodStart && (
+                <p className="text-sm text-red-500 mt-1">{errors.shipmentPeriodStart.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="shipmentPeriodEnd">Shipment Period To</Label>
+              <Input
+                id="shipmentPeriodEnd"
+                type="date"
+                {...register("shipmentPeriodEnd")}
+                className={errors.shipmentPeriodEnd ? "border-red-500" : ""}
+              />
+              {errors.shipmentPeriodEnd && (
+                <p className="text-sm text-red-500 mt-1">{errors.shipmentPeriodEnd.message}</p>
               )}
             </div>
             <div>

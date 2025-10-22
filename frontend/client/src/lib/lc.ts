@@ -20,7 +20,6 @@ export interface NormalizedLC {
   issuingBank: string | null;
   cargoType: string | null;
   applicant: string | null;
-  beneficiary: string | null;
   supplierName: string | null;
   flow: string;
   flowKey: "gasc_to_upf" | "upf_to_supplier";
@@ -29,7 +28,6 @@ export interface NormalizedLC {
   issueDate: string | null;
   shipmentPeriodStart: string | null;
   shipmentPeriodEnd: string | null;
-  shipmentPeriod: string | null;
   expiryDate: string | null;
   contractId: string | null;
   createdAt: string | null;
@@ -101,7 +99,6 @@ export function normalizeLc(raw: any): NormalizedLC {
   const issuingBank = safeString(raw?.issuingBank) ?? safeString(raw?.issuing_bank);
   const cargoType = safeString(raw?.cargoType) ?? safeString(raw?.cargo_type);
   const applicant = safeString(raw?.applicant) ?? safeString(raw?.applicantName);
-  const beneficiary = safeString(raw?.beneficiary) ?? safeString(raw?.beneficiaryName);
   const supplierName = safeString(raw?.supplierName) ?? safeString(raw?.supplier_name);
   const status = safeString(raw?.status) ?? "Draft";
   const statusKey = status.toLowerCase();
@@ -134,9 +131,9 @@ export function normalizeLc(raw: any): NormalizedLC {
     safeDateString(raw?.shipmentEndDate) ??
     safeDateString(raw?.shipment_end_date) ??
     safeDateString(raw?.shipment_period_end);
-  const shipmentPeriod = safeDateString(raw?.shipmentPeriod) ?? safeDateString(raw?.shipmentPeriodDate);
-  const normalizedShipmentPeriodStart = shipmentPeriodStart ?? shipmentPeriod ?? null;
-  const normalizedShipmentPeriodEnd = shipmentPeriodEnd ?? shipmentPeriod ?? null;
+  const legacyShipmentPeriod = safeDateString(raw?.shipmentPeriod) ?? safeDateString(raw?.shipmentPeriodDate);
+  const normalizedShipmentPeriodStart = shipmentPeriodStart ?? legacyShipmentPeriod ?? null;
+  const normalizedShipmentPeriodEnd = shipmentPeriodEnd ?? legacyShipmentPeriod ?? null;
   const expiryDate = safeDateString(raw?.expiryDate) ?? safeDateString(raw?.expirationDate);
   const createdAt = safeDateString(raw?.createdAt);
   const updatedAt = safeDateString(raw?.updatedAt);
@@ -211,7 +208,6 @@ export function normalizeLc(raw: any): NormalizedLC {
     issuingBank,
     cargoType,
     applicant,
-    beneficiary,
     supplierName,
     flow: normalizedFlow,
     flowKey,
@@ -220,7 +216,6 @@ export function normalizeLc(raw: any): NormalizedLC {
     issueDate,
     shipmentPeriodStart: normalizedShipmentPeriodStart,
     shipmentPeriodEnd: normalizedShipmentPeriodEnd,
-    shipmentPeriod,
     expiryDate,
     contractId,
     createdAt,

@@ -403,7 +403,6 @@ export default function LettersCredit() {
                       <TableHead>Price per Unit</TableHead>
                       <TableHead>Total Price</TableHead>
                       <TableHead>Issuing Bank</TableHead>
-                      {!isUpfToSuppliers && <TableHead>Beneficiary</TableHead>}
                       {!isUpfToSuppliers && <TableHead>Supplier</TableHead>}
                       <TableHead>Shipment From</TableHead>
                       <TableHead>Shipment To</TableHead>
@@ -435,9 +434,6 @@ export default function LettersCredit() {
                           </TableCell>
                           <TableCell>{formatLcCurrency(normalized.amount, normalized.currency)}</TableCell>
                           <TableCell>{normalized.issuingBank ?? "—"}</TableCell>
-                          {!isUpfToSuppliers && (
-                            <TableCell>{normalized.beneficiary ?? "—"}</TableCell>
-                          )}
                           {!isUpfToSuppliers && (
                             <TableCell>{normalized.supplierName ?? "—"}</TableCell>
                           )}

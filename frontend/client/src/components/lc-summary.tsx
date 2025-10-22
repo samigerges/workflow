@@ -24,6 +24,13 @@ interface LCSummaryProps {
 }
 
 function buildDetailItems(lc: NormalizedLC) {
+  const shipmentFrom = formatLcDate(lc.shipmentPeriodStart);
+  const shipmentTo = formatLcDate(lc.shipmentPeriodEnd);
+  const shipmentLabel =
+    shipmentFrom === "—" && shipmentTo === "—"
+      ? "—"
+      : `${shipmentFrom !== "—" ? shipmentFrom : "—"} → ${shipmentTo !== "—" ? shipmentTo : "—"}`;
+
   return [
     { label: "LC Number", value: lc.number },
     { label: "Cargo Type", value: lc.cargoType ?? "—" },
@@ -37,7 +44,6 @@ function buildDetailItems(lc: NormalizedLC) {
     },
     { label: "Total Price", value: formatLcCurrency(lc.amount, lc.currency) },
     { label: "Issuing Bank", value: lc.issuingBank ?? "—" },
-    { label: "Beneficiary", value: lc.beneficiary ?? "—" },
     { label: "Supplier", value: lc.supplierName ?? "—" },
     {
       label: "Allocated Quantity",
@@ -57,7 +63,7 @@ function buildDetailItems(lc: NormalizedLC) {
       label: "Journey",
       value: lc.flowKey === "gasc_to_upf" ? "LC GASC → UPF" : "UPF → Supplier",
     },
-    { label: "Shipment Period", value: formatLcDate(lc.shipmentPeriod) },
+    { label: "Shipment Period", value: shipmentLabel },
     { label: "Issue Date", value: formatLcDate(lc.issueDate) },
     {
       label: "Expiry Date",
