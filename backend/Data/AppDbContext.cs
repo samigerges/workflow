@@ -33,6 +33,8 @@ namespace WorkflowBackend.Api.Data
 
         public DbSet<ServiceProviderModel> ServiceProviders => Set<ServiceProviderModel>();
         public DbSet<ServiceProviderPriceModel> ServiceProviderPrices => Set<ServiceProviderPriceModel>();
+        public DbSet<Port> Ports => Set<Port>();
+        public DbSet<PortSchedule> PortSchedules => Set<PortSchedule>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -181,6 +183,37 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<VesselLetterOfCredit>()
                 .HasOne(x => x.LetterOfCredit).WithMany()
                 .HasForeignKey(x => x.LetterOfCreditId).OnDelete(DeleteBehavior.Cascade);
+
+            // Port
+            modelBuilder.Entity<Port>().Property(p => p.Name).HasMaxLength(200).IsRequired();
+            modelBuilder.Entity<Port>().Property(p => p.Code).HasMaxLength(50);
+            modelBuilder.Entity<Port>().Property(p => p.Country).HasMaxLength(100);
+            modelBuilder.Entity<Port>().Property(p => p.Region).HasMaxLength(100);
+            modelBuilder.Entity<Port>().Property(p => p.StorageCapacity).HasPrecision(18, 2);
+            modelBuilder.Entity<Port>().Property(p => p.DailyThroughputCapacity).HasPrecision(18, 2);
+            modelBuilder.Entity<Port>()
+                .HasIndex(p => p.Code)
+                .IsUnique()
+                .HasFilter("\"Code\" IS NOT NULL");
+
+            // PortSchedule
+            modelBuilder.Entity<PortSchedule>().Property(s => s.Status).HasMaxLength(50);
+            modelBuilder.Entity<PortSchedule>().Property(s => s.Quantity).HasPrecision(18, 3);
+            modelBuilder.Entity<PortSchedule>()
+                .HasOne(s => s.Port)
+                .WithMany(p => p.Schedules)
+                .HasForeignKey(s => s.PortId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PortSchedule>()
+                .HasOne(s => s.Vessel)
+                .WithMany(v => v.PortSchedules)
+                .HasForeignKey(s => s.VesselId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PortSchedule>()
+                .HasIndex(s => new { s.PortId, s.VesselId })
+                .IsUnique();
+            modelBuilder.Entity<PortSchedule>()
+                .HasIndex(s => s.VesselId);
 
             // Shipment
             modelBuilder.Entity<Shipment>().Property(s => s.Reference).HasMaxLength(100).IsRequired();
