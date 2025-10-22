@@ -154,6 +154,8 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<Vessel>()
                 .HasOne(v => v.Contract).WithMany()
                 .HasForeignKey(v => v.ContractId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Vessel>()
+                .HasIndex(v => new { v.ContractId, v.Eta, v.Etd });
 
             // LoadingPort
             modelBuilder.Entity<LoadingPort>().Property(p => p.PortName).HasMaxLength(200).IsRequired();
@@ -193,6 +195,8 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<Shipment>()
                 .HasOne(s => s.LetterOfCredit).WithMany()
                 .HasForeignKey(s => s.LetterOfCreditId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Shipment>()
+                .HasIndex(s => s.VesselId);
 
             modelBuilder.Entity<ShipmentDocument>().Property(d => d.Type).HasMaxLength(100);
             modelBuilder.Entity<ShipmentDocument>().Property(d => d.FileName).HasMaxLength(255);
