@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { CARGO_TYPES, COUNTRIES, PORTS } from "@/lib/constants";
 import { Plus, Trash2 } from "lucide-react";
@@ -62,26 +62,6 @@ interface VesselNominationFormProps {
   contracts: any[];
   lcs: any[];
   vessel?: any;
-}
-
-interface FormSectionProps {
-  title: string;
-  description?: string;
-  children: ReactNode;
-}
-
-function FormSection({ title, description, children }: FormSectionProps) {
-  return (
-    <section className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-        {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        ) : null}
-      </div>
-      <div className="space-y-6">{children}</div>
-    </section>
-  );
 }
 
 export default function VesselNominationForm({ onSuccess, onCancel, contracts, lcs, vessel }: VesselNominationFormProps) {
@@ -286,10 +266,7 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
     <Card>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
-          <FormSection
-            title="Vessel Overview"
-            description="Capture the headline information that identifies this nomination."
-          >
+          <div className="space-y-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <Label htmlFor="name">Vessel Name *</Label>
@@ -332,14 +309,11 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                 )}
               </div>
             </div>
-          </FormSection>
+          </div>
 
           <Separator />
 
-          <FormSection
-            title="Cargo & Voyage Details"
-            description="Outline what the vessel is carrying and when it is expected to move."
-          >
+          <div className="space-y-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <Label htmlFor="quantity">Quantity (tons) *</Label>
@@ -448,38 +422,29 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                 )}
               </div>
             </div>
-          </FormSection>
+          </div>
 
           <Separator />
 
-          <FormSection
-            title="Loading Plans"
-            description="Document each origin port feeding this vessel and its expected contribution."
-          >
+          <div className="space-y-6">
             <Card>
-              <CardHeader className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <CardTitle>Loading Ports</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Add each origin port and the quantity allocated to it.
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setLoadingPorts([
-                      ...loadingPorts,
-                      { portName: "", expectedQuantity: vesselQuantity || 0 },
-                    ])
-                  }
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Port
-                </Button>
-              </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setLoadingPorts([
+                        ...loadingPorts,
+                        { portName: "", expectedQuantity: vesselQuantity || 0 },
+                      ])
+                    }
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Port
+                  </Button>
+                </div>
                 {loadingPorts.length === 0 ? (
                   <p className="py-4 text-center text-muted-foreground">
                     No loading ports have been documented yet.
@@ -536,18 +501,14 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                 )}
               </CardContent>
             </Card>
-          </FormSection>
+          </div>
 
           <Separator />
 
-          <FormSection
-            title="Letters of Credit"
-            description="Link the vessel to letters of credit that finance or guarantee the shipment."
-          >
+          <div className="space-y-6">
             <Card>
-              <CardHeader className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
-                <CardTitle>Associated LCs</CardTitle>
-                <div className="flex flex-wrap gap-2">
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap justify-end gap-2">
                   {vesselLCs.length === 0 && vessel ? (
                     <Button
                       type="button"
@@ -574,8 +535,6 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                     Add LC
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 {vesselLCs.length === 0 ? (
                   <p className="py-4 text-center text-muted-foreground">
                     No letters of credit have been associated with this vessel yet.
@@ -645,14 +604,11 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                 )}
               </CardContent>
             </Card>
-          </FormSection>
+          </div>
 
           <Separator />
 
-          <FormSection
-            title="Trade Partners & Costs"
-            description="Capture the commercial arrangements and supporting partners for the voyage."
-          >
+          <div className="space-y-6">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <Label htmlFor="tradeTerms">Trade Terms *</Label>
@@ -715,7 +671,9 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
 
             {watch("tradeTerms") === "FOB" && (
               <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-                <h4 className="mb-3 font-semibold text-yellow-900">FOB Additional Costs</h4>
+                <p className="mb-3 text-sm font-medium text-yellow-900">
+                  FOB Additional Costs
+                </p>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
                     <Label htmlFor="insuranceCost">Insurance Cost (USD)</Label>
@@ -762,26 +720,21 @@ export default function VesselNominationForm({ onSuccess, onCancel, contracts, l
                 </div>
               </div>
             )}
-          </FormSection>
+          </div>
 
           <Separator />
 
-          <FormSection
-            title="Supporting Documents"
-            description="Attach the instructions and reference material required to execute the voyage."
-          >
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="shippingInstructions">Shipping Instructions</Label>
-                <Textarea
-                  id="shippingInstructions"
-                  {...register("shippingInstructions")}
-                  rows={4}
-                  placeholder="Special handling instructions, cargo details, loading requirements..."
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="shippingInstructions">Shipping Instructions</Label>
+              <Textarea
+                id="shippingInstructions"
+                {...register("shippingInstructions")}
+                rows={4}
+                placeholder="Special handling instructions, cargo details, loading requirements..."
+              />
             </div>
-          </FormSection>
+          </div>
 
           <Separator />
 
