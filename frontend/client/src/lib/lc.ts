@@ -1,3 +1,15 @@
+export interface NormalizedLcSupplierAllocation {
+  id: string | number | null;
+  supplierId: string | number | null;
+  supplierName: string;
+  quantity: number | null;
+  amount: number | null;
+  supplierReference: string | null;
+  notes: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
 export interface NormalizedLC {
   id: string | number | null;
   number: string;
@@ -24,6 +36,9 @@ export interface NormalizedLC {
   updatedAt: string | null;
   fileUrl: string | null;
   fileName: string | null;
+  supplierAllocations: NormalizedLcSupplierAllocation[];
+  allocatedQuantity: number | null;
+  allocatedAmount: number | null;
 }
 
 const safeString = (value: unknown): string | null => {
@@ -133,6 +148,59 @@ export function normalizeLc(raw: any): NormalizedLC {
   const fileUrl = safeString(raw?.fileUrl) ?? safeString(raw?.uploadedFile);
   const fileName = safeString(raw?.fileName) ?? safeString(raw?.uploadedFileName);
 
+  const supplierAllocationsRaw = Array.isArray(raw?.supplierAllocations)
+    ? raw.supplierAllocations
+    : Array.isArray(raw?.SupplierAllocations)
+      ? raw.SupplierAllocations
+      : [];
+
+  const supplierAllocations: NormalizedLcSupplierAllocation[] = supplierAllocationsRaw
+    .map((allocation: any) => {
+      const supplierName =
+        safeString(allocation?.supplierName) ??
+        safeString(allocation?.SupplierName) ??
+        safeString(allocation?.name) ??
+        "";
+
+      const quantity = parseNumber(
+        allocation?.quantity ??
+          allocation?.Quantity ??
+          allocation?.allocationQuantity ??
+          allocation?.allocatedQuantity,
+      );
+
+      const amount = parseNumber(allocation?.amount ?? allocation?.Amount ?? allocation?.allocationAmount);
+
+      const supplierReference =
+        safeString(allocation?.supplierReference) ?? safeString(allocation?.SupplierReference);
+
+      const notes = safeString(allocation?.notes) ?? safeString(allocation?.Notes);
+
+      const createdAt = safeDateString(allocation?.createdAt) ?? safeDateString(allocation?.CreatedAt);
+      const updatedAt = safeDateString(allocation?.updatedAt) ?? safeDateString(allocation?.UpdatedAt);
+
+      return {
+        id: allocation?.id ?? allocation?.Id ?? null,
+        supplierId: allocation?.supplierId ?? allocation?.SupplierId ?? null,
+        supplierName: supplierName ?? "",
+        quantity: quantity ?? null,
+        amount: amount ?? null,
+        supplierReference: supplierReference ?? null,
+        notes: notes ?? null,
+        createdAt,
+        updatedAt,
+      } satisfies NormalizedLcSupplierAllocation;
+    })
+    .filter((allocation: NormalizedLcSupplierAllocation) => allocation.supplierName.length > 0);
+
+  const allocatedQuantity = supplierAllocations.reduce((total, allocation) => {
+    return total + (allocation.quantity ?? 0);
+  }, 0);
+
+  const allocatedAmount = supplierAllocations.reduce((total, allocation) => {
+    return total + (allocation.amount ?? 0);
+  }, 0);
+
   return {
     id: raw?.id ?? null,
     number,
@@ -159,6 +227,9 @@ export function normalizeLc(raw: any): NormalizedLC {
     updatedAt,
     fileUrl,
     fileName,
+    supplierAllocations,
+    allocatedQuantity: supplierAllocations.length > 0 ? allocatedQuantity : null,
+    allocatedAmount: supplierAllocations.length > 0 ? allocatedAmount : null,
   };
 }
 
