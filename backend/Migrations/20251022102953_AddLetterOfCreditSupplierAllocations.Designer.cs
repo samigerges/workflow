@@ -312,9 +312,21 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<Guid>("LetterOfCreditId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<decimal?>("Quantity")
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SupplierName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("SupplierReference")
                         .HasMaxLength(200)
