@@ -708,6 +708,60 @@ public class LettersOfCreditControllerTests
     }
 
     [Fact]
+    public async Task UpdateSupplierAllocation_ValidRequest_UpdatesAllocation()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+
+        var lc = new LetterOfCredit
+        {
+            Number = "LC-Alloc",
+            Flow = "UPF_TO_SUPPLIER",
+            Status = "Issued",
+            Quantity = 80m
+        };
+
+        context.LettersOfCredit.Add(lc);
+        await context.SaveChangesAsync();
+
+        var allocation = new LetterOfCreditSupplierAllocation
+        {
+            LetterOfCreditId = lc.Id,
+            SupplierName = "Supplier A",
+            Quantity = 40m,
+            Amount = 100m
+        };
+
+        context.LetterOfCreditSupplierAllocations.Add(allocation);
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var request = new LetterOfCreditSupplierAllocationRequest(
+            SupplierId: null,
+            SupplierName: "Supplier B",
+            Quantity: 80m,
+            Amount: 200m,
+            SupplierReference: "REF-1",
+            Notes: "Updated allocation");
+
+        var result = await controller.UpdateSupplierAllocation(lc.Id, allocation.Id, request);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<LetterOfCreditSupplierAllocationResponse>(okResult.Value);
+
+        Assert.Equal("Supplier B", payload.SupplierName);
+        Assert.Equal(80m, payload.Quantity);
+        Assert.Equal(200m, payload.Amount);
+        Assert.Equal("REF-1", payload.SupplierReference);
+        Assert.Equal("Updated allocation", payload.Notes);
+
+        await context.Entry(lc).ReloadAsync();
+        Assert.Equal("Utilized", lc.Status);
+    }
+
+    [Fact]
     public async Task DeleteSupplierAllocation_RecomputesStatus()
     {
         var options = CreateInMemoryOptions();
