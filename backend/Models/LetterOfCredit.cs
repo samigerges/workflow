@@ -55,5 +55,8 @@ namespace WorkflowBackend.Api.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        public ICollection<LetterOfCreditSupplierAllocation> SupplierAllocations { get; set; }
+            = new List<LetterOfCreditSupplierAllocation>();
     }
 }

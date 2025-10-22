@@ -32,6 +32,8 @@ namespace WorkflowBackend.Api.Data
 
         public DbSet<ServiceProviderModel> ServiceProviders => Set<ServiceProviderModel>();
         public DbSet<ServiceProviderPriceModel> ServiceProviderPrices => Set<ServiceProviderPriceModel>();
+        public DbSet<LetterOfCreditSupplierAllocation> LetterOfCreditSupplierAllocations
+            => Set<LetterOfCreditSupplierAllocation>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -111,6 +113,21 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<LetterOfCredit>()
                 .HasOne(l => l.CreatedBy).WithMany()
                 .HasForeignKey(l => l.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<LetterOfCredit>()
+                .HasMany(l => l.SupplierAllocations)
+                .WithOne(a => a.LetterOfCredit)
+                .HasForeignKey(a => a.LetterOfCreditId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<LetterOfCreditSupplierAllocation>().Property(a => a.SupplierReference).HasMaxLength(200);
+            modelBuilder.Entity<LetterOfCreditSupplierAllocation>().Property(a => a.Quantity).HasPrecision(18, 3);
+            modelBuilder.Entity<LetterOfCreditSupplierAllocation>().Property(a => a.Amount).HasPrecision(18, 2);
+            modelBuilder.Entity<LetterOfCreditSupplierAllocation>()
+                .HasIndex(a => new { a.LetterOfCreditId, a.SupplierReference });
+            modelBuilder.Entity<LetterOfCreditSupplierAllocation>()
+                .HasOne(a => a.CreatedBy).WithMany()
+                .HasForeignKey(a => a.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Vessel
             modelBuilder.Entity<Vessel>().Property(v => v.Name).HasMaxLength(200).IsRequired();

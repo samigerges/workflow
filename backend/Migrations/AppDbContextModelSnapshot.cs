@@ -290,6 +290,45 @@ namespace WorkflowBackend.Api.Migrations
                     b.ToTable("LettersOfCredit");
                 });
 
+            modelBuilder.Entity("WorkflowBackend.Api.Models.LetterOfCreditSupplierAllocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LetterOfCreditId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("SupplierReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("LetterOfCreditId", "SupplierReference");
+
+                    b.ToTable("LetterOfCreditSupplierAllocations");
+                });
+
             modelBuilder.Entity("WorkflowBackend.Api.Models.LoadingPort", b =>
                 {
                     b.Property<Guid>("Id")
@@ -960,6 +999,24 @@ namespace WorkflowBackend.Api.Migrations
                     b.Navigation("CreatedBy");
                 });
 
+            modelBuilder.Entity("WorkflowBackend.Api.Models.LetterOfCreditSupplierAllocation", b =>
+                {
+                    b.HasOne("WorkflowBackend.Api.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WorkflowBackend.Api.Models.LetterOfCredit", "LetterOfCredit")
+                        .WithMany("SupplierAllocations")
+                        .HasForeignKey("LetterOfCreditId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("LetterOfCredit");
+                });
+
             modelBuilder.Entity("WorkflowBackend.Api.Models.LoadingPort", b =>
                 {
                     b.HasOne("WorkflowBackend.Api.Models.Vessel", "Vessel")
@@ -1107,6 +1164,11 @@ namespace WorkflowBackend.Api.Migrations
             modelBuilder.Entity("WorkflowBackend.Api.Models.Contract", b =>
                 {
                     b.Navigation("Votes");
+                });
+
+            modelBuilder.Entity("WorkflowBackend.Api.Models.LetterOfCredit", b =>
+                {
+                    b.Navigation("SupplierAllocations");
                 });
 
             modelBuilder.Entity("WorkflowBackend.Api.Models.Request", b =>
