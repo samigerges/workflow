@@ -27,6 +27,7 @@ interface ContractJourneyReport {
     bankName?: string | null;
     openedAt?: string | null;
     allocatedAmount?: number | null;
+    currency?: string | null;
     balance?: number | null;
   } | null;
   vessels: Array<{

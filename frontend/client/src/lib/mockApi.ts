@@ -53,6 +53,15 @@ type ServiceProviderRecord = {
 
 const serviceProviderStore = serviceProviders as ServiceProviderRecord[];
 
+type StageEntryRecord = {
+  id: number;
+  stageId: string;
+  numberValue: string;
+  updatedAt: string;
+};
+
+const vesselStageEntriesStore: Record<number, StageEntryRecord[]> = {};
+
 function parseMaybeJson(value: unknown) {
   if (typeof value !== "string") {
     return value;
@@ -91,6 +100,18 @@ function normalizeToStringArray(value: unknown) {
   }
 
   return [String(value)];
+}
+
+function normalizeStageIdentifier(value: unknown) {
+  if (typeof value !== "string") {
+    value = value == null ? "" : String(value);
+  }
+
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 function normalizePriceHistory(
@@ -800,6 +821,49 @@ export async function apiRequest(
       const port = { id: generateId(vesselLoadingPorts[vesselId] || []), ...payload } as any;
       vesselLoadingPorts[vesselId] = [...(vesselLoadingPorts[vesselId] || []), port];
       return jsonResponse(port, 201);
+    }
+  }
+  match = url.match(/^\/api\/vessels\/(\d+)\/stage-entries$/);
+  if (match) {
+    const vesselId = Number(match[1]);
+    const key = vesselId;
+    const entries = vesselStageEntriesStore[key] || [];
+    if (method === "GET") {
+      return jsonResponse(entries);
+    }
+    if (method === "POST") {
+      const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+      const normalizedStageId = normalizeStageIdentifier(payload.stageId ?? payload.type ?? "");
+      const numberValue = String(payload.value ?? payload.number ?? payload.numberValue ?? "").trim();
+      if (!normalizedStageId) {
+        return jsonResponse({ message: "Stage identifier is required." }, 400);
+      }
+      if (!numberValue) {
+        return jsonResponse({ message: "Stage value is required." }, 400);
+      }
+
+      const now = new Date().toISOString();
+      const currentEntries = [...entries];
+      const existingIdx = currentEntries.findIndex((entry) => entry.stageId === normalizedStageId);
+
+      if (existingIdx >= 0) {
+        currentEntries[existingIdx] = {
+          ...currentEntries[existingIdx],
+          numberValue,
+          updatedAt: now,
+        };
+        vesselStageEntriesStore[key] = currentEntries;
+        return jsonResponse(currentEntries[existingIdx]);
+      }
+
+      const entry: StageEntryRecord = {
+        id: generateId(currentEntries),
+        stageId: normalizedStageId,
+        numberValue,
+        updatedAt: now,
+      };
+      vesselStageEntriesStore[key] = [...currentEntries, entry];
+      return jsonResponse(entry, 201);
     }
   }
   match = url.match(/^\/api\/vessels\/(\d+)\/documents$/);

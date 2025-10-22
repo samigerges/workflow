@@ -24,6 +24,7 @@ namespace WorkflowBackend.Api.Data
         public DbSet<LoadingPort> LoadingPorts => Set<LoadingPort>();
         public DbSet<VesselDocument> VesselDocuments => Set<VesselDocument>();
         public DbSet<VesselLetterOfCredit> VesselLettersOfCredit => Set<VesselLetterOfCredit>();
+        public DbSet<VesselStageEntry> VesselStageEntries => Set<VesselStageEntry>();
         public DbSet<LetterOfCreditSupplierAllocation> LetterOfCreditSupplierAllocations => Set<LetterOfCreditSupplierAllocation>();
 
         public DbSet<Shipment> Shipments => Set<Shipment>();
@@ -173,6 +174,17 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<VesselDocument>()
                 .HasOne(d => d.Vessel).WithMany(v => v.Documents)
                 .HasForeignKey(d => d.VesselId).OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<VesselStageEntry>().Property(e => e.StageId).HasMaxLength(100).IsRequired();
+            modelBuilder.Entity<VesselStageEntry>().Property(e => e.NumberValue).HasMaxLength(100);
+            modelBuilder.Entity<VesselStageEntry>()
+                .HasIndex(e => new { e.VesselId, e.StageId })
+                .IsUnique();
+            modelBuilder.Entity<VesselStageEntry>()
+                .HasOne(e => e.Vessel)
+                .WithMany(v => v.StageEntries)
+                .HasForeignKey(e => e.VesselId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Vessel <-> LC
             modelBuilder.Entity<VesselLetterOfCredit>()
