@@ -26,13 +26,11 @@ namespace WorkflowBackend.Api.Migrations
             migrationBuilder.Sql(
                 "UPDATE \"LettersOfCredit\" SET \"ShipmentPeriodStart\" = \"ShipmentPeriod\", \"ShipmentPeriodEnd\" = \"ShipmentPeriod\" WHERE \"ShipmentPeriod\" IS NOT NULL;");
 
-            migrationBuilder.DropColumn(
-                name: "ShipmentPeriod",
-                table: "LettersOfCredit");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"LettersOfCredit\" DROP COLUMN IF EXISTS \"ShipmentPeriod\";");
 
-            migrationBuilder.DropColumn(
-                name: "Beneficiary",
-                table: "LettersOfCredit");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"LettersOfCredit\" DROP COLUMN IF EXISTS \"Beneficiary\";");
         }
 
         /// <inheritdoc />
