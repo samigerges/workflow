@@ -16,7 +16,8 @@ import {
   Menu,
   ChevronLeft,
   Target,
-  MapPin
+  MapPin,
+  BarChart3
 } from "lucide-react";
 import logoPath from "@assets/Picture1_1751117114784.jpg";
 
@@ -70,7 +71,14 @@ const getNavigation = (t: any) => [
     icon: MapPin,
     roles: ["admin", "shipping_officer"]
   },
-  
+  {
+    nameKey: "navigation.reports",
+    name: t("navigation.reports"),
+    href: "/reports",
+    icon: BarChart3,
+    roles: ["admin"]
+  },
+
 ];
 
 export default function Sidebar() {
