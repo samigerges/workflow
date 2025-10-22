@@ -716,6 +716,65 @@ namespace WorkflowBackend.Api.Controllers
             return allocations.Select(ToAllocationResponse).ToList();
         }
 
+        // PUT /api/letters-of-credit/{id}/supplier-allocations/{allocationId}
+        [HttpPut("{id:guid}/supplier-allocations/{allocationId:guid}")]
+        public async Task<ActionResult<LetterOfCreditSupplierAllocationResponse>> UpdateSupplierAllocation(
+            Guid id,
+            Guid allocationId,
+            [FromBody] LetterOfCreditSupplierAllocationRequest request)
+        {
+            if (request is null)
+                return BadRequest(new { message = "Request body is required." });
+
+            var supplierName = NormalizeString(request.SupplierName);
+            if (string.IsNullOrWhiteSpace(supplierName))
+                return BadRequest(new { message = "Supplier name is required." });
+
+            if (request.Quantity.HasValue && request.Quantity.Value < 0m)
+                return BadRequest(new { message = "Quantity cannot be negative." });
+
+            if (request.Amount.HasValue && request.Amount.Value < 0m)
+                return BadRequest(new { message = "Amount cannot be negative." });
+
+            var supplierReference = NormalizeString(request.SupplierReference);
+            var notes = NormalizeString(request.Notes);
+
+            var lc = await _db.LettersOfCredit
+                .Include(x => x.SupplierAllocations)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (lc is null) return NotFound();
+
+            var allocation = lc.SupplierAllocations.FirstOrDefault(x => x.Id == allocationId);
+            if (allocation is null) return NotFound();
+
+            var currentQuantity = lc.SupplierAllocations.Sum(x => x.Quantity ?? 0m);
+            var currentAmount = lc.SupplierAllocations.Sum(x => x.Amount ?? 0m);
+
+            var adjustedQuantity = currentQuantity - (allocation.Quantity ?? 0m) + (request.Quantity ?? 0m);
+            var adjustedAmount = currentAmount - (allocation.Amount ?? 0m) + (request.Amount ?? 0m);
+
+            if (ExceedsLimit(lc.Quantity, adjustedQuantity))
+                return BadRequest(new { message = "Allocated quantity exceeds the letter of credit quantity." });
+
+            if (ExceedsLimit(lc.Amount, adjustedAmount))
+                return BadRequest(new { message = "Allocated amount exceeds the letter of credit amount." });
+
+            allocation.SupplierId = request.SupplierId;
+            allocation.SupplierName = supplierName!;
+            allocation.SupplierReference = supplierReference;
+            allocation.Notes = notes;
+            allocation.Quantity = request.Quantity;
+            allocation.Amount = request.Amount;
+            allocation.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            await UpdateUpfStatusIfNeededAsync(lc);
+
+            return Ok(ToAllocationResponse(allocation));
+        }
+
         // POST /api/letters-of-credit/{id}/supplier-allocations
         [HttpPost("{id:guid}/supplier-allocations")]
         public async Task<ActionResult<LetterOfCreditSupplierAllocationResponse>> CreateSupplierAllocation(Guid id, [FromBody] LetterOfCreditSupplierAllocationRequest request)
