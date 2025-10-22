@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 using System.Security.Claims;
 using System.Linq;
 using WorkflowBackend.Api.Data;
@@ -39,6 +40,8 @@ namespace WorkflowBackend.Api.Controllers
             DefaultFlow,
             "UPF_TO_SUPPLIER"
         };
+
+        private const decimal AllocationTolerance = 0.0001m;
 
         public LettersOfCreditController(AppDbContext db, IWebHostEnvironment env)
         {
@@ -110,9 +113,9 @@ namespace WorkflowBackend.Api.Controllers
                 || string.Equals(status, "Expired", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string DetermineUpfSupplierStatus(string currentStatus, int vesselCount, decimal allocatedQuantity, decimal targetQuantity)
+        private static string DetermineUpfSupplierStatus(string currentStatus, int allocationCount, decimal allocatedQuantity, decimal targetQuantity)
         {
-            if (vesselCount == 0)
+            if (allocationCount == 0)
             {
                 return string.Equals(currentStatus, "Draft", StringComparison.OrdinalIgnoreCase)
                     ? "Draft"
@@ -147,7 +150,7 @@ namespace WorkflowBackend.Api.Controllers
 
             var ids = relevant.Select(l => l.Id).ToList();
 
-            var allocations = await _db.VesselLettersOfCredit
+            var vesselAllocations = await _db.VesselLettersOfCredit
                 .Where(link => ids.Contains(link.LetterOfCreditId))
                 .Select(link => new
                 {
@@ -158,7 +161,7 @@ namespace WorkflowBackend.Api.Controllers
                 })
                 .ToListAsync();
 
-            var summary = allocations
+            var vesselSummary = vesselAllocations
                 .GroupBy(x => x.LetterOfCreditId)
                 .ToDictionary(
                     g => g.Key,
@@ -168,19 +171,39 @@ namespace WorkflowBackend.Api.Controllers
                         AllocatedQuantity = g.Sum(x => x.Quantity)
                     });
 
+            var supplierAllocations = await _db.LetterOfCreditSupplierAllocations
+                .Where(a => ids.Contains(a.LetterOfCreditId))
+                .Select(a => new
+                {
+                    a.LetterOfCreditId,
+                    Quantity = a.Quantity ?? 0m
+                })
+                .ToListAsync();
+
+            var supplierSummary = supplierAllocations
+                .GroupBy(x => x.LetterOfCreditId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
+                    {
+                        AllocationCount = g.Count(),
+                        AllocatedQuantity = g.Sum(x => x.Quantity)
+                    });
+
             foreach (var lc in relevant)
             {
                 if (IsTerminalUpfStatus(lc.Status))
                     continue;
 
-                summary.TryGetValue(lc.Id, out var info);
+                vesselSummary.TryGetValue(lc.Id, out var vesselInfo);
+                supplierSummary.TryGetValue(lc.Id, out var supplierInfo);
 
-                var vesselCount = info?.VesselCount ?? 0;
-                var allocated = info?.AllocatedQuantity ?? 0m;
+                var allocationCount = (vesselInfo?.VesselCount ?? 0) + (supplierInfo?.AllocationCount ?? 0);
+                var allocated = (vesselInfo?.AllocatedQuantity ?? 0m) + (supplierInfo?.AllocatedQuantity ?? 0m);
                 var target = lc.Quantity ?? 0m;
                 var current = string.IsNullOrWhiteSpace(lc.Status) ? "Draft" : lc.Status!;
 
-                var next = DetermineUpfSupplierStatus(current, vesselCount, allocated, target);
+                var next = DetermineUpfSupplierStatus(current, allocationCount, allocated, target);
                 if (!string.Equals(next, current, StringComparison.OrdinalIgnoreCase))
                 {
                     lc.Status = next;
@@ -211,6 +234,30 @@ namespace WorkflowBackend.Api.Controllers
             return false;
         }
 
+        private static bool ExceedsLimit(decimal? limit, decimal proposedTotal)
+        {
+            if (!limit.HasValue) return false;
+
+            var tolerance = Math.Max(Math.Abs(limit.Value) * 0.001m, AllocationTolerance);
+            return proposedTotal - limit.Value > tolerance;
+        }
+
+        private async Task UpdateUpfStatusIfNeededAsync(LetterOfCredit lc)
+        {
+            if (!string.Equals(lc.Flow, "UPF_TO_SUPPLIER", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var previous = lc.Status;
+            await ApplyAutomaticUpfSupplierStatusesAsync(new[] { lc });
+            if (!string.Equals(previous, lc.Status, StringComparison.OrdinalIgnoreCase))
+            {
+                lc.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+        }
+
         private LetterOfCreditResponse ToResponse(LetterOfCredit lc)
         {
             string? url = null;
@@ -221,6 +268,12 @@ namespace WorkflowBackend.Api.Controllers
             }
 
             var supplier = NormalizeString(lc.Contract?.SupplierName) ?? NormalizeString(lc.Beneficiary);
+
+            var allocations = lc.SupplierAllocations?
+                .OrderBy(a => a.CreatedAt)
+                .Select(ToAllocationResponse)
+                .ToList()
+                ?? new List<LetterOfCreditSupplierAllocationResponse>();
 
             return new LetterOfCreditResponse(
                 lc.Id,
@@ -244,9 +297,23 @@ namespace WorkflowBackend.Api.Controllers
                 url,
                 lc.FileName,
                 lc.CargoType,
+                allocations,
                 lc.Flow
             );
         }
+
+        private static LetterOfCreditSupplierAllocationResponse ToAllocationResponse(LetterOfCreditSupplierAllocation allocation) =>
+            new(
+                allocation.Id,
+                allocation.LetterOfCreditId,
+                allocation.SupplierId,
+                allocation.SupplierName,
+                allocation.Quantity,
+                allocation.Amount,
+                allocation.Notes,
+                allocation.CreatedAt,
+                allocation.UpdatedAt
+            );
 
         private async Task<(string? relPath, string? originalName)> SaveLcFileAsync(IFormFile? file)
         {
@@ -280,6 +347,7 @@ namespace WorkflowBackend.Api.Controllers
         {
             var q = _db.LettersOfCredit
                 .Include(l => l.Contract)
+                .Include(l => l.SupplierAllocations)
                 .AsQueryable();
 
             await ApplyAutomaticExpiryAsync(DateTime.UtcNow);
@@ -309,6 +377,7 @@ namespace WorkflowBackend.Api.Controllers
         {
             var lc = await _db.LettersOfCredit
                 .Include(l => l.Contract)
+                .Include(l => l.SupplierAllocations)
                 .FirstOrDefaultAsync(l => l.Id == id);
             if (lc is null) return NotFound();
 
@@ -580,6 +649,101 @@ namespace WorkflowBackend.Api.Controllers
 
             _db.LettersOfCredit.Remove(lc);
             await _db.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // -------- SUPPLIER ALLOCATIONS --------
+
+        // GET /api/letters-of-credit/{id}/supplier-allocations
+        [HttpGet("{id:guid}/supplier-allocations")]
+        public async Task<ActionResult<IEnumerable<LetterOfCreditSupplierAllocationResponse>>> GetSupplierAllocations(Guid id)
+        {
+            var exists = await _db.LettersOfCredit.AnyAsync(x => x.Id == id);
+            if (!exists) return NotFound();
+
+            var allocations = await _db.LetterOfCreditSupplierAllocations
+                .Where(x => x.LetterOfCreditId == id)
+                .OrderBy(x => x.CreatedAt)
+                .ToListAsync();
+
+            return allocations.Select(ToAllocationResponse).ToList();
+        }
+
+        // POST /api/letters-of-credit/{id}/supplier-allocations
+        [HttpPost("{id:guid}/supplier-allocations")]
+        public async Task<ActionResult<LetterOfCreditSupplierAllocationResponse>> CreateSupplierAllocation(Guid id, [FromBody] LetterOfCreditSupplierAllocationRequest request)
+        {
+            if (request is null)
+                return BadRequest(new { message = "Request body is required." });
+
+            var supplierName = NormalizeString(request.SupplierName);
+            if (string.IsNullOrWhiteSpace(supplierName))
+                return BadRequest(new { message = "Supplier name is required." });
+
+            if (request.Quantity.HasValue && request.Quantity.Value < 0m)
+                return BadRequest(new { message = "Quantity cannot be negative." });
+
+            if (request.Amount.HasValue && request.Amount.Value < 0m)
+                return BadRequest(new { message = "Amount cannot be negative." });
+
+            var lc = await _db.LettersOfCredit
+                .Include(x => x.SupplierAllocations)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (lc is null) return NotFound();
+
+            var currentQuantity = lc.SupplierAllocations.Sum(x => x.Quantity ?? 0m);
+            var currentAmount = lc.SupplierAllocations.Sum(x => x.Amount ?? 0m);
+
+            var proposedQuantity = currentQuantity + (request.Quantity ?? 0m);
+            var proposedAmount = currentAmount + (request.Amount ?? 0m);
+
+            if (ExceedsLimit(lc.Quantity, proposedQuantity))
+                return BadRequest(new { message = "Allocated quantity exceeds the letter of credit quantity." });
+
+            if (ExceedsLimit(lc.Amount, proposedAmount))
+                return BadRequest(new { message = "Allocated amount exceeds the letter of credit amount." });
+
+            var now = DateTime.UtcNow;
+            var allocation = new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = id,
+                SupplierId = request.SupplierId,
+                SupplierName = supplierName!,
+                Quantity = request.Quantity,
+                Amount = request.Amount,
+                Notes = NormalizeString(request.Notes),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            lc.SupplierAllocations.Add(allocation);
+
+            await _db.SaveChangesAsync();
+
+            await UpdateUpfStatusIfNeededAsync(lc);
+
+            return CreatedAtAction(nameof(GetSupplierAllocations), new { id }, ToAllocationResponse(allocation));
+        }
+
+        // DELETE /api/letters-of-credit/{id}/supplier-allocations/{allocationId}
+        [HttpDelete("{id:guid}/supplier-allocations/{allocationId:guid}")]
+        public async Task<IActionResult> DeleteSupplierAllocation(Guid id, Guid allocationId)
+        {
+            var allocation = await _db.LetterOfCreditSupplierAllocations
+                .FirstOrDefaultAsync(x => x.Id == allocationId && x.LetterOfCreditId == id);
+
+            if (allocation is null) return NotFound();
+
+            _db.LetterOfCreditSupplierAllocations.Remove(allocation);
+            await _db.SaveChangesAsync();
+
+            var lc = await _db.LettersOfCredit.FindAsync(id);
+            if (lc is not null)
+            {
+                await UpdateUpfStatusIfNeededAsync(lc);
+            }
+
             return NoContent();
         }
 

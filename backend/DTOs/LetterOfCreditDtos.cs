@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace WorkflowBackend.Api.DTOs
@@ -60,6 +61,7 @@ namespace WorkflowBackend.Api.DTOs
         string? FileUrl,
         string? FileName,
         string? CargoType,
+        IReadOnlyList<LetterOfCreditSupplierAllocationResponse> SupplierAllocations,
         string Flow
     );
 
@@ -67,5 +69,25 @@ namespace WorkflowBackend.Api.DTOs
         Guid VesselId,
         Guid LetterOfCreditId,
         decimal? Quantity
+    );
+
+    public record LetterOfCreditSupplierAllocationRequest(
+        Guid? SupplierId,
+        [param:Required, MaxLength(200)] string SupplierName,
+        decimal? Quantity,
+        decimal? Amount,
+        [param:MaxLength(2000)] string? Notes
+    );
+
+    public record LetterOfCreditSupplierAllocationResponse(
+        Guid Id,
+        Guid LetterOfCreditId,
+        Guid? SupplierId,
+        string SupplierName,
+        decimal? Quantity,
+        decimal? Amount,
+        string? Notes,
+        DateTime CreatedAt,
+        DateTime UpdatedAt
     );
 }

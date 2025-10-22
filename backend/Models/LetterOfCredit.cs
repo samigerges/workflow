@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 
+using System.Collections.Generic;
+
 namespace WorkflowBackend.Api.Models
-{
+{ 
     public class LetterOfCredit
     {
         public Guid Id { get; set; } = Guid.NewGuid();
@@ -55,5 +57,7 @@ namespace WorkflowBackend.Api.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        public ICollection<LetterOfCreditSupplierAllocation> SupplierAllocations { get; set; } = new List<LetterOfCreditSupplierAllocation>();
     }
 }
