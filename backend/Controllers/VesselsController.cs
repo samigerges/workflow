@@ -266,6 +266,7 @@ namespace WorkflowBackend.Api.Controllers
             var v = await _db.Vessels
                 .Include(x => x.LoadingPorts)
                 .Include(x => x.Documents)
+                .Include(x => x.StageEntries)
                 .Include(x => x.LettersOfCredit)
                 .ThenInclude(link => link.LetterOfCredit)
                 .FirstOrDefaultAsync(x => x.Id == id);
@@ -281,6 +282,12 @@ namespace WorkflowBackend.Api.Controllers
                 }),
                 documents = v.Documents.Select(d => new VesselDocumentResponse(
                     d.Id, d.Type, d.FileName, MakeAbsolute(d.FilePath), d.UploadedAt
+                )),
+                stageEntries = v.StageEntries.Select(e => new VesselStageEntryResponse(
+                    e.Id,
+                    e.StageId,
+                    e.NumberValue,
+                    e.UpdatedAt
                 )),
                 lettersOfCredit = v.LettersOfCredit.Select(l => new
                 {
@@ -577,6 +584,71 @@ namespace WorkflowBackend.Api.Controllers
             _db.VesselDocuments.Remove(doc);
             await _db.SaveChangesAsync();
             return NoContent();
+        }
+
+        // ---------- STAGE ENTRIES ----------
+
+        // GET /api/vessels/{id}/stage-entries
+        [HttpGet("{id:guid}/stage-entries")]
+        public async Task<ActionResult<IEnumerable<VesselStageEntryResponse>>> GetStageEntries(Guid id)
+        {
+            var exists = await _db.Vessels.AnyAsync(x => x.Id == id);
+            if (!exists) return NotFound();
+
+            var entries = await _db.VesselStageEntries
+                .Where(e => e.VesselId == id)
+                .OrderBy(e => e.StageId)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return entries
+                .Select(e => new VesselStageEntryResponse(e.Id, e.StageId, e.NumberValue, e.UpdatedAt))
+                .ToList();
+        }
+
+        // POST /api/vessels/{id}/stage-entries { stageId, value }
+        [HttpPost("{id:guid}/stage-entries")]
+        public async Task<ActionResult<VesselStageEntryResponse>> UpsertStageEntry(
+            Guid id,
+            [FromBody] VesselStageEntryRequest req)
+        {
+            var vessel = await _db.Vessels.FindAsync(id);
+            if (vessel is null) return NotFound();
+
+            var normalizedStageId = NormalizeStageType(req.StageId);
+            if (string.IsNullOrWhiteSpace(normalizedStageId))
+                return BadRequest(new { message = "Stage identifier is required." });
+
+            var value = req.Value?.Trim();
+            if (string.IsNullOrWhiteSpace(value))
+                return BadRequest(new { message = "Stage value is required." });
+
+            var entry = await _db.VesselStageEntries
+                .FirstOrDefaultAsync(e => e.VesselId == id && e.StageId == normalizedStageId);
+
+            var now = DateTime.UtcNow;
+            if (entry is null)
+            {
+                entry = new VesselStageEntry
+                {
+                    VesselId = id,
+                    StageId = normalizedStageId,
+                    NumberValue = value,
+                    UpdatedAt = now
+                };
+
+                _db.VesselStageEntries.Add(entry);
+                await _db.SaveChangesAsync();
+
+                var created = new VesselStageEntryResponse(entry.Id, entry.StageId, entry.NumberValue, entry.UpdatedAt);
+                return CreatedAtAction(nameof(GetStageEntries), new { id }, created);
+            }
+
+            entry.NumberValue = value;
+            entry.UpdatedAt = now;
+            await _db.SaveChangesAsync();
+
+            return new VesselStageEntryResponse(entry.Id, entry.StageId, entry.NumberValue, entry.UpdatedAt);
         }
 
         // ---------- LC LINKAGE ----------

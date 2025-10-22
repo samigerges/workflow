@@ -1,4 +1,4 @@
-import { ChangeEvent, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeftRight,
@@ -10,6 +10,7 @@ import {
   Fingerprint,
   MapPin,
   Send,
+  Save,
   Settings2,
   ShieldCheck,
   Ship,
@@ -39,6 +40,7 @@ export const VESSEL_STAGES = [
     id: "letter_of_guarantee",
     title: "Letter of Guarantee",
     description: "Guarantee letter issued",
+    entryType: "document" as const,
     icon: FileSignature,
     color: "bg-indigo-500",
     lightColor: "bg-indigo-100",
@@ -49,6 +51,7 @@ export const VESSEL_STAGES = [
     id: "lc_opend",
     title: "LC Opened",
     description: "Letter of credit activated",
+    entryType: "document" as const,
     icon: FileCheck,
     color: "bg-blue-500",
     lightColor: "bg-blue-100",
@@ -59,6 +62,7 @@ export const VESSEL_STAGES = [
     id: "transaction",
     title: "Transaction",
     description: "Financial transaction initiated",
+    entryType: "document" as const,
     icon: ArrowLeftRight,
     color: "bg-emerald-500",
     lightColor: "bg-emerald-100",
@@ -69,6 +73,7 @@ export const VESSEL_STAGES = [
     id: "modifications",
     title: "Modifications",
     description: "Trade terms adjusted",
+    entryType: "document" as const,
     icon: Settings2,
     color: "bg-amber-500",
     lightColor: "bg-amber-100",
@@ -79,6 +84,7 @@ export const VESSEL_STAGES = [
     id: "acid_no",
     title: "ACID No.",
     description: "ACID documentation verified",
+    entryType: "number" as const,
     icon: Fingerprint,
     color: "bg-rose-500",
     lightColor: "bg-rose-100",
@@ -89,6 +95,7 @@ export const VESSEL_STAGES = [
     id: "ip",
     title: "IP",
     description: "Import permit confirmed",
+    entryType: "number" as const,
     icon: ShieldCheck,
     color: "bg-teal-500",
     lightColor: "bg-teal-100",
@@ -99,6 +106,7 @@ export const VESSEL_STAGES = [
     id: "loading_port",
     title: "Loading Port",
     description: "Cargo prepared at origin port",
+    entryType: "document" as const,
     icon: Ship,
     color: "bg-sky-500",
     lightColor: "bg-sky-100",
@@ -109,6 +117,7 @@ export const VESSEL_STAGES = [
     id: "document",
     title: "Document",
     description: "Shipping documents compiled",
+    entryType: "document" as const,
     icon: FileText,
     color: "bg-slate-500",
     lightColor: "bg-slate-100",
@@ -119,6 +128,7 @@ export const VESSEL_STAGES = [
     id: "destination_port",
     title: "Destination Port",
     description: "Arrival preparations underway",
+    entryType: "document" as const,
     icon: MapPin,
     color: "bg-lime-500",
     lightColor: "bg-lime-100",
@@ -129,6 +139,7 @@ export const VESSEL_STAGES = [
     id: "conflicts",
     title: "Conflicts",
     description: "Issues being resolved",
+    entryType: "document" as const,
     icon: AlertTriangle,
     color: "bg-orange-500",
     lightColor: "bg-orange-100",
@@ -139,6 +150,7 @@ export const VESSEL_STAGES = [
     id: "invoice",
     title: "Invoice",
     description: "Invoice issued and reviewed",
+    entryType: "document" as const,
     icon: CheckCircle,
     color: "bg-violet-500",
     lightColor: "bg-violet-100",
@@ -149,6 +161,7 @@ export const VESSEL_STAGES = [
     id: "swift",
     title: "Swift",
     description: "SWIFT confirmation received",
+    entryType: "document" as const,
     icon: Send,
     color: "bg-fuchsia-500",
     lightColor: "bg-fuchsia-100",
@@ -158,6 +171,27 @@ export const VESSEL_STAGES = [
 ];
 
 export type VesselStageId = (typeof VESSEL_STAGES)[number]["id"];
+
+type VesselStage = (typeof VESSEL_STAGES)[number];
+
+interface StageDocument {
+  id: string;
+  type?: string | null;
+  fileName?: string | null;
+  fileUrl?: string | null;
+  uploadedAt: string;
+}
+
+interface StageNumberEntry {
+  id: string;
+  stageId: string;
+  numberValue?: string | null;
+  updatedAt: string;
+}
+
+type StageCompletion =
+  | { kind: "document"; data: StageDocument }
+  | { kind: "number"; data: StageNumberEntry };
 
 export const normalizeStageId = (status: string) =>
   status
@@ -184,19 +218,25 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
   const [activeStageId, setActiveStageId] = useState<VesselStageId | null>(null);
   const [showDocumentDialog, setShowDocumentDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [stageNumberValue, setStageNumberValue] = useState("");
 
   const vesselId = selectedVessel?.id;
 
-  const { data: documents = [], isLoading: documentsLoading } = useQuery<any[]>({
+  const { data: documents = [], isLoading: documentsLoading } = useQuery<StageDocument[]>({
     queryKey: ["/api/vessels", vesselId, "documents"],
     enabled: Boolean(vesselId),
   });
 
+  const { data: stageEntries = [], isLoading: stageEntriesLoading } = useQuery<StageNumberEntry[]>({
+    queryKey: ["/api/vessels", vesselId, "stage-entries"],
+    enabled: Boolean(vesselId),
+  });
+
   const documentsByStage = useMemo(() => {
-    const map = new Map<VesselStageId, any>();
+    const map = new Map<VesselStageId, StageDocument>();
     if (!Array.isArray(documents)) return map;
 
-    documents.forEach((doc: any) => {
+    documents.forEach((doc) => {
       if (!doc?.type) return;
       const normalized = normalizeStageId(String(doc.type));
       const stage = VESSEL_STAGES.find((s) => s.id === normalized);
@@ -207,6 +247,35 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
 
     return map;
   }, [documents]);
+
+  const stageEntriesByStage = useMemo(() => {
+    const map = new Map<VesselStageId, StageNumberEntry>();
+    if (!Array.isArray(stageEntries)) return map;
+
+    stageEntries.forEach((entry) => {
+      if (!entry?.stageId) return;
+      const normalized = normalizeStageId(String(entry.stageId));
+      const stage = VESSEL_STAGES.find((s) => s.id === normalized);
+      if (stage) {
+        map.set(stage.id as VesselStageId, entry);
+      }
+    });
+
+    return map;
+  }, [stageEntries]);
+
+  const stageCompletionByStage = useMemo(() => {
+    const map = new Map<VesselStageId, StageCompletion>();
+    documentsByStage.forEach((doc, stageId) => {
+      map.set(stageId, { kind: "document", data: doc });
+    });
+    stageEntriesByStage.forEach((entry, stageId) => {
+      map.set(stageId, { kind: "number", data: entry });
+    });
+    return map;
+  }, [documentsByStage, stageEntriesByStage]);
+
+  const stageDataLoading = documentsLoading || stageEntriesLoading;
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, stageId }: { file: File; stageId: VesselStageId }) => {
@@ -238,9 +307,54 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
     },
   });
 
+  const saveStageNumberMutation = useMutation({
+    mutationFn: async ({
+      stageId,
+      numberValue,
+    }: {
+      stageId: VesselStageId;
+      numberValue: string;
+    }) => {
+      if (!vesselId) throw new Error("Missing vessel identifier");
+      const response = await apiRequest("POST", `/api/vessels/${vesselId}/stage-entries`, {
+        stageId,
+        value: numberValue,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      if (vesselId) {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/vessels", vesselId, "stage-entries"],
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/vessels"] });
+      toast({
+        title: "Stage number saved",
+        description: "The stage number was saved successfully.",
+      });
+      handleDialogClose();
+    },
+    onError: (error: any) => {
+      console.error("Error saving stage number", error);
+      toast({
+        title: "Save failed",
+        description: "We couldn't save this number. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleStageClick = (stageId: VesselStageId) => {
     setActiveStageId(stageId);
     setSelectedFile(null);
+    const stage = VESSEL_STAGES.find((item) => item.id === stageId);
+    if (stage?.entryType === "number") {
+      const entry = stageEntriesByStage.get(stageId);
+      setStageNumberValue(entry?.numberValue ?? "");
+    } else {
+      setStageNumberValue("");
+    }
     setShowDocumentDialog(true);
   };
 
@@ -248,6 +362,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
     setShowDocumentDialog(false);
     setActiveStageId(null);
     setSelectedFile(null);
+    setStageNumberValue("");
   };
 
   const handleDialogOpenChange = (open: boolean) => {
@@ -258,22 +373,52 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
     }
   };
 
+  useEffect(() => {
+    if (!showDocumentDialog || !activeStageId) return;
+    const stage = VESSEL_STAGES.find((item) => item.id === activeStageId);
+    if (stage?.entryType === "number") {
+      const entry = stageEntriesByStage.get(activeStageId);
+      setStageNumberValue(entry?.numberValue ?? "");
+    }
+  }, [showDocumentDialog, activeStageId, stageEntriesByStage]);
+
+  const activeStage = activeStageId
+    ? VESSEL_STAGES.find((stage) => stage.id === activeStageId)
+    : undefined;
+
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     setSelectedFile(file ?? null);
   };
 
-  const handleUpload = () => {
-    if (!selectedFile || !activeStageId) return;
+  const handleStageAction = () => {
+    if (!activeStageId || !activeStage) return;
+
+    if (activeStage.entryType === "number") {
+      const trimmed = stageNumberValue.trim();
+      if (!trimmed) return;
+      saveStageNumberMutation.mutate({ stageId: activeStageId, numberValue: trimmed });
+      return;
+    }
+
+    if (!selectedFile) return;
     uploadMutation.mutate({ file: selectedFile, stageId: activeStageId });
   };
 
-  const activeStage = activeStageId
-    ? VESSEL_STAGES.find((stage) => stage.id === activeStageId)
+  const existingStageCompletion = activeStageId
+    ? stageCompletionByStage.get(activeStageId)
     : undefined;
-  const existingStageDocument = activeStageId
-    ? documentsByStage.get(activeStageId)
-    : undefined;
+  const existingStageDocument =
+    existingStageCompletion?.kind === "document"
+      ? existingStageCompletion.data
+      : undefined;
+  const existingStageNumber =
+    existingStageCompletion?.kind === "number"
+      ? existingStageCompletion.data
+      : undefined;
+  const isNumberStage = activeStage?.entryType === "number";
+  const trimmedStageNumberValue = stageNumberValue.trim();
+  const isActionPending = uploadMutation.isPending || saveStageNumberMutation.isPending;
 
   const getCurrentStageIndex = (vessel: any) => {
     if (!vessel || !vessel.status) return 0;
@@ -291,23 +436,23 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
 
   const statusStageIndex = selectedVessel ? getCurrentStageIndex(selectedVessel) : 0;
 
-  const highestDocumentStageIndex = useMemo(() => {
+  const highestCompletedStageIndex = useMemo(() => {
     let highest = -1;
     for (let index = 0; index < VESSEL_STAGES.length; index += 1) {
       const stage = VESSEL_STAGES[index];
-      if (!documentsByStage.has(stage.id as VesselStageId)) {
+      if (!stageCompletionByStage.has(stage.id as VesselStageId)) {
         break;
       }
       highest = index;
     }
     return highest;
-  }, [documentsByStage]);
+  }, [stageCompletionByStage]);
 
   const currentStageIndex = useMemo(() => {
-    const documentDrivenIndex = highestDocumentStageIndex + 1;
-    const effectiveIndex = Math.max(statusStageIndex, documentDrivenIndex);
+    const completionDrivenIndex = highestCompletedStageIndex + 1;
+    const effectiveIndex = Math.max(statusStageIndex, completionDrivenIndex);
     return Math.min(effectiveIndex, VESSEL_STAGES.length - 1);
-  }, [highestDocumentStageIndex, statusStageIndex]);
+  }, [highestCompletedStageIndex, statusStageIndex]);
 
   const stageRows = useMemo(() => {
     const midpoint = Math.ceil(VESSEL_STAGES.length / 2);
@@ -369,14 +514,19 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                       const originalIndex = stageIndexMap.get(stage.id) ?? displayIndex;
                       const globalIndex = startIndex + originalIndex;
                       const status = getStageStatus(globalIndex, currentStageIndex);
-                      const hasStageDocument = documentsByStage.has(stageId);
-                      const isCurrent = status === "current" && !hasStageDocument;
-                      const isCompleted = hasStageDocument || status === "completed";
+                      const stageCompletion = stageCompletionByStage.get(stageId);
+                      const hasStageCompletion = Boolean(stageCompletion);
+                      const isCurrent = status === "current" && !hasStageCompletion;
+                      const isCompleted = hasStageCompletion || status === "completed";
                       const shouldHighlightConnector =
-                        hasStageDocument || globalIndex < currentStageIndex;
+                        hasStageCompletion || globalIndex < currentStageIndex;
+                      const savedNumberValue =
+                        stage.entryType === "number"
+                          ? stageEntriesByStage.get(stageId)?.numberValue?.trim() || undefined
+                          : undefined;
                       const nodeBaseClasses =
                         "z-10 flex h-16 w-16 items-center justify-center rounded-full border-4 transition-all duration-300 shadow-sm";
-                      const nodeStateClasses = hasStageDocument
+                      const nodeStateClasses = hasStageCompletion
                         ? "bg-green-500 border-green-500 text-white"
                         : isCurrent
                           ? "bg-blue-500 border-blue-500 text-white ring-4 ring-blue-200"
@@ -386,7 +536,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                       const nodeClasses = [
                         nodeBaseClasses,
                         nodeStateClasses,
-                        documentsLoading ? "cursor-wait" : "cursor-pointer",
+                        stageDataLoading ? "cursor-wait" : "cursor-pointer",
                       ].join(" ");
                       const isLastOverall = globalIndex === VESSEL_STAGES.length - 1;
                       const isFirstDisplay = displayIndex === 0;
@@ -475,11 +625,11 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                             onClick={() => handleStageClick(stageId)}
                             className="relative flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
                           >
-                            <div className="relative">
-                              <div className={nodeClasses}>
-                                <Icon className={`${iconColorClass} h-6 w-6`} />
-                              </div>
-                              {hasStageDocument && (
+                              <div className="relative">
+                                <div className={nodeClasses}>
+                                  <Icon className={`${iconColorClass} h-6 w-6`} />
+                                </div>
+                              {hasStageCompletion && (
                                 <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow">
                                   <Check className="h-3 w-3" />
                                 </span>
@@ -501,6 +651,11 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                               >
                                 {stage.description}
                               </p>
+                              {savedNumberValue && (
+                                <p className="mt-1 text-[11px] font-medium text-emerald-700">
+                                  Saved #: {savedNumberValue}
+                                </p>
+                              )}
                               {isCurrent && (
                                 <Badge className="mt-2 border-0 bg-blue-100 text-[10px] text-blue-800">
                                   Current
@@ -544,71 +699,132 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
             </DialogTitle>
             <DialogDescription>
               {activeStage
-                ? `Add supporting documentation for the ${activeStage.title} stage.`
-                : "Select a vessel stage to upload a document."}
+                ? activeStage.entryType === "number"
+                  ? `Record the ${activeStage.title} reference number.`
+                  : `Add supporting documentation for the ${activeStage.title} stage.`
+                : "Select a vessel stage to update."}
             </DialogDescription>
           </DialogHeader>
 
-          {existingStageDocument ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 text-sm">
-              <div className="flex items-center justify-between">
-                <div className="font-medium text-emerald-900">
-                  {existingStageDocument.fileName}
+          {isNumberStage ? (
+            <>
+              {existingStageNumber ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-emerald-900">Saved number</div>
+                    <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Saved</Badge>
+                  </div>
+                  <div className="mt-2 text-lg font-semibold text-emerald-800">
+                    {existingStageNumber.numberValue}
+                  </div>
+                  <div className="mt-2 text-xs text-emerald-700">
+                    Updated {new Date(existingStageNumber.updatedAt).toLocaleString()}
+                  </div>
                 </div>
-                <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">
-                  Uploaded
-                </Badge>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-4 text-sm text-gray-600">
+                  No number has been saved for this stage yet.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="stage-number">Stage number</Label>
+                <Input
+                  id="stage-number"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={stageNumberValue}
+                  onChange={(event) => setStageNumberValue(event.target.value)}
+                  disabled={isActionPending}
+                />
+                <p className="text-xs text-gray-500">
+                  Enter the official reference number for this stage.
+                </p>
               </div>
-              <div className="mt-2 flex items-center justify-between text-xs text-emerald-700">
-                <span>
-                  Uploaded {new Date(existingStageDocument.uploadedAt).toLocaleString()}
-                </span>
-                {existingStageDocument.fileUrl && (
-                  <Button
-                    variant="link"
-                    className="h-auto px-0 text-emerald-900"
-                    onClick={() => window.open(existingStageDocument.fileUrl, "_blank")}
-                  >
-                    View document
-                  </Button>
+            </>
+          ) : (
+            <>
+              {existingStageDocument ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-emerald-900">
+                      {existingStageDocument.fileName}
+                    </div>
+                    <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Uploaded</Badge>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs text-emerald-700">
+                    <span>
+                      Uploaded {new Date(existingStageDocument.uploadedAt).toLocaleString()}
+                    </span>
+                    {existingStageDocument.fileUrl && (
+                      <Button
+                        variant="link"
+                        className="h-auto px-0 text-emerald-900"
+                        onClick={() => {
+                          if (existingStageDocument.fileUrl) {
+                            window.open(existingStageDocument.fileUrl, "_blank");
+                          }
+                        }}
+                      >
+                        View document
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-4 text-sm text-gray-600">
+                  No document has been uploaded for this stage yet.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="stage-document">Upload file</Label>
+                <Input
+                  id="stage-document"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={handleFileChange}
+                  disabled={isActionPending}
+                />
+                {selectedFile && (
+                  <p className="text-xs text-gray-500">Selected file: {selectedFile.name}</p>
                 )}
               </div>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-4 text-sm text-gray-600">
-              No document has been uploaded for this stage yet.
-            </div>
+            </>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="stage-document">Upload file</Label>
-            <Input
-              id="stage-document"
-              type="file"
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-              onChange={handleFileChange}
-              disabled={uploadMutation.isPending}
-            />
-            {selectedFile && (
-              <p className="text-xs text-gray-500">Selected file: {selectedFile.name}</p>
-            )}
-          </div>
 
           <DialogFooter className="pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={handleDialogClose}
-              disabled={uploadMutation.isPending}
+              disabled={isActionPending}
             >
               Cancel
             </Button>
             <Button
               type="button"
-              onClick={handleUpload}
-              disabled={!selectedFile || uploadMutation.isPending}
+              onClick={handleStageAction}
+              disabled={
+                isNumberStage
+                  ? !trimmedStageNumberValue || isActionPending
+                  : !selectedFile || isActionPending
+              }
             >
-              {uploadMutation.isPending ? (
+              {isNumberStage ? (
+                saveStageNumberMutation.isPending ? (
+                  <>
+                    <Save className="mr-2 h-4 w-4 animate-spin" />
+                    Saving
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save number
+                  </>
+                )
+              ) : uploadMutation.isPending ? (
                 <>
                   <Upload className="mr-2 h-4 w-4 animate-spin" />
                   Uploading

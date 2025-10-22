@@ -117,5 +117,17 @@ namespace WorkflowBackend.Api.DTOs
         DateTime UploadedAt
     );
 
+    public record VesselStageEntryRequest(
+        [property: Required, MaxLength(100)] string StageId,
+        [property: Required, MaxLength(100)] string Value
+    );
+
+    public record VesselStageEntryResponse(
+        Guid Id,
+        string StageId,
+        string? NumberValue,
+        DateTime UpdatedAt
+    );
+
     public record VesselLcLinkRequest(Guid LetterOfCreditId);
 }

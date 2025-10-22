@@ -1039,6 +1039,35 @@ namespace WorkflowBackend.Api.Migrations
                     b.ToTable("VesselDocuments");
                 });
 
+            modelBuilder.Entity("WorkflowBackend.Api.Models.VesselStageEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NumberValue")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("StageId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("VesselId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VesselId", "StageId")
+                        .IsUnique();
+
+                    b.ToTable("VesselStageEntries");
+                });
+
             modelBuilder.Entity("WorkflowBackend.Api.Models.VesselLetterOfCredit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1268,6 +1297,17 @@ namespace WorkflowBackend.Api.Migrations
                     b.Navigation("Vessel");
                 });
 
+            modelBuilder.Entity("WorkflowBackend.Api.Models.VesselStageEntry", b =>
+                {
+                    b.HasOne("WorkflowBackend.Api.Models.Vessel", "Vessel")
+                        .WithMany("StageEntries")
+                        .HasForeignKey("VesselId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Vessel");
+                });
+
             modelBuilder.Entity("WorkflowBackend.Api.Models.VesselLetterOfCredit", b =>
                 {
                     b.HasOne("WorkflowBackend.Api.Models.LetterOfCredit", "LetterOfCredit")
@@ -1326,6 +1366,8 @@ namespace WorkflowBackend.Api.Migrations
                     b.Navigation("LoadingPorts");
 
                     b.Navigation("PortSchedules");
+
+                    b.Navigation("StageEntries");
                 });
 #pragma warning restore 612, 618
         }

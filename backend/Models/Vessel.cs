@@ -72,6 +72,7 @@ namespace WorkflowBackend.Api.Models
         public ICollection<VesselDocument> Documents { get; set; } = new List<VesselDocument>();
         public ICollection<VesselLetterOfCredit> LettersOfCredit { get; set; } = new List<VesselLetterOfCredit>();
         public ICollection<PortSchedule> PortSchedules { get; set; } = new List<PortSchedule>();
+        public ICollection<VesselStageEntry> StageEntries { get; set; } = new List<VesselStageEntry>();
 
         public string? InstructionsPath { get; set; } // uploads/vessels/xxx.pdf
         public string? InstructionsFileName { get; set; }
