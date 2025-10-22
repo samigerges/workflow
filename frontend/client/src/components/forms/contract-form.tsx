@@ -455,12 +455,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
       <CardContent className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Supplier Details</h3>
-              <p className="text-sm text-muted-foreground">
-                Link this contract to a request and capture supplier information.
-              </p>
-            </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="requestId">Related Request</Label>
@@ -527,10 +521,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
           </section>
 
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Commodity Details</h3>
-              <p className="text-sm text-muted-foreground">Describe the goods covered by this contract.</p>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="cargoType">Cargo Type *</Label>
@@ -608,10 +598,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
           </section>
 
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Pricing</h3>
-              <p className="text-sm text-muted-foreground">Capture agreed commercial values.</p>
-            </div>
             <div>
               <Label htmlFor="pricePerTon">Price per Ton (USD)</Label>
               <Input
@@ -629,10 +615,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
           </section>
 
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Payment</h3>
-              <p className="text-sm text-muted-foreground">Outline currency and settlement method.</p>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="paymentCurrency">Payment Currency</Label>
@@ -682,10 +664,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
           </section>
 
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Logistics</h3>
-              <p className="text-sm text-muted-foreground">Detail how and when the commodity will move.</p>
-            </div>
             <div>
               <Label htmlFor="shippingMethod">Shipping Method</Label>
               <Select
@@ -730,10 +708,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
           </section>
 
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Compliance & Review</h3>
-              <p className="text-sm text-muted-foreground">Capture governance requirements and internal notes.</p>
-            </div>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="contractTerms">Contract Terms & Conditions</Label>
@@ -784,10 +758,6 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
           </section>
 
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Supporting Documents & Notes</h3>
-              <p className="text-sm text-muted-foreground">Upload required files and share any additional context.</p>
-            </div>
             <div className="space-y-4">
               <div>
                 <Label>Contract Document *</Label>
