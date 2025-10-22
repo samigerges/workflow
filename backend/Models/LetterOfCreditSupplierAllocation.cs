@@ -19,13 +19,14 @@ namespace WorkflowBackend.Api.Models
         public string? SupplierReference { get; set; }
 
         public decimal? Quantity { get; set; }
-        public decimal? Amount { get; set; }
 
-        public Guid? CreatedByUserId { get; set; }
-        public User? CreatedBy { get; set; }
+        public decimal? Amount { get; set; }
 
         [MaxLength(2000)]
         public string? Notes { get; set; }
+
+        public Guid? CreatedByUserId { get; set; }
+        public User? CreatedBy { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
