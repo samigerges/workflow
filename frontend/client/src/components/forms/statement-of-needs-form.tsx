@@ -253,12 +253,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           }
         }}>
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Request Details</h3>
-              <p className="text-sm text-muted-foreground">
-                Define the goods being requested and the required quantities.
-              </p>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="cargoType">Cargo Type *</Label>
@@ -343,12 +337,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           </section>
 
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Supplier &amp; Pricing</h3>
-              <p className="text-sm text-muted-foreground">
-                Capture supplier details and commercial terms for this request.
-              </p>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="supplierName">Supplier Name *</Label>
@@ -455,12 +443,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           </section>
 
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Schedule &amp; Logistics</h3>
-              <p className="text-sm text-muted-foreground">
-                Outline the timing requirements and any logistical constraints.
-              </p>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="startDate">Start Date *</Label>
@@ -532,12 +514,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           </section>
 
           <section className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Supporting Documents</h3>
-              <p className="text-sm text-muted-foreground">
-                Upload the import request document for routing and approval.
-              </p>
-            </div>
             <div className="space-y-4">
               <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0">
                 <div className="flex-1">
@@ -589,12 +565,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, request }: S
           </section>
 
           <section className="space-y-2">
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Additional Notes</h3>
-              <p className="text-sm text-muted-foreground">
-                Share any extra context or instructions that approvers should know.
-              </p>
-            </div>
             <div>
               <Label htmlFor="description">Additional Notes *</Label>
               <Textarea
