@@ -18,6 +18,7 @@ import VesselTracking from "@/pages/vessel-tracking";
 import LCDetail from "@/pages/lc-detail";
 import ContractDetail from "@/pages/contract-detail";
 import ContractJourneyReportPage from "@/pages/report-contract-journey";
+import Reports from "@/pages/operations";
 
 
 function Router() {
@@ -46,6 +47,7 @@ function Router() {
           <Route path="/vessel-tracking" component={VesselTracking} />
           <Route path="/lc/:id" component={LCDetail} />
           <Route path="/contract/:id" component={ContractDetail} />
+          <Route path="/reports" component={Reports} />
           <Route path="/reports/contracts/:id" component={ContractJourneyReportPage} />
         </>
       )}
