@@ -7,9 +7,7 @@
     "lettersOfCredit": "خطابات الاعتماد",
     "vessels": "السفن",
     "documents": "المستندات",
-    "vesselTracking": "تتبع السفن",
-    "serviceProviders": "مزودو الخدمات",
-    "reports": "التقارير"
+    "vesselTracking": "تتبع السفن"
   },
   "common": {
     "save": "حفظ",
