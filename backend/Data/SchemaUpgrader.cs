@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 
 namespace WorkflowBackend.Api.Data
@@ -113,6 +114,51 @@ BEGIN
     ) THEN
         ALTER TABLE "Vessels"
         DROP COLUMN "InvoiceTotalPrice";
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'LettersOfCredit'
+          AND column_name = 'ShipmentPeriodStart'
+    ) THEN
+        ALTER TABLE "LettersOfCredit"
+        ADD COLUMN "ShipmentPeriodStart" timestamp with time zone;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'LettersOfCredit'
+          AND column_name = 'ShipmentPeriodEnd'
+    ) THEN
+        ALTER TABLE "LettersOfCredit"
+        ADD COLUMN "ShipmentPeriodEnd" timestamp with time zone;
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'LettersOfCredit'
+          AND column_name = 'ShipmentPeriod'
+    ) THEN
+        UPDATE "LettersOfCredit"
+        SET "ShipmentPeriodStart" = COALESCE("ShipmentPeriodStart", "ShipmentPeriod"),
+            "ShipmentPeriodEnd" = COALESCE("ShipmentPeriodEnd", "ShipmentPeriod")
+        WHERE "ShipmentPeriod" IS NOT NULL;
+
+        ALTER TABLE "LettersOfCredit"
+        DROP COLUMN "ShipmentPeriod";
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'LettersOfCredit'
+          AND column_name = 'Beneficiary'
+    ) THEN
+        ALTER TABLE "LettersOfCredit"
+        DROP COLUMN "Beneficiary";
     END IF;
 
 END $$;
@@ -258,6 +304,35 @@ BEGIN
     DROP COLUMN [InvoiceTotalPrice];
 END;
 
+IF COL_LENGTH('LettersOfCredit', 'ShipmentPeriodStart') IS NULL
+BEGIN
+    ALTER TABLE [LettersOfCredit]
+    ADD [ShipmentPeriodStart] datetimeoffset NULL;
+END;
+
+IF COL_LENGTH('LettersOfCredit', 'ShipmentPeriodEnd') IS NULL
+BEGIN
+    ALTER TABLE [LettersOfCredit]
+    ADD [ShipmentPeriodEnd] datetimeoffset NULL;
+END;
+
+IF COL_LENGTH('LettersOfCredit', 'ShipmentPeriod') IS NOT NULL
+BEGIN
+    UPDATE [LettersOfCredit]
+    SET [ShipmentPeriodStart] = COALESCE([ShipmentPeriodStart], [ShipmentPeriod]),
+        [ShipmentPeriodEnd] = COALESCE([ShipmentPeriodEnd], [ShipmentPeriod])
+    WHERE [ShipmentPeriod] IS NOT NULL;
+
+    ALTER TABLE [LettersOfCredit]
+    DROP COLUMN [ShipmentPeriod];
+END;
+
+IF COL_LENGTH('LettersOfCredit', 'Beneficiary') IS NOT NULL
+BEGIN
+    ALTER TABLE [LettersOfCredit]
+    DROP COLUMN [Beneficiary];
+END;
+
 """,
                 cancellationToken);
 
@@ -337,6 +412,8 @@ ALTER TABLE "Requests" ADD COLUMN IF NOT EXISTS "PublicId" TEXT NOT NULL DEFAULT
 ALTER TABLE "Requests" ADD COLUMN IF NOT EXISTS "WheatPercentage" REAL;
 ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "SequenceNumber" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "PublicId" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "LettersOfCredit" ADD COLUMN IF NOT EXISTS "ShipmentPeriodStart" TEXT;
+ALTER TABLE "LettersOfCredit" ADD COLUMN IF NOT EXISTS "ShipmentPeriodEnd" TEXT;
 """,
                 cancellationToken);
 
@@ -398,6 +475,41 @@ CREATE UNIQUE INDEX IF NOT EXISTS "IX_Requests_PublicId" ON "Requests" ("PublicI
 CREATE UNIQUE INDEX IF NOT EXISTS "IX_Contracts_PublicId" ON "Contracts" ("PublicId");
 """,
                 cancellationToken);
+
+            var hasShipmentPeriod = await db.Database.SqlQueryRaw<int>(
+                    "SELECT COUNT(*) FROM pragma_table_info('LettersOfCredit') WHERE name = 'ShipmentPeriod';")
+                .SingleAsync(cancellationToken);
+
+            if (hasShipmentPeriod > 0)
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    """
+UPDATE "LettersOfCredit"
+SET "ShipmentPeriodStart" = COALESCE("ShipmentPeriodStart", "ShipmentPeriod"),
+    "ShipmentPeriodEnd" = COALESCE("ShipmentPeriodEnd", "ShipmentPeriod")
+WHERE "ShipmentPeriod" IS NOT NULL;
+""",
+                    cancellationToken);
+
+                await db.Database.ExecuteSqlRawAsync(
+                    """
+ALTER TABLE "LettersOfCredit" DROP COLUMN "ShipmentPeriod";
+""",
+                    cancellationToken);
+            }
+
+            var hasBeneficiary = await db.Database.SqlQueryRaw<int>(
+                    "SELECT COUNT(*) FROM pragma_table_info('LettersOfCredit') WHERE name = 'Beneficiary';")
+                .SingleAsync(cancellationToken);
+
+            if (hasBeneficiary > 0)
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    """
+ALTER TABLE "LettersOfCredit" DROP COLUMN "Beneficiary";
+""",
+                    cancellationToken);
+            }
         }
     }
 }
