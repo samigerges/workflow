@@ -164,13 +164,13 @@ export default function LCDetail() {
         <div className="p-6">
           <div className="text-center py-8">
             <p className="text-gray-500">Letter of Credit not found</p>
-            <Button 
-              onClick={() => setLocation("/reports")}
+            <Button
+              onClick={() => setLocation("/letters-credit")}
               className="mt-4"
               variant="outline"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Reports
+              Back to Letters of Credit
             </Button>
           </div>
         </div>
@@ -183,13 +183,13 @@ export default function LCDetail() {
       <div className="p-6 space-y-6">
         {/* Header with Back Button */}
         <div className="flex items-center justify-between">
-          <Button 
-            onClick={() => setLocation("/reports")}
+          <Button
+            onClick={() => setLocation("/letters-credit")}
             variant="outline"
             size="sm"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Reports
+            Back to Letters of Credit
           </Button>
         </div>
 

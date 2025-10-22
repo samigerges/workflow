@@ -14,7 +14,6 @@ import Contracts from "@/pages/contracts";
 import LettersCredit from "@/pages/letters-credit";
 import Vessels from "@/pages/vessels";
 import Documents from "@/pages/documents";
-import Reports from "@/pages/operations"; // Renamed operations to reports
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -40,7 +39,6 @@ function Router() {
           <Route path="/letters-credit" component={LettersCredit} />
           <Route path="/vessels" component={Vessels} />
           <Route path="/documents" component={Documents} />
-          <Route path="/reports" component={Reports} />
         </>
       )}
       <Route component={NotFound} />

@@ -8,21 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Ship,
-  BarChart3,
   FileText,
   File,
-  University,
-  Package,
   LogOut,
   FolderOpen,
   Home,
   CreditCard,
-  Settings,
   Menu,
   ChevronLeft,
   Target,
-  MapPin,
-  Factory
+  MapPin
 } from "lucide-react";
 import logoPath from "@assets/Picture1_1751117114784.jpg";
 
@@ -83,20 +78,7 @@ const getNavigation = (t: any) => [
     icon: MapPin,
     roles: ["admin", "shipping_officer"]
   },
-  {
-    nameKey: "navigation.serviceProviders",
-    name: t("navigation.serviceProviders"),
-    href: "/service-providers",
-    icon: Factory,
-    roles: ["admin", "procurement_officer", "finance_officer"]
-  },
-  {
-    nameKey: "navigation.reports",
-    name: t("navigation.reports"),
-    href: "/reports",
-    icon: BarChart3,
-    roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
-  }
+  
 ];
 
 export default function Sidebar() {

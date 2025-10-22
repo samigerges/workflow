@@ -7,9 +7,7 @@
     "lettersOfCredit": "Letters of Credit",
     "vessels": "Vessels",
     "documents": "Documents",
-    "vesselTracking": "Vessel Tracking",
-    "serviceProviders": "Service Providers",
-    "reports": "Reports"
+    "vesselTracking": "Vessel Tracking"
   },
   "common": {
     "save": "Save",
