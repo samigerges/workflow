@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { University, Calendar, FileText, ExternalLink, Ship } from "lucide-react";
+import { University, Calendar, FileText, ExternalLink, Ship, Users, ClipboardList } from "lucide-react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,20 @@ function buildDetailItems(lc: NormalizedLC) {
     { label: "Issuing Bank", value: lc.issuingBank ?? "—" },
     { label: "Beneficiary", value: lc.beneficiary ?? "—" },
     { label: "Supplier", value: lc.supplierName ?? "—" },
+    {
+      label: "Allocated Quantity",
+      value:
+        typeof lc.allocatedQuantity === "number"
+          ? `${lc.allocatedQuantity.toLocaleString()} tons`
+          : "—",
+    },
+    {
+      label: "Allocated Amount",
+      value:
+        typeof lc.allocatedAmount === "number"
+          ? formatLcCurrency(lc.allocatedAmount, lc.currency)
+          : "—",
+    },
     {
       label: "Journey",
       value: lc.flowKey === "gasc_to_upf" ? "LC GASC → UPF" : "UPF → Supplier",
@@ -88,6 +102,16 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
   const updatedDateLabel = normalizedLc.updatedAt ? formatLcDate(normalizedLc.updatedAt) : null;
   const expiryCountdown = daysUntilLcExpiry(normalizedLc.expiryDate);
   const detailItems = buildDetailItems(normalizedLc);
+  const supplierAllocations = normalizedLc.supplierAllocations;
+  const supplierAllocationCount = supplierAllocations.length;
+  const totalSupplierQuantity = supplierAllocations.reduce(
+    (sum, allocation) => sum + (allocation.quantity ?? 0),
+    0,
+  );
+  const totalSupplierAmount = supplierAllocations.reduce(
+    (sum, allocation) => sum + (allocation.amount ?? 0),
+    0,
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -173,6 +197,79 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
             </Card>
           )}
 
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                <span>Supplier Allocations</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-indigo-50 p-4 rounded-lg">
+                  <div className="text-sm font-medium text-indigo-600">Suppliers</div>
+                  <div className="text-xl font-bold text-indigo-900">{supplierAllocationCount}</div>
+                </div>
+                <div className="bg-emerald-50 p-4 rounded-lg">
+                  <div className="text-sm font-medium text-emerald-600">Allocated Quantity</div>
+                  <div className="text-xl font-bold text-emerald-900">
+                    {totalSupplierQuantity.toLocaleString()} tons
+                  </div>
+                </div>
+                <div className="bg-amber-50 p-4 rounded-lg">
+                  <div className="text-sm font-medium text-amber-600">Allocated Amount</div>
+                  <div className="text-xl font-bold text-amber-900">
+                    {supplierAllocationCount > 0
+                      ? formatLcCurrency(totalSupplierAmount, normalizedLc.currency)
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+
+              {supplierAllocationCount > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Supplier</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {supplierAllocations.map((allocation) => (
+                      <TableRow key={String(allocation.id ?? allocation.supplierName)}>
+                        <TableCell className="font-medium">{allocation.supplierName}</TableCell>
+                        <TableCell>
+                          {typeof allocation.quantity === "number"
+                            ? `${allocation.quantity.toLocaleString()} tons`
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {typeof allocation.amount === "number"
+                            ? formatLcCurrency(allocation.amount, normalizedLc.currency)
+                            : "—"}
+                        </TableCell>
+                        <TableCell>{allocation.supplierReference ?? "—"}</TableCell>
+                        <TableCell className="max-w-[240px]">
+                          <span className="line-clamp-2 text-sm text-gray-600">
+                            {allocation.notes ?? "—"}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <ClipboardList className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+                  <p>No supplier allocations recorded for this LC.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
