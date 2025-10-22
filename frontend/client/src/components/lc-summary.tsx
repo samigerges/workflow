@@ -44,21 +44,6 @@ function buildDetailItems(lc: NormalizedLC) {
     },
     { label: "Total Price", value: formatLcCurrency(lc.amount, lc.currency) },
     { label: "Issuing Bank", value: lc.issuingBank ?? "—" },
-    { label: "Supplier", value: lc.supplierName ?? "—" },
-    {
-      label: "Allocated Quantity",
-      value:
-        typeof lc.allocatedQuantity === "number"
-          ? `${lc.allocatedQuantity.toLocaleString()} tons`
-          : "—",
-    },
-    {
-      label: "Allocated Amount",
-      value:
-        typeof lc.allocatedAmount === "number"
-          ? formatLcCurrency(lc.allocatedAmount, lc.currency)
-          : "—",
-    },
     {
       label: "Journey",
       value: lc.flowKey === "gasc_to_upf" ? "LC GASC → UPF" : "UPF → Supplier",
@@ -118,6 +103,9 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
     (sum, allocation) => sum + (allocation.amount ?? 0),
     0,
   );
+  const lcQuantity = typeof normalizedLc.quantity === "number" ? normalizedLc.quantity : null;
+  const remainingQuantity =
+    lcQuantity !== null ? Math.max(lcQuantity - totalAllocatedQuantity, 0) : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -240,8 +228,7 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
                       <TableHead>Supplier</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Amount</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Notes</TableHead>
+                      <TableHead>Created Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -258,11 +245,8 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
                             ? formatLcCurrency(allocation.amount, normalizedLc.currency)
                             : "—"}
                         </TableCell>
-                        <TableCell>{allocation.supplierReference ?? "—"}</TableCell>
-                        <TableCell className="max-w-[240px]">
-                          <span className="line-clamp-2 text-sm text-gray-600">
-                            {allocation.notes ?? "—"}
-                          </span>
+                        <TableCell>
+                          {allocation.createdAt ? formatLcDate(allocation.createdAt) : "—"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -286,17 +270,23 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="text-sm font-medium text-blue-600">Linked Vessels</div>
-                  <div className="text-xl font-bold text-blue-900">{lcVessels.length}</div>
+                  <div className="text-sm font-medium text-blue-600">LC Quantity</div>
+                  <div className="text-xl font-bold text-blue-900">
+                    {lcQuantity !== null ? `${lcQuantity.toLocaleString()} tons` : "—"}
+                  </div>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
-                  <div className="text-sm font-medium text-green-600">Allocated Quantity</div>
-                  <div className="text-xl font-bold text-green-900">{totalAllocatedQuantity} tons</div>
+                  <div className="text-sm font-medium text-green-600">Allocated</div>
+                  <div className="text-xl font-bold text-green-900">
+                    {totalAllocatedQuantity.toLocaleString()} tons
+                  </div>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm font-medium text-gray-600">Total Price</div>
-                  <div className="text-xl font-bold text-gray-900">
-                    {formatLcCurrency(normalizedLc.amount, normalizedLc.currency)}
+                <div className="bg-amber-50 p-4 rounded-lg">
+                  <div className="text-sm font-medium text-amber-600">Remaining</div>
+                  <div className="text-xl font-bold text-amber-900">
+                    {remainingQuantity !== null
+                      ? `${remainingQuantity.toLocaleString()} tons`
+                      : "—"}
                   </div>
                 </div>
               </div>
