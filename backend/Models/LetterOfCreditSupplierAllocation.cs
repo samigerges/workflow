@@ -6,7 +6,6 @@ namespace WorkflowBackend.Api.Models
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [Required]
         public Guid LetterOfCreditId { get; set; }
         public LetterOfCredit? LetterOfCredit { get; set; }
 
