@@ -242,18 +242,6 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="number">LC Number *</Label>
-              <Input
-                id="number"
-                {...register("number")}
-                placeholder="LC-2024-001"
-                className={errors.number ? "border-red-500" : ""}
-              />
-              {errors.number && (
-                <p className="text-sm text-red-500 mt-1">{errors.number.message}</p>
-              )}
-            </div>
-            <div>
               <Label htmlFor="flow">Journey *</Label>
               <Select
                 value={watchedFlow ?? "gasc_to_upf"}
@@ -274,9 +262,33 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
                 <p className="text-sm text-red-500 mt-1">{errors.flow.message}</p>
               )}
             </div>
+            <div>
+              <Label htmlFor="number">LC Number *</Label>
+              <Input
+                id="number"
+                {...register("number")}
+                placeholder="LC-2024-001"
+                className={errors.number ? "border-red-500" : ""}
+              />
+              {errors.number && (
+                <p className="text-sm text-red-500 mt-1">{errors.number.message}</p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="issuingBank">Issuing Bank *</Label>
+              <Input
+                id="issuingBank"
+                {...register("issuingBank")}
+                placeholder="Bank name"
+                className={errors.issuingBank ? "border-red-500" : ""}
+              />
+              {errors.issuingBank && (
+                <p className="text-sm text-red-500 mt-1">{errors.issuingBank.message}</p>
+              )}
+            </div>
             <div>
               <Label htmlFor="currency">Currency</Label>
               <Select
@@ -310,9 +322,6 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
                 <p className="text-sm text-red-500 mt-1">{errors.quantity.message}</p>
               )}
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="pricePerUnit">Price per Unit *</Label>
               <Input
@@ -325,18 +334,6 @@ export default function LetterOfCreditForm({ onSuccess, onCancel, lc }: LetterOf
               />
               {errors.pricePerUnit && (
                 <p className="text-sm text-red-500 mt-1">{errors.pricePerUnit.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="issuingBank">Issuing Bank *</Label>
-              <Input
-                id="issuingBank"
-                {...register("issuingBank")}
-                placeholder="Bank name"
-                className={errors.issuingBank ? "border-red-500" : ""}
-              />
-              {errors.issuingBank && (
-                <p className="text-sm text-red-500 mt-1">{errors.issuingBank.message}</p>
               )}
             </div>
           </div>
