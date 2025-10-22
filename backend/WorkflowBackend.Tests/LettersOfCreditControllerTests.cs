@@ -254,6 +254,159 @@ public class LettersOfCreditControllerTests
     }
 
     [Fact]
+    public async Task UpdateJson_WithAllocations_ReturnsAllocationsInResponse()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+        var controller = CreateController(context);
+
+        var lc = new LetterOfCredit
+        {
+            Number = "LC-Alloc-Resp",
+            Quantity = 200m,
+            Amount = 4_000m,
+            Flow = "UPF_TO_SUPPLIER"
+        };
+
+        context.LettersOfCredit.Add(lc);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.Add(new LetterOfCreditSupplierAllocation
+        {
+            LetterOfCreditId = lc.Id,
+            SupplierName = "Supplier A",
+            Quantity = 40m,
+            Amount = 800m
+        });
+
+        await context.SaveChangesAsync();
+
+        var request = new LetterOfCreditUpdateRequest(
+            Number: "LC-Alloc-Resp",
+            IssuingBank: null,
+            Amount: 4_000m,
+            Quantity: 200m,
+            PricePerUnit: null,
+            Currency: null,
+            IssueDate: null,
+            ShipmentPeriod: null,
+            ExpiryDate: null,
+            Applicant: null,
+            Beneficiary: null,
+            ContractId: null,
+            CargoType: null,
+            Flow: "UPF_TO_SUPPLIER");
+
+        var result = await controller.UpdateJson(lc.Id, request);
+
+        var payload = Assert.IsType<LetterOfCreditResponse>(result.Value);
+        var allocation = Assert.Single(payload.SupplierAllocations);
+        Assert.Equal("Supplier A", allocation.SupplierName);
+        Assert.Equal(40m, allocation.Quantity);
+    }
+
+    [Fact]
+    public async Task UpdateJson_LoweringQuantityBelowAllocations_ReturnsBadRequest()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+        var controller = CreateController(context);
+
+        var lc = new LetterOfCredit
+        {
+            Number = "LC-Alloc-Limit",
+            Quantity = 150m,
+            Amount = 3_000m,
+            Flow = "UPF_TO_SUPPLIER"
+        };
+
+        context.LettersOfCredit.Add(lc);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.Add(new LetterOfCreditSupplierAllocation
+        {
+            LetterOfCreditId = lc.Id,
+            SupplierName = "Supplier A",
+            Quantity = 120m,
+            Amount = 2_400m
+        });
+
+        await context.SaveChangesAsync();
+
+        var request = new LetterOfCreditUpdateRequest(
+            Number: "LC-Alloc-Limit",
+            IssuingBank: null,
+            Amount: 3_000m,
+            Quantity: 100m,
+            PricePerUnit: null,
+            Currency: null,
+            IssueDate: null,
+            ShipmentPeriod: null,
+            ExpiryDate: null,
+            Applicant: null,
+            Beneficiary: null,
+            ContractId: null,
+            CargoType: null,
+            Flow: "UPF_TO_SUPPLIER");
+
+        var result = await controller.UpdateJson(lc.Id, request);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task UpdateForm_LoweringAmountBelowAllocations_ReturnsBadRequest()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+        var controller = CreateController(context);
+
+        var lc = new LetterOfCredit
+        {
+            Number = "LC-Alloc-Form",
+            Quantity = 100m,
+            Amount = 5_000m,
+            Flow = "UPF_TO_SUPPLIER"
+        };
+
+        context.LettersOfCredit.Add(lc);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.Add(new LetterOfCreditSupplierAllocation
+        {
+            LetterOfCreditId = lc.Id,
+            SupplierName = "Supplier A",
+            Quantity = 60m,
+            Amount = 3_000m
+        });
+
+        await context.SaveChangesAsync();
+
+        var result = await controller.UpdateForm(
+            id: lc.Id,
+            number: "LC-Alloc-Form",
+            issuingBank: null,
+            amount: 2_000m,
+            quantity: 100m,
+            pricePerUnit: null,
+            currency: null,
+            cargoType: null,
+            issueDate: null,
+            shipmentPeriod: null,
+            expiryDate: null,
+            applicant: null,
+            beneficiary: null,
+            contractId: null,
+            flow: "UPF_TO_SUPPLIER",
+            file: null);
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
     public async Task GetAll_UpfFlowWithoutVessels_DefaultsToIssued()
     {
         var options = CreateInMemoryOptions();

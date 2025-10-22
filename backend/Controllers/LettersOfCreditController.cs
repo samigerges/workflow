@@ -242,6 +242,14 @@ namespace WorkflowBackend.Api.Controllers
             return proposedTotal - limit.Value > tolerance;
         }
 
+        private static bool IsBelowExistingAllocations(decimal? limit, decimal allocatedTotal)
+        {
+            if (!limit.HasValue) return false;
+
+            var tolerance = Math.Max(Math.Abs(limit.Value) * 0.001m, AllocationTolerance);
+            return allocatedTotal - limit.Value > tolerance;
+        }
+
         private async Task UpdateUpfStatusIfNeededAsync(LetterOfCredit lc)
         {
             if (!string.Equals(lc.Flow, "UPF_TO_SUPPLIER", StringComparison.OrdinalIgnoreCase))
@@ -521,20 +529,35 @@ namespace WorkflowBackend.Api.Controllers
         [Consumes("application/json")]
         public async Task<ActionResult<LetterOfCreditResponse>> UpdateJson(Guid id, [FromBody] LetterOfCreditUpdateRequest req)
         {
-            var lc = await _db.LettersOfCredit.FindAsync(id);
+            var lc = await _db.LettersOfCredit
+                .Include(l => l.SupplierAllocations)
+                .FirstOrDefaultAsync(l => l.Id == id);
             if (lc is null) return NotFound();
 
             var fallbackFlow = string.IsNullOrWhiteSpace(lc.Flow) ? DefaultFlow : lc.Flow;
             if (!TryNormalizeFlow(req.Flow, fallbackFlow, out var normalizedFlow))
                 return BadRequest(new { message = $"Unsupported flow '{req.Flow}'." });
 
+            var allocatedQuantity = lc.SupplierAllocations.Sum(a => a.Quantity ?? 0m);
+            var allocatedAmount = lc.SupplierAllocations.Sum(a => a.Amount ?? 0m);
+            var existingAmount = lc.Amount;
+
+            var nextQuantity = req.Quantity;
+            var nextAmount = req.Amount ?? (req.Quantity.HasValue && req.PricePerUnit.HasValue
+                ? req.Quantity.Value * req.PricePerUnit.Value
+                : existingAmount);
+
+            if (IsBelowExistingAllocations(nextQuantity, allocatedQuantity))
+                return BadRequest(new { message = "Letter of credit quantity cannot be lower than the allocated quantity." });
+
+            if (IsBelowExistingAllocations(nextAmount, allocatedAmount))
+                return BadRequest(new { message = "Letter of credit amount cannot be lower than the allocated amount." });
+
             lc.Number = req.Number.Trim();
             lc.IssuingBank = string.IsNullOrWhiteSpace(req.IssuingBank) ? null : req.IssuingBank.Trim();
             lc.Quantity = req.Quantity;
             lc.PricePerUnit = req.PricePerUnit;
-            lc.Amount = req.Amount ?? (req.Quantity.HasValue && req.PricePerUnit.HasValue
-                ? req.Quantity.Value * req.PricePerUnit.Value
-                : lc.Amount);
+            lc.Amount = nextAmount;
             lc.Currency = string.IsNullOrWhiteSpace(req.Currency) ? null : req.Currency.Trim().ToUpperInvariant();
             lc.CargoType = string.IsNullOrWhiteSpace(req.CargoType) ? null : req.CargoType.Trim();
             lc.IssueDate = ToUtc(req.IssueDate);
@@ -558,6 +581,8 @@ namespace WorkflowBackend.Api.Controllers
             {
                 await _db.Entry(lc).Reference(l => l.Contract).LoadAsync();
             }
+
+            await UpdateUpfStatusIfNeededAsync(lc);
             return ToResponse(lc);
         }
 
@@ -582,20 +607,35 @@ namespace WorkflowBackend.Api.Controllers
             [FromForm] string? flow,
             [FromForm(Name = "lcFile")] IFormFile? file)
         {
-            var lc = await _db.LettersOfCredit.FindAsync(id);
+            var lc = await _db.LettersOfCredit
+                .Include(l => l.SupplierAllocations)
+                .FirstOrDefaultAsync(l => l.Id == id);
             if (lc is null) return NotFound();
 
             var fallbackFlow = string.IsNullOrWhiteSpace(lc.Flow) ? DefaultFlow : lc.Flow;
             if (!TryNormalizeFlow(flow, fallbackFlow, out var normalizedFlow))
                 return BadRequest(new { message = $"Unsupported flow '{flow}'." });
 
+            var allocatedQuantity = lc.SupplierAllocations.Sum(a => a.Quantity ?? 0m);
+            var allocatedAmount = lc.SupplierAllocations.Sum(a => a.Amount ?? 0m);
+            var existingAmount = lc.Amount;
+
+            var nextQuantity = quantity;
+            var nextAmount = amount ?? (quantity.HasValue && pricePerUnit.HasValue
+                ? quantity.Value * pricePerUnit.Value
+                : existingAmount);
+
+            if (IsBelowExistingAllocations(nextQuantity, allocatedQuantity))
+                return BadRequest(new { message = "Letter of credit quantity cannot be lower than the allocated quantity." });
+
+            if (IsBelowExistingAllocations(nextAmount, allocatedAmount))
+                return BadRequest(new { message = "Letter of credit amount cannot be lower than the allocated amount." });
+
             lc.Number = number.Trim();
             lc.IssuingBank = string.IsNullOrWhiteSpace(issuingBank) ? null : issuingBank.Trim();
             lc.Quantity = quantity;
             lc.PricePerUnit = pricePerUnit;
-            lc.Amount = amount ?? (quantity.HasValue && pricePerUnit.HasValue
-                ? quantity.Value * pricePerUnit.Value
-                : lc.Amount);
+            lc.Amount = nextAmount;
             lc.Currency = string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant();
             lc.CargoType = string.IsNullOrWhiteSpace(cargoType) ? null : cargoType.Trim();
             lc.IssueDate = ToUtc(issueDate);
@@ -634,6 +674,8 @@ namespace WorkflowBackend.Api.Controllers
             {
                 await _db.Entry(lc).Reference(l => l.Contract).LoadAsync();
             }
+
+            await UpdateUpfStatusIfNeededAsync(lc);
 
             return ToResponse(lc);
         }
@@ -756,7 +798,9 @@ namespace WorkflowBackend.Api.Controllers
             if (string.IsNullOrWhiteSpace(body.Status) || !AllowedStatuses.Contains(body.Status))
                 return BadRequest(new { message = "Invalid status." });
 
-            var lc = await _db.LettersOfCredit.FindAsync(id);
+            var lc = await _db.LettersOfCredit
+                .Include(x => x.SupplierAllocations)
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (lc is null) return NotFound();
 
             var current = lc.Status;
@@ -767,6 +811,11 @@ namespace WorkflowBackend.Api.Controllers
             lc.Status = body.Status;
             lc.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+
+            if (lc.ContractId is not null)
+            {
+                await _db.Entry(lc).Reference(l => l.Contract).LoadAsync();
+            }
 
             return ToResponse(lc);
         }
