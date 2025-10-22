@@ -111,8 +111,7 @@ namespace WorkflowBackend.Api.Controllers
 
             DateTime? firstVesselDate = orderedVessels
                 .Select(v => v.Eta ?? v.Etd)
-                .FirstOrDefault(d => d.HasValue)?
-                .Value;
+                .FirstOrDefault(d => d.HasValue);
 
             if (data.Letter?.OpenedAt is DateTime lcDate && firstVesselDate is DateTime fvDate)
             {
@@ -121,8 +120,7 @@ namespace WorkflowBackend.Api.Controllers
 
             DateTime? lastVesselDate = orderedVessels
                 .Select(v => v.Eta ?? v.Etd)
-                .LastOrDefault(d => d.HasValue)?
-                .Value;
+                .LastOrDefault(d => d.HasValue);
 
             if (lastVesselDate is DateTime lvDate)
             {
