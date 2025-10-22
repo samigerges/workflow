@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace WorkflowBackend.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<LettersOfCreditController> _logger;
 
         private const string DefaultFlow = "GASC_TO_UPF";
 
@@ -43,10 +45,11 @@ namespace WorkflowBackend.Api.Controllers
 
         private const decimal AllocationTolerance = 0.0001m;
 
-        public LettersOfCreditController(AppDbContext db, IWebHostEnvironment env)
+        public LettersOfCreditController(AppDbContext db, IWebHostEnvironment env, ILogger<LettersOfCreditController> logger)
         {
             _db = db;
             _env = env;
+            _logger = logger;
         }
 
         private Guid? CurrentUserId()
@@ -730,6 +733,9 @@ namespace WorkflowBackend.Api.Controllers
             if (request.Amount.HasValue && request.Amount.Value < 0m)
                 return BadRequest(new { message = "Amount cannot be negative." });
 
+            var supplierReference = NormalizeString(request.SupplierReference);
+            var notes = NormalizeString(request.Notes);
+
             var lc = await _db.LettersOfCredit
                 .Include(x => x.SupplierAllocations)
                 .FirstOrDefaultAsync(x => x.Id == id);
@@ -754,18 +760,86 @@ namespace WorkflowBackend.Api.Controllers
                 LetterOfCreditId = id,
                 SupplierId = request.SupplierId,
                 SupplierName = supplierName!,
-                SupplierReference = NormalizeString(request.SupplierReference),
+                SupplierReference = supplierReference,
                 Quantity = request.Quantity,
                 Amount = request.Amount,
                 CreatedByUserId = CurrentUserId(),
-                Notes = NormalizeString(request.Notes),
+                Notes = notes,
                 CreatedAt = now,
                 UpdatedAt = now
             };
 
             lc.SupplierAllocations.Add(allocation);
 
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Concurrency conflict while creating supplier allocation for letter of credit {LetterOfCreditId}",
+                    id);
+
+                _db.Entry(allocation).State = EntityState.Detached;
+                _db.Entry(lc).State = EntityState.Detached;
+
+                lc = await _db.LettersOfCredit
+                    .Include(x => x.SupplierAllocations)
+                    .FirstOrDefaultAsync(x => x.Id == id);
+
+                if (lc is null) return NotFound();
+
+                currentQuantity = lc.SupplierAllocations.Sum(x => x.Quantity ?? 0m);
+                currentAmount = lc.SupplierAllocations.Sum(x => x.Amount ?? 0m);
+
+                proposedQuantity = currentQuantity + (request.Quantity ?? 0m);
+                proposedAmount = currentAmount + (request.Amount ?? 0m);
+
+                if (ExceedsLimit(lc.Quantity, proposedQuantity))
+                    return Conflict(new { message = "Allocated quantity exceeds the letter of credit quantity." });
+
+                if (ExceedsLimit(lc.Amount, proposedAmount))
+                    return Conflict(new { message = "Allocated amount exceeds the letter of credit amount." });
+
+                var retryAllocation = new LetterOfCreditSupplierAllocation
+                {
+                    LetterOfCreditId = id,
+                    SupplierId = request.SupplierId,
+                    SupplierName = supplierName!,
+                    SupplierReference = supplierReference,
+                    Quantity = request.Quantity,
+                    Amount = request.Amount,
+                    CreatedByUserId = CurrentUserId(),
+                    Notes = notes,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _db.LetterOfCreditSupplierAllocations.Add(retryAllocation);
+
+                try
+                {
+                    await _db.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException retryEx)
+                {
+                    _logger.LogWarning(
+                        retryEx,
+                        "Repeated concurrency conflict while creating supplier allocation for letter of credit {LetterOfCreditId}",
+                        id);
+
+                    return Conflict(new
+                    {
+                        message = "The letter of credit changed while saving the supplier allocation. Please reload and try again."
+                    });
+                }
+
+                await UpdateUpfStatusIfNeededAsync(lc);
+
+                return CreatedAtAction(nameof(GetSupplierAllocations), new { id }, ToAllocationResponse(retryAllocation));
+            }
 
             await UpdateUpfStatusIfNeededAsync(lc);
 
