@@ -16,6 +16,7 @@ import {
   shipments,
   finalSettlements,
   serviceProviders,
+  lcSupplierAllocations,
 } from "../mocks";
 
 function jsonResponse(data: unknown, status = 200) {
@@ -200,6 +201,56 @@ function normalizeSinglePriceEntry(
   }
 
   return entry;
+}
+
+function coerceNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function normalizeSupplierAllocationPayload(payload: Record<string, any>, existing: Record<string, any> = {}) {
+  const supplierNameRaw =
+    payload.supplierName ?? payload.name ?? existing.supplierName ?? existing.name ?? "";
+  const supplierName = typeof supplierNameRaw === "string" ? supplierNameRaw.trim() : String(supplierNameRaw ?? "");
+
+  const quantity =
+    coerceNumber(payload.quantity ?? payload.allocationQuantity ?? payload.allocatedQuantity) ??
+    (existing.quantity ?? existing.allocationQuantity ?? null);
+  const percentage =
+    coerceNumber(payload.percentage ?? payload.allocationPercentage ?? payload.percent) ??
+    (existing.percentage ?? existing.allocationPercentage ?? null);
+  const amount =
+    coerceNumber(payload.amount ?? payload.allocationAmount) ??
+    (existing.amount ?? existing.allocationAmount ?? null);
+
+  const supplierId = payload.supplierId ?? existing.supplierId ?? null;
+
+  return {
+    supplierId,
+    supplierName,
+    quantity,
+    allocationQuantity: quantity,
+    percentage,
+    allocationPercentage: percentage,
+    amount,
+    allocationAmount: amount,
+  };
 }
 
 function parseQueryParams(rawUrl: string, fallback?: unknown) {
@@ -645,6 +696,53 @@ export async function apiRequest(
       const normalizedPayload = normalizeLetterOfCreditDocument(payload, lettersOfCredit[idx]);
       lettersOfCredit[idx] = { ...lettersOfCredit[idx], ...normalizedPayload } as any;
       return jsonResponse(lettersOfCredit[idx]);
+    }
+  }
+  match = url.match(/^\/api\/letters-of-credit\/(\d+)\/supplier-allocations$/);
+  if (match) {
+    const lcId = Number(match[1]);
+    const current = lcSupplierAllocations[lcId] || [];
+
+    if (method === "GET") {
+      return jsonResponse(current);
+    }
+
+    if (method === "POST") {
+      const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+      const normalizedPayload = normalizeSupplierAllocationPayload(payload);
+      const nextList = [...current];
+      const id = generateId(nextList);
+      const record = { id, ...normalizedPayload };
+      lcSupplierAllocations[lcId] = [...nextList, record];
+      return jsonResponse(record, 201);
+    }
+  }
+  match = url.match(/^\/api\/letters-of-credit\/(\d+)\/supplier-allocations\/(\d+)$/);
+  if (match) {
+    const lcId = Number(match[1]);
+    const allocationId = Number(match[2]);
+    const current = lcSupplierAllocations[lcId] || [];
+    const idx = current.findIndex((item) => Number(item.id) === allocationId);
+
+    if (idx !== -1) {
+      if (method === "PUT") {
+        const payload = body instanceof FormData ? formDataToObject(body) : body || {};
+        const normalizedPayload = normalizeSupplierAllocationPayload(payload, current[idx]);
+        const updated = { ...current[idx], ...normalizedPayload, id: allocationId };
+        const nextList = [...current];
+        nextList[idx] = updated;
+        lcSupplierAllocations[lcId] = nextList;
+        return jsonResponse(updated);
+      }
+
+      if (method === "DELETE") {
+        lcSupplierAllocations[lcId] = current.filter((item) => Number(item.id) !== allocationId);
+        return jsonResponse({ ok: true });
+      }
+    }
+
+    if (method === "DELETE") {
+      return jsonResponse({ ok: true });
     }
   }
   match = url.match(/^\/api\/letters-of-credit\/(\d+)\/vessels$/);
