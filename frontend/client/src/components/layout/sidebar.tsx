@@ -11,7 +11,6 @@ import {
   FileText,
   File,
   LogOut,
-  FolderOpen,
   Home,
   CreditCard,
   Menu,
@@ -63,13 +62,6 @@ const getNavigation = (t: any) => [
     href: "/vessels",
     icon: Ship,
     roles: ["admin", "shipping_officer"]
-  },
-  {
-    nameKey: "navigation.documents",
-    name: t("navigation.documents"),
-    href: "/documents",
-    icon: FolderOpen,
-    roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
   },
   {
     nameKey: "navigation.vesselTracking",
