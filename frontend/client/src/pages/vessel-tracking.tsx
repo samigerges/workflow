@@ -131,6 +131,22 @@ const dischargeUpdateSchema = z.object({
 
 type DischargeUpdateData = z.infer<typeof dischargeUpdateSchema>;
 
+type DischargeUpdateResponse = {
+  success?: boolean;
+  message?: string;
+  vesselId?: number;
+  vessel?: Partial<Vessel> &
+    Pick<Vessel, "id" | "discharged_quantity"> & {
+      dischargedQuantity?: number;
+      totalDischarged?: number;
+      cumulativeDischarged?: number;
+    };
+  discharged_quantity?: number;
+  dischargedQuantity?: number;
+  cumulativeDischarged?: number;
+  totalDischarged?: number;
+};
+
 /* ------------------------ Discharge Update Dialog ------------------------- */
 
 function DischargeUpdateDialog({
@@ -199,15 +215,73 @@ function DischargeUpdateDialog({
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || "Failed to update discharge quantity");
       }
-      return response.json();
+
+      const payload = (await response
+        .json()
+        .catch(() => null)) as DischargeUpdateResponse | null;
+
+      if (payload?.success === false) {
+        throw new Error(payload.message || "Failed to update discharge quantity");
+      }
+
+      return payload ?? { success: true };
     },
-    onSuccess: (payload) => {
+    onSuccess: (payload, variables) => {
+      const vesselId =
+        payload?.vessel?.id ??
+        (typeof payload?.vesselId === "number" ? payload?.vesselId : undefined) ??
+        variables.vesselId;
+
+      let updatedTotal: number | undefined;
+      const payloadTotal = [
+        payload?.vessel?.discharged_quantity,
+        payload?.vessel?.dischargedQuantity,
+        payload?.discharged_quantity,
+        payload?.dischargedQuantity,
+        payload?.cumulativeDischarged,
+        payload?.totalDischarged,
+      ].find((value) => typeof value === "number" && Number.isFinite(value)) as
+        | number
+        | undefined;
+
+      queryClient.setQueryData<Vessel[] | undefined>(["/api/vessels"], (current) => {
+        if (!Array.isArray(current)) return current;
+
+        let didUpdate = false;
+        const next = current.map((entry) => {
+          if (entry.id !== vesselId) {
+            return entry;
+          }
+
+          const base =
+            payloadTotal !== undefined
+              ? payloadTotal
+              : (entry.discharged_quantity ?? 0) + variables.quantityDischarged;
+
+          updatedTotal = base;
+          didUpdate = true;
+
+          return {
+            ...entry,
+            discharged_quantity: base,
+          };
+        });
+
+        return didUpdate ? next : current;
+      });
+
       // Optimistic refresh
       queryClient.invalidateQueries({ queryKey: ["/api/vessels"] });
       queryClient.invalidateQueries({ queryKey: ["/api/vessels/discharge-updates"] });
+
+      const successMessage =
+        updatedTotal !== undefined
+          ? `Discharge quantity updated successfully. New total: ${updatedTotal.toLocaleString()} tons.`
+          : "Discharge quantity updated successfully";
+
       toast({
         title: "Success",
-        description: "Discharge quantity updated successfully",
+        description: successMessage,
       });
       reset();
       setUploadedFile(null);
