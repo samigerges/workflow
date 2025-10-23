@@ -50,7 +50,6 @@ interface AllocationRow {
 
 interface SavePayload {
   rows: AllocationRow[];
-  existing: AllocationRow[];
 }
 
 interface LCSupplierAllocationDialogProps {
@@ -158,15 +157,25 @@ export default function LCSupplierAllocationDialog({
       return;
     }
 
-    if (serverRows.length > 0) {
-      setRows(serverRows);
-      return;
-    }
-
     setRows([createEmptyRow()]);
-  }, [open, serverRows]);
+  }, [open]);
 
-  const totals = useMemo(() => {
+  const existingTotals = useMemo(() => {
+    return serverRows.reduce(
+      (acc, row) => {
+        const quantity = typeof row.quantity === "number" ? row.quantity : 0;
+        const amount = typeof row.amount === "number" ? row.amount : 0;
+
+        return {
+          quantity: acc.quantity + quantity,
+          amount: acc.amount + amount,
+        };
+      },
+      { quantity: 0, amount: 0 },
+    );
+  }, [serverRows]);
+
+  const inputTotals = useMemo(() => {
     return rows.reduce(
       (acc, row) => {
         const quantity = typeof row.quantity === "number" ? row.quantity : 0;
@@ -181,8 +190,18 @@ export default function LCSupplierAllocationDialog({
     );
   }, [rows]);
 
+  const combinedTotals = useMemo(
+    () => ({
+      quantity: existingTotals.quantity + inputTotals.quantity,
+      amount: existingTotals.amount + inputTotals.amount,
+    }),
+    [existingTotals, inputTotals],
+  );
+
   const quantityExceeded =
-    typeof lcQuantity === "number" && lcQuantity !== null && totals.quantity > lcQuantity + 1e-6;
+    typeof lcQuantity === "number" &&
+    lcQuantity !== null &&
+    combinedTotals.quantity > lcQuantity + 1e-6;
 
   const hasEmptySupplier = rows.some((row) => row.supplierName.trim().length === 0);
 
@@ -190,7 +209,7 @@ export default function LCSupplierAllocationDialog({
 
   if (quantityExceeded) {
     validationErrors.push(
-      `Allocated quantity (${totals.quantity.toLocaleString()}) exceeds LC quantity ${lcQuantity?.toLocaleString() ?? "0"}.`,
+      `Total allocated quantity (${combinedTotals.quantity.toLocaleString()}) exceeds LC quantity ${lcQuantity?.toLocaleString() ?? "0"}.`,
     );
   }
 
@@ -224,18 +243,10 @@ export default function LCSupplierAllocationDialog({
   }, [normalizedCurrent, normalizedServer]);
 
   const mutation = useMutation({
-    mutationFn: async ({ rows: nextRows, existing }: SavePayload) => {
+    mutationFn: async ({ rows: nextRows }: SavePayload) => {
       if (!lcId) {
         throw new Error("Missing letter of credit identifier");
       }
-
-      const existingById = new Map(
-        existing
-          .filter((row) => row.id !== undefined && row.id !== null)
-          .map((row) => [String(row.id), row]),
-      );
-
-      const seenIds = new Set<string>();
 
       const ensurePayload = (row: AllocationRow) => ({
         supplierId: row.supplierId ?? null,
@@ -260,11 +271,8 @@ export default function LCSupplierAllocationDialog({
               : parseNumericValue(row.amount),
       });
 
-      // Update existing rows
       for (const row of nextRows) {
         if (row.id !== undefined && row.id !== null) {
-          const key = String(row.id);
-          seenIds.add(key);
           const payload = ensurePayload(row);
           await apiRequest(
             "PUT",
@@ -277,22 +285,6 @@ export default function LCSupplierAllocationDialog({
         const payload = ensurePayload(row);
         await apiRequest("POST", `/api/letters-of-credit/${lcId}/supplier-allocations`, payload);
       }
-
-      // Delete removed rows
-      const deletions: Promise<Response>[] = [];
-      existingById.forEach((_, id) => {
-        if (seenIds.has(id)) {
-          return;
-        }
-        deletions.push(
-          apiRequest(
-            "DELETE",
-            `/api/letters-of-credit/${lcId}/supplier-allocations/${id}`,
-          ),
-        );
-      });
-
-      await Promise.all(deletions);
     },
     onSuccess: async () => {
       if (lcId) {
@@ -355,7 +347,7 @@ export default function LCSupplierAllocationDialog({
       }))
       .filter((row) => row.supplierName.length > 0);
 
-    mutation.mutate({ rows: sanitizedRows, existing: serverRows });
+    mutation.mutate({ rows: sanitizedRows });
   };
 
   const handleClose = (nextOpen: boolean) => {
@@ -414,18 +406,41 @@ export default function LCSupplierAllocationDialog({
                 <div className="space-y-1">
                   <span className="text-xs text-secondary-500">Allocated Quantity</span>
                   <span className={cn("font-semibold", quantityExceeded && "text-destructive")}>
-                    {totals.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {combinedTotals.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="space-y-1">
                   <span className="text-xs text-secondary-500">Allocated Amount</span>
                   <span className="font-semibold">
-                    {totals.amount > 0 && lc.currency
-                      ? formatLcCurrency(totals.amount, lc.currency)
-                      : totals.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {combinedTotals.amount > 0 && lc.currency
+                      ? formatLcCurrency(combinedTotals.amount, lc.currency)
+                      : combinedTotals.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
+
+              {(existingTotals.quantity > 0 || existingTotals.amount > 0) && (
+                <p className="text-xs text-secondary-500">
+                  Includes existing allocations totaling
+                  {" "}
+                  <span className="font-medium text-secondary-700">
+                    {existingTotals.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} units
+                  </span>
+                  {existingTotals.amount > 0 && (
+                    <>
+                      {" "}
+                      and
+                      {" "}
+                      <span className="font-medium text-secondary-700">
+                        {lc.currency
+                          ? formatLcCurrency(existingTotals.amount, lc.currency)
+                          : existingTotals.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </span>
+                    </>
+                  )}
+                  .
+                </p>
+              )}
             </div>
 
             {validationErrors.length > 0 && (
