@@ -207,13 +207,17 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
   );
 
   // Prepare vessels data with contract information
-  const vesselsWithContractInfo = useMemo((): VesselWithContract[] => 
+  const vesselsWithContractInfo = useMemo((): VesselWithContract[] =>
     filteredVessels.map((vessel: Vessel) => {
       const contract = filteredContracts.find((c: Contract) => c.id === vessel.contractId);
+      const contractReportId = contract?.id ?? vessel.contractId ?? null;
+
       return {
         ...vessel,
         supplierName: contract?.supplierName || 'Unknown',
-        contractQuantity: contract?.quantity || 0,
+        contractQuantity: Number(contract?.quantity ?? 0),
+        contractPublicId: contract?.publicId ?? null,
+        contractReportId: contractReportId != null ? String(contractReportId) : null,
       };
     }),
     [filteredVessels, filteredContracts]
