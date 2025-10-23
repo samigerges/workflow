@@ -15,6 +15,14 @@ import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { X, PlusCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface ApiSupplierAllocation {
   id?: string | number | null;
@@ -434,16 +442,29 @@ export default function LCSupplierAllocationDialog({
               </Alert>
             )}
 
-            <ScrollArea className="max-h-[360px] pr-4">
-              <div className="space-y-6">
-                {rows.map((row, index) => {
-                  const rowId = row.id ?? `new-${index}`;
-                  return (
-                    <div key={rowId} className="grid gap-4 rounded-lg border border-secondary-200 p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="grid flex-1 gap-4 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor={`supplier-${rowId}`}>Supplier</Label>
+            <ScrollArea className="max-h-[360px]">
+              <div className="pr-4">
+                <Table className="min-w-[720px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[40%]">Supplier</TableHead>
+                      <TableHead className="w-[18%]">Quantity</TableHead>
+                      <TableHead className="w-[18%]">Allocation %</TableHead>
+                      <TableHead className="w-[18%]">
+                        Amount {lc.currency ? `(${lc.currency})` : ""}
+                      </TableHead>
+                      <TableHead className="w-[6%] text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((row, index) => {
+                      const rowId = row.id ?? `new-${index}`;
+                      return (
+                        <TableRow key={rowId}>
+                          <TableCell>
+                            <Label htmlFor={`supplier-${rowId}`} className="sr-only">
+                              Supplier
+                            </Label>
                             <Input
                               id={`supplier-${rowId}`}
                               value={row.supplierName}
@@ -460,9 +481,11 @@ export default function LCSupplierAllocationDialog({
                               placeholder="Supplier name"
                               autoComplete="off"
                             />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`quantity-${rowId}`}>Quantity</Label>
+                          </TableCell>
+                          <TableCell>
+                            <Label htmlFor={`quantity-${rowId}`} className="sr-only">
+                              Quantity
+                            </Label>
                             <Input
                               id={`quantity-${rowId}`}
                               type="number"
@@ -484,54 +507,83 @@ export default function LCSupplierAllocationDialog({
                               }}
                               placeholder="0"
                             />
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setRows((prev) => {
-                              if (prev.length === 1) {
-                                return [createEmptyRow()];
-                              }
-                              return prev.filter((_, idx) => idx !== index);
-                            });
-                          }}
-                          aria-label="Remove allocation"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor={`amount-${rowId}`}>Amount ({lc.currency ?? ""})</Label>
-                          <Input
-                            id={`amount-${rowId}`}
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={row.amount === "" ? "" : row.amount}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              setRows((prev) =>
-                                prev.map((current, idx) =>
-                                  idx === index
-                                    ? {
-                                        ...current,
-                                        amount: value === "" ? "" : Number(value),
-                                      }
-                                    : current,
-                                ),
-                              );
-                            }}
-                            placeholder="0"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                          </TableCell>
+                          <TableCell>
+                            <Label htmlFor={`percentage-${rowId}`} className="sr-only">
+                              Allocation percentage
+                            </Label>
+                            <Input
+                              id={`percentage-${rowId}`}
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.01"
+                              value={row.percentage === "" ? "" : row.percentage}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setRows((prev) =>
+                                  prev.map((current, idx) =>
+                                    idx === index
+                                      ? {
+                                          ...current,
+                                          percentage: value === "" ? "" : Number(value),
+                                        }
+                                      : current,
+                                  ),
+                                );
+                              }}
+                              placeholder="0"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Label htmlFor={`amount-${rowId}`} className="sr-only">
+                              Amount
+                            </Label>
+                            <Input
+                              id={`amount-${rowId}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={row.amount === "" ? "" : row.amount}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setRows((prev) =>
+                                  prev.map((current, idx) =>
+                                    idx === index
+                                      ? {
+                                          ...current,
+                                          amount: value === "" ? "" : Number(value),
+                                        }
+                                      : current,
+                                  ),
+                                );
+                              }}
+                              placeholder="0"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setRows((prev) => {
+                                  if (prev.length === 1) {
+                                    return [createEmptyRow()];
+                                  }
+                                  return prev.filter((_, idx) => idx !== index);
+                                });
+                              }}
+                              aria-label="Remove allocation"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </ScrollArea>
 
