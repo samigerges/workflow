@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
 
@@ -18,12 +19,37 @@ namespace WorkflowBackend.Api.Controllers
             _db = db;
         }
 
-        [HttpGet("contract-journey/{contractId:guid}")]
-        public async Task<ActionResult<ContractJourneyReportDto>> GetContractJourney(Guid contractId)
+        [HttpGet("contract-journey/{contractIdentifier}")]
+        public async Task<ActionResult<ContractJourneyReportDto>> GetContractJourney(string contractIdentifier)
         {
-            var data = await _db.Contracts
+            if (string.IsNullOrWhiteSpace(contractIdentifier))
+            {
+                return NotFound();
+            }
+
+            var trimmedIdentifier = contractIdentifier.Trim();
+
+            Guid? parsedContractId = null;
+            int? parsedSequenceNumber = null;
+
+            if (Guid.TryParse(trimmedIdentifier, out var guidId))
+            {
+                parsedContractId = guidId;
+            }
+            else if (int.TryParse(trimmedIdentifier, NumberStyles.Integer, CultureInfo.InvariantCulture, out var sequence))
+            {
+                parsedSequenceNumber = sequence;
+            }
+
+            var contractQuery = _db.Contracts
                 .AsNoTracking()
-                .Where(c => c.Id == contractId)
+                .Where(c =>
+                    (parsedContractId.HasValue && c.Id == parsedContractId.Value) ||
+                    (!parsedContractId.HasValue &&
+                        (c.PublicId == trimmedIdentifier ||
+                        (parsedSequenceNumber.HasValue && c.SequenceNumber == parsedSequenceNumber.Value))));
+
+            var data = await contractQuery
                 .Select(c => new
                 {
                     Contract = new ContractJourneyContractDto(
