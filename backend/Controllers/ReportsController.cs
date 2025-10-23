@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using WorkflowBackend.Api.Data;
 using WorkflowBackend.Api.DTOs;
 
@@ -49,115 +51,213 @@ namespace WorkflowBackend.Api.Controllers
                         (c.PublicId == trimmedIdentifier ||
                         (parsedSequenceNumber.HasValue && c.SequenceNumber == parsedSequenceNumber.Value))));
 
-            var data = await contractQuery
+            var contractData = await contractQuery
                 .Select(c => new
                 {
-                    Contract = new ContractJourneyContractDto(
-                        c.Id,
-                        c.PublicId,
-                        c.SupplierName,
-                        c.Quantity.HasValue && c.PricePerTon.HasValue
-                            ? c.Quantity.Value * c.PricePerTon.Value
-                            : (decimal?)null,
-                        _db.LettersOfCredit
-                            .Where(l => l.ContractId == c.Id)
-                            .Select(l => l.Currency)
-                            .FirstOrDefault(),
-                        c.CreatedAt,
-                        c.Status
-                    ),
-                    Letter = _db.LettersOfCredit
-                        .Where(l => l.ContractId == c.Id)
-                        .OrderByDescending(l => l.CreatedAt)
-                        .Select(l => new ContractJourneyLetterOfCreditDto(
-                            l.Id,
-                            l.Number,
-                            l.IssuingBank,
-                            l.IssueDate,
-                            l.Currency,
-                            _db.LetterOfCreditSupplierAllocations
-                                .Where(a => a.LetterOfCreditId == l.Id &&
-                                    (c.SupplierName == null || a.SupplierName == c.SupplierName))
-                                .Select(a => a.Amount ?? 0m)
-                                .DefaultIfEmpty(0m)
-                                .Sum(),
-                            l.Amount.HasValue
-                                ? l.Amount - _db.LetterOfCreditSupplierAllocations
-                                    .Where(a => a.LetterOfCreditId == l.Id)
-                                    .Select(a => a.Amount ?? 0m)
-                                    .DefaultIfEmpty(0m)
-                                    .Sum()
-                                : null
-                        ))
-                        .FirstOrDefault(),
-                    Vessels = _db.Vessels
-                        .Where(v => v.ContractId == c.Id)
-                        .OrderBy(v => v.Eta ?? v.Etd ?? DateTime.MaxValue)
-                        .Select(v => new ContractJourneyVesselDto(
-                            v.Id,
-                            v.Name,
-                            v.PortOfDischarge,
-                            v.Eta,
-                            v.Etd,
-                            _db.Shipments.Count(s => s.VesselId == v.Id),
-                            _db.VesselDocuments.Count(d => d.VesselId == v.Id),
-                            _db.Shipments
-                                .Where(s => s.VesselId == v.Id)
-                                .Join(
-                                    _db.ShipmentDocuments,
-                                    s => s.Id,
-                                    d => d.ShipmentId,
-                                    (s, d) => d.Id)
-                                .Count()
-                        ))
-                        .ToList(),
+                    c.Id,
+                    c.PublicId,
+                    c.SupplierName,
+                    c.Quantity,
+                    c.PricePerTon,
+                    c.CreatedAt,
+                    c.Status
                 })
                 .FirstOrDefaultAsync();
 
-            if (data is null)
+            if (contractData is null)
             {
                 return NotFound();
             }
 
-            var milestones = Array.Empty<ContractJourneyMilestoneDto>();
+            var contractId = contractData.Id;
+            var supplierName = contractData.SupplierName;
+
+            var latestLetter = await _db.LettersOfCredit
+                .AsNoTracking()
+                .Where(l => l.ContractId == contractId)
+                .OrderByDescending(l => l.CreatedAt)
+                .Select(l => new
+                {
+                    l.Id,
+                    l.Number,
+                    l.IssuingBank,
+                    l.IssueDate,
+                    l.Currency,
+                    l.Amount
+                })
+                .FirstOrDefaultAsync();
+
+            decimal supplierAllocated = 0m;
+            decimal totalAllocated = 0m;
+
+            if (latestLetter is not null)
+            {
+                supplierAllocated = await _db.LetterOfCreditSupplierAllocations
+                    .AsNoTracking()
+                    .Where(a => a.LetterOfCreditId == latestLetter.Id &&
+                        (supplierName == null || a.SupplierName == supplierName))
+                    .Select(a => a.Amount ?? 0m)
+                    .DefaultIfEmpty(0m)
+                    .SumAsync();
+
+                totalAllocated = await _db.LetterOfCreditSupplierAllocations
+                    .AsNoTracking()
+                    .Where(a => a.LetterOfCreditId == latestLetter.Id)
+                    .Select(a => a.Amount ?? 0m)
+                    .DefaultIfEmpty(0m)
+                    .SumAsync();
+            }
+
+            var contractCurrency = latestLetter?.Currency;
+            var contractAmount = contractData.Quantity.HasValue && contractData.PricePerTon.HasValue
+                ? contractData.Quantity.Value * contractData.PricePerTon.Value
+                : (decimal?)null;
+
+            var contract = new ContractJourneyContractDto(
+                contractId,
+                contractData.PublicId,
+                contractData.SupplierName,
+                contractAmount,
+                contractCurrency,
+                contractData.CreatedAt,
+                contractData.Status
+            );
+
+            ContractJourneyLetterOfCreditDto? letter = null;
+            DateTime? lcOpenedAt = null;
+
+            if (latestLetter is not null)
+            {
+                lcOpenedAt = latestLetter.IssueDate;
+
+                decimal? balance = latestLetter.Amount.HasValue
+                    ? latestLetter.Amount.Value - totalAllocated
+                    : (decimal?)null;
+
+                letter = new ContractJourneyLetterOfCreditDto(
+                    latestLetter.Id,
+                    latestLetter.Number,
+                    latestLetter.IssuingBank,
+                    latestLetter.IssueDate,
+                    latestLetter.Currency,
+                    supplierAllocated,
+                    balance
+                );
+            }
+
+            var vesselEntities = await _db.Vessels
+                .AsNoTracking()
+                .Where(v => v.ContractId == contractId)
+                .OrderBy(v => v.Eta ?? v.Etd ?? DateTime.MaxValue)
+                .Select(v => new
+                {
+                    v.Id,
+                    v.Name,
+                    v.PortOfDischarge,
+                    v.Eta,
+                    v.Etd
+                })
+                .ToListAsync();
+
+            var vesselIds = vesselEntities.Select(v => v.Id).ToList();
+
+            List<(Guid ShipmentId, Guid VesselId)> shipments;
+
+            if (vesselIds.Count == 0)
+            {
+                shipments = new List<(Guid ShipmentId, Guid VesselId)>();
+            }
+            else
+            {
+                shipments = (await _db.Shipments
+                        .AsNoTracking()
+                        .Where(s => vesselIds.Contains(s.VesselId))
+                        .Select(s => new { s.Id, s.VesselId })
+                        .ToListAsync())
+                    .Select(x => (x.Id, x.VesselId))
+                    .ToList();
+            }
+
+            var shipmentsByVessel = shipments
+                .GroupBy(s => s.VesselId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.ShipmentId).ToList());
+
+            var shipmentIds = shipments.Select(s => s.ShipmentId).ToList();
+
+            var shipmentDocuments = shipmentIds.Count == 0
+                ? new Dictionary<Guid, int>()
+                : (await _db.ShipmentDocuments
+                        .AsNoTracking()
+                        .Where(d => shipmentIds.Contains(d.ShipmentId))
+                        .GroupBy(d => d.ShipmentId)
+                        .Select(g => new { ShipmentId = g.Key, Count = g.Count() })
+                        .ToListAsync())
+                    .ToDictionary(x => x.ShipmentId, x => x.Count);
+
+            var vesselDocumentCounts = vesselIds.Count == 0
+                ? new Dictionary<Guid, int>()
+                : (await _db.VesselDocuments
+                        .AsNoTracking()
+                        .Where(d => vesselIds.Contains(d.VesselId))
+                        .GroupBy(d => d.VesselId)
+                        .Select(g => new { VesselId = g.Key, Count = g.Count() })
+                        .ToListAsync())
+                    .ToDictionary(x => x.VesselId, x => x.Count);
+
+            var vessels = vesselEntities
+                .Select(v =>
+                {
+                    shipmentsByVessel.TryGetValue(v.Id, out var vesselShipmentIds);
+                    var shipmentCount = vesselShipmentIds?.Count ?? 0;
+                    var submittedDocs = vesselShipmentIds?.Sum(shipmentId =>
+                        shipmentDocuments.TryGetValue(shipmentId, out var docCount) ? docCount : 0) ?? 0;
+                    var requiredDocs = vesselDocumentCounts.TryGetValue(v.Id, out var docCount) ? docCount : 0;
+
+                    return new ContractJourneyVesselDto(
+                        v.Id,
+                        v.Name,
+                        v.PortOfDischarge,
+                        v.Eta,
+                        v.Etd,
+                        shipmentCount,
+                        requiredDocs,
+                        submittedDocs
+                    );
+                })
+                .ToList();
 
             int? contractToLc = null;
             int? lcToFirstVessel = null;
             int? contractToLastVessel = null;
 
-            var contractStart = data.Contract.CreatedAt;
-            if (data.Letter?.OpenedAt is DateTime lcOpenedAt)
+            if (lcOpenedAt is DateTime lcDate)
             {
-                contractToLc = (int)(lcOpenedAt.Date - contractStart.Date).TotalDays;
+                contractToLc = (int)(lcDate.Date - contract.CreatedAt.Date).TotalDays;
             }
 
-            var orderedVessels = data.Vessels
-                .OrderBy(v => v.Eta ?? v.Etd ?? DateTime.MaxValue)
-                .ToList();
-
-            DateTime? firstVesselDate = orderedVessels
+            var firstVesselDate = vessels
                 .Select(v => v.Eta ?? v.Etd)
                 .FirstOrDefault(d => d.HasValue);
 
-            if (data.Letter?.OpenedAt is DateTime lcDate && firstVesselDate is DateTime fvDate)
+            if (lcOpenedAt is DateTime lcDateForFirst && firstVesselDate is DateTime fvDate)
             {
-                lcToFirstVessel = (int)(fvDate.Date - lcDate.Date).TotalDays;
+                lcToFirstVessel = (int)(fvDate.Date - lcDateForFirst.Date).TotalDays;
             }
 
-            DateTime? lastVesselDate = orderedVessels
+            var lastVesselDate = vessels
                 .Select(v => v.Eta ?? v.Etd)
                 .LastOrDefault(d => d.HasValue);
 
             if (lastVesselDate is DateTime lvDate)
             {
-                contractToLastVessel = (int)(lvDate.Date - contractStart.Date).TotalDays;
+                contractToLastVessel = (int)(lvDate.Date - contract.CreatedAt.Date).TotalDays;
             }
 
             var report = new ContractJourneyReportDto(
-                data.Contract,
-                data.Letter,
-                orderedVessels,
-                milestones,
+                contract,
+                letter,
+                vessels,
+                Array.Empty<ContractJourneyMilestoneDto>(),
                 new ContractJourneyDurationsDto(contractToLc, lcToFirstVessel, contractToLastVessel)
             );
 
