@@ -52,6 +52,7 @@ namespace WorkflowBackend.Api.Models
         public DateTime? ArrivalDate { get; set; }
         public DateTime? DischargeStartDate { get; set; }
         public DateTime? DischargeEndDate { get; set; }
+        public decimal DischargedQuantity { get; set; } = 0m;
         public decimal? ActualQuantity { get; set; }
 
         public DateTime? CustomsReleaseDate { get; set; }
@@ -73,6 +74,7 @@ namespace WorkflowBackend.Api.Models
         public ICollection<VesselLetterOfCredit> LettersOfCredit { get; set; } = new List<VesselLetterOfCredit>();
         public ICollection<PortSchedule> PortSchedules { get; set; } = new List<PortSchedule>();
         public ICollection<VesselStageEntry> StageEntries { get; set; } = new List<VesselStageEntry>();
+        public ICollection<VesselDischargeUpdate> DischargeUpdates { get; set; } = new List<VesselDischargeUpdate>();
 
         public string? InstructionsPath { get; set; } // uploads/vessels/xxx.pdf
         public string? InstructionsFileName { get; set; }

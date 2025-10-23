@@ -134,6 +134,7 @@ Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "contracts"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "letters-of-credit"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "vessels"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "vessel-documents"));
+Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "vessel-discharge-proofs"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipments"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "shipment-documents"));
 Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "global-documents"));

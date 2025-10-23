@@ -932,6 +932,12 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<DateTime?>("DischargeEndDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal>("DischargedQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasDefaultValue(0m);
+
                     b.Property<DateTime?>("DischargeStartDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -1006,6 +1012,49 @@ namespace WorkflowBackend.Api.Migrations
                     b.HasIndex("CreatedByUserId");
 
                     b.ToTable("Vessels");
+                });
+
+            modelBuilder.Entity("WorkflowBackend.Api.Models.VesselDischargeUpdate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("DischargeDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ProofDocumentFileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("ProofDocumentPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("QuantityDischarged")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<Guid>("VesselId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("VesselId");
+
+                    b.ToTable("VesselDischargeUpdates");
                 });
 
             modelBuilder.Entity("WorkflowBackend.Api.Models.VesselDocument", b =>
@@ -1297,6 +1346,24 @@ namespace WorkflowBackend.Api.Migrations
                     b.Navigation("Vessel");
                 });
 
+            modelBuilder.Entity("WorkflowBackend.Api.Models.VesselDischargeUpdate", b =>
+                {
+                    b.HasOne("WorkflowBackend.Api.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WorkflowBackend.Api.Models.Vessel", "Vessel")
+                        .WithMany("DischargeUpdates")
+                        .HasForeignKey("VesselId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Vessel");
+                });
+
             modelBuilder.Entity("WorkflowBackend.Api.Models.VesselStageEntry", b =>
                 {
                     b.HasOne("WorkflowBackend.Api.Models.Vessel", "Vessel")
@@ -1360,6 +1427,8 @@ namespace WorkflowBackend.Api.Migrations
             modelBuilder.Entity("WorkflowBackend.Api.Models.Vessel", b =>
                 {
                     b.Navigation("Documents");
+
+                    b.Navigation("DischargeUpdates");
 
                     b.Navigation("LettersOfCredit");
 

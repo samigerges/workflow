@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace WorkflowBackend.Api.DTOs
 {
@@ -74,6 +75,7 @@ namespace WorkflowBackend.Api.DTOs
         DateTime? Etd,
         Guid? ContractId,
         decimal? Quantity,
+        decimal? DischargedQuantity,
         string? CargoType,
         string? CountryOfOrigin,
         string? PortOfDischarge,
@@ -100,7 +102,11 @@ namespace WorkflowBackend.Api.DTOs
         string? CustomsReleaseFileName,
         DateTime CreatedAt,
         DateTime UpdatedAt
-    );
+    )
+    {
+        [JsonPropertyName("discharged_quantity")]
+        public decimal? DischargedQuantityLegacy => DischargedQuantity;
+    }
 
     public record LoadingPortCreateRequest(
         [param:Required, MaxLength(200)] string PortName,
