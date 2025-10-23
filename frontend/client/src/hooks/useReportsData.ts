@@ -1,7 +1,16 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import type { Contract, Vessel, Request, DateRange, SupplierData, QuantityMetrics, DisplayTotals, VesselWithContract } from '@/lib/schemas';
+import type {
+  Contract,
+  Vessel,
+  Request,
+  DateRange,
+  SupplierData,
+  QuantityMetrics,
+  DisplayTotals,
+  VesselWithContract,
+} from '@/lib/schemas';
 
 interface UseReportsDataProps {
   selectedSupplier: string | null;
@@ -11,6 +20,19 @@ interface UseReportsDataProps {
 
 export function useReportsData({ selectedSupplier, selectedCountry, dateRange }: UseReportsDataProps) {
   const { isAuthenticated } = useAuth();
+
+  const normalizeSupplierName = (name?: string | null) => {
+    if (typeof name !== 'string') return null;
+    const trimmed = name.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  };
+
+  const getSupplierKey = (name?: string | null) => {
+    const normalized = normalizeSupplierName(name);
+    return normalized ? normalized.toLowerCase() : null;
+  };
+
+  const selectedSupplierKey = useMemo(() => getSupplierKey(selectedSupplier), [selectedSupplier]);
 
   // Fetch data with proper types
   const { data: contracts = [], isLoading: contractsLoading, error: contractsError } = useQuery<Contract[]>({
@@ -62,49 +84,58 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
   );
 
   // Apply supplier and country filters
-  const filteredVessels = useMemo(() =>
-    filteredVesselsForDateRange.filter((vessel: Vessel) => {
-      const contract = filteredContracts.find((c: Contract) => c.id === vessel.contractId);
+  const filteredVessels = useMemo(
+    () =>
+      filteredVesselsForDateRange.filter((vessel: Vessel) => {
+        const contract = filteredContracts.find((c: Contract) => c.id === vessel.contractId);
 
-      const supplierMatch = selectedSupplier ? contract?.supplierName === selectedSupplier : true;
-      const countryMatch = selectedCountry ? vessel.countryOfOrigin === selectedCountry : true;
+        const supplierMatch = selectedSupplierKey
+          ? getSupplierKey(contract?.supplierName) === selectedSupplierKey
+          : true;
+        const countryMatch = selectedCountry ? vessel.countryOfOrigin === selectedCountry : true;
 
-      return supplierMatch && countryMatch;
-    }),
-    [filteredVesselsForDateRange, filteredContracts, selectedSupplier, selectedCountry]
+        return supplierMatch && countryMatch;
+      }),
+    [filteredVesselsForDateRange, filteredContracts, selectedSupplierKey, selectedCountry]
   );
 
   // Process suppliers data
   const suppliersData = useMemo((): SupplierData[] => {
-    return filteredContracts.reduce((acc: SupplierData[], contract: Contract) => {
-      const supplierName = contract.supplierName || 'Unknown Supplier';
-      const existing = acc.find(item => item.supplier === supplierName);
-      
+    const suppliersMap = new Map<string, SupplierData>();
+
+    filteredContracts.forEach((contract: Contract) => {
+      const supplierName = normalizeSupplierName(contract.supplierName) ?? 'Unknown Supplier';
+      const supplierKey = getSupplierKey(contract.supplierName) ?? 'unknown-supplier';
+
       const contractQuantity = Number(contract.quantity ?? 0);
       const vesselsForContract = filteredVesselsForDateRange.filter((v: Vessel) => v.contractId === contract.id).length;
+
+      const existing = suppliersMap.get(supplierKey);
 
       if (existing) {
         existing.contracts += 1;
         existing.quantity += contractQuantity;
         existing.vessels += vesselsForContract;
       } else {
-        acc.push({
+        suppliersMap.set(supplierKey, {
           supplier: supplierName,
           vessels: vesselsForContract,
           quantity: contractQuantity,
-          contracts: 1
+          contracts: 1,
         });
       }
-      
-      return acc;
-    }, []);
+    });
+
+    return Array.from(suppliersMap.values());
   }, [filteredContracts, filteredVesselsForDateRange]);
 
   // Get supplier-specific data
   const selectedSupplierData = useMemo(() => {
     if (!selectedSupplier) return null;
 
-    const supplierContracts = filteredContracts.filter((c: Contract) => c.supplierName === selectedSupplier);
+    const supplierContracts = filteredContracts.filter(
+      (c: Contract) => getSupplierKey(c.supplierName) === selectedSupplierKey,
+    );
 
     const vesselMatchesSupplier = (vessel: Vessel) => {
       const vesselContractId = vessel.contractId != null ? String(vessel.contractId) : null;
@@ -127,7 +158,14 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
       quantity: totalQuantity,
       contracts: supplierContracts.length,
     } satisfies SupplierData;
-  }, [selectedSupplier, filteredContracts, filteredVesselsForDateRange, filteredVessels, selectedCountry]);
+  }, [
+    selectedSupplier,
+    selectedSupplierKey,
+    filteredContracts,
+    filteredVesselsForDateRange,
+    filteredVessels,
+    selectedCountry,
+  ]);
 
   // Calculate quantity metrics
   const calculateQuantityMetrics = useMemo(() => {
@@ -154,8 +192,8 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
 
   // Get metrics for selected filters
   const relevantContracts = useMemo(() => {
-    const supplierFiltered = selectedSupplier
-      ? filteredContracts.filter((c: Contract) => c.supplierName === selectedSupplier)
+    const supplierFiltered = selectedSupplierKey
+      ? filteredContracts.filter((c: Contract) => getSupplierKey(c.supplierName) === selectedSupplierKey)
       : filteredContracts;
 
     if (!selectedCountry) {
@@ -173,7 +211,7 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
     }
 
     return supplierFiltered.filter((contract) => contractIdsFromVessels.has(String(contract.id)));
-  }, [filteredContracts, filteredVessels, selectedSupplier, selectedCountry]);
+  }, [filteredContracts, filteredVessels, selectedSupplierKey, selectedCountry]);
 
   const quantityMetrics = useMemo(
     () => calculateQuantityMetrics(relevantContracts, filteredVessels),
@@ -186,7 +224,7 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
       ? 1
       : new Set(
           relevantContracts
-            .map((contract) => contract.supplierName)
+            .map((contract) => getSupplierKey(contract.supplierName))
             .filter((name): name is string => Boolean(name)),
         ).size;
 
@@ -201,10 +239,24 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
   }, [filteredVessels, quantityMetrics, relevantContracts, selectedSupplier]);
 
   // Get unique suppliers for dropdown
-  const availableSuppliers = useMemo(() => 
-    Array.from(new Set(filteredContracts.map((c: Contract) => c.supplierName).filter(Boolean))) as string[],
-    [filteredContracts]
-  );
+  const availableSuppliers = useMemo(() => {
+    const seenKeys = new Set<string>();
+    const suppliers: string[] = [];
+
+    filteredContracts.forEach((contract: Contract) => {
+      const normalizedName = normalizeSupplierName(contract.supplierName);
+      const supplierKey = getSupplierKey(contract.supplierName);
+
+      if (!normalizedName || !supplierKey || seenKeys.has(supplierKey)) {
+        return;
+      }
+
+      seenKeys.add(supplierKey);
+      suppliers.push(normalizedName);
+    });
+
+    return suppliers;
+  }, [filteredContracts]);
 
   // Prepare vessels data with contract information
   const vesselsWithContractInfo = useMemo((): VesselWithContract[] =>
@@ -214,7 +266,7 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
 
       return {
         ...vessel,
-        supplierName: contract?.supplierName || 'Unknown',
+        supplierName: normalizeSupplierName(contract?.supplierName) ?? 'Unknown',
         contractQuantity: Number(contract?.quantity ?? 0),
         contractPublicId: contract?.publicId ?? null,
         contractReportId: contractReportId != null ? String(contractReportId) : null,
