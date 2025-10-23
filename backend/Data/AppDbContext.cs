@@ -25,6 +25,7 @@ namespace WorkflowBackend.Api.Data
         public DbSet<VesselDocument> VesselDocuments => Set<VesselDocument>();
         public DbSet<VesselLetterOfCredit> VesselLettersOfCredit => Set<VesselLetterOfCredit>();
         public DbSet<VesselStageEntry> VesselStageEntries => Set<VesselStageEntry>();
+        public DbSet<VesselDischargeUpdate> VesselDischargeUpdates => Set<VesselDischargeUpdate>();
         public DbSet<LetterOfCreditSupplierAllocation> LetterOfCreditSupplierAllocations => Set<LetterOfCreditSupplierAllocation>();
 
         public DbSet<Shipment> Shipments => Set<Shipment>();
@@ -151,6 +152,7 @@ namespace WorkflowBackend.Api.Data
             modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseStatus).HasMaxLength(50);
             modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseFilePath).HasMaxLength(500);
             modelBuilder.Entity<Vessel>().Property(v => v.CustomsReleaseFileName).HasMaxLength(255);
+            modelBuilder.Entity<Vessel>().Property(v => v.DischargedQuantity).HasPrecision(18, 3).HasDefaultValue(0m);
             modelBuilder.Entity<Vessel>()
                 .HasOne(v => v.CreatedBy).WithMany()
                 .HasForeignKey(v => v.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
@@ -159,6 +161,21 @@ namespace WorkflowBackend.Api.Data
                 .HasForeignKey(v => v.ContractId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<Vessel>()
                 .HasIndex(v => new { v.ContractId, v.Eta, v.Etd });
+
+            modelBuilder.Entity<VesselDischargeUpdate>().Property(u => u.QuantityDischarged).HasPrecision(18, 3);
+            modelBuilder.Entity<VesselDischargeUpdate>().Property(u => u.Notes).HasMaxLength(2000);
+            modelBuilder.Entity<VesselDischargeUpdate>().Property(u => u.ProofDocumentPath).HasMaxLength(500);
+            modelBuilder.Entity<VesselDischargeUpdate>().Property(u => u.ProofDocumentFileName).HasMaxLength(255);
+            modelBuilder.Entity<VesselDischargeUpdate>()
+                .HasOne(u => u.Vessel)
+                .WithMany(v => v.DischargeUpdates)
+                .HasForeignKey(u => u.VesselId)
+                .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<VesselDischargeUpdate>()
+                .HasOne(u => u.CreatedBy)
+                .WithMany()
+                .HasForeignKey(u => u.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // LoadingPort
             modelBuilder.Entity<LoadingPort>().Property(p => p.PortName).HasMaxLength(200).IsRequired();

@@ -154,6 +154,7 @@ namespace WorkflowBackend.Api.Controllers
                 v.Etd,
                 v.ContractId,
                 v.Quantity,
+                v.DischargedQuantity,
                 v.CargoType,
                 v.CountryOfOrigin,
                 v.PortOfDischarge,
@@ -218,6 +219,25 @@ namespace WorkflowBackend.Api.Controllers
             await file.CopyToAsync(stream);
 
             return Path.Combine("uploads", "vessels", "customs-release", safeName).Replace("\\", "/");
+        }
+
+        private async Task<string?> SaveDischargeProofAsync(IFormFile? file)
+        {
+            if (file is null || file.Length == 0) return null;
+
+            if (!FileUploadValidator.IsValid(file, out var error))
+                throw new InvalidOperationException(error);
+
+            var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var dir = Path.Combine(webRoot, "uploads", "vessel-discharge-proofs");
+            Directory.CreateDirectory(dir);
+            var ext = Path.GetExtension(file.FileName);
+            var safeName = $"{Guid.NewGuid():N}{ext}";
+            var full = Path.Combine(dir, safeName);
+            using var stream = System.IO.File.Create(full);
+            await file.CopyToAsync(stream);
+
+            return Path.Combine("uploads", "vessel-discharge-proofs", safeName).Replace("\\", "/");
         }
 
         private async Task<VesselDocumentResponse> SaveVesselDocumentAsync(Guid vesselId, IFormFile file, string? type)
@@ -298,6 +318,144 @@ namespace WorkflowBackend.Api.Controllers
             };
 
             return Ok(res);
+        }
+
+        [HttpGet("discharge-updates")]
+        public async Task<ActionResult<IEnumerable<object>>> GetDischargeUpdates([FromQuery] Guid? vesselId)
+        {
+            var query = _db.VesselDischargeUpdates
+                .Include(u => u.Vessel)
+                .AsQueryable();
+
+            if (vesselId.HasValue)
+            {
+                query = query.Where(u => u.VesselId == vesselId.Value);
+            }
+
+            var updates = await query
+                .OrderByDescending(u => u.DischargeDate)
+                .ThenByDescending(u => u.CreatedAt)
+                .ToListAsync();
+
+            var result = updates.Select(u =>
+            {
+                var proofPath = NormalizePath(u.ProofDocumentPath);
+                var vessel = u.Vessel;
+                return new
+                {
+                    u.Id,
+                    u.VesselId,
+                    u.DischargeDate,
+                    u.QuantityDischarged,
+                    u.Notes,
+                    ProofDocumentUrl = MakeAbsolute(proofPath),
+                    ProofDocumentFile = proofPath,
+                    u.ProofDocumentFileName,
+                    u.CreatedAt,
+                    vessel = vessel is null ? null : new
+                    {
+                        vessel.Id,
+                        vesselName = vessel.Name,
+                        vessel.Status,
+                        vessel.Quantity,
+                        discharged_quantity = vessel.DischargedQuantity,
+                        dischargedQuantity = vessel.DischargedQuantity
+                    }
+                };
+            });
+
+            return Ok(result);
+        }
+
+        [HttpPost("discharge-updates")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<object>> CreateDischargeUpdate(
+            [FromForm] VesselDischargeUpdateRequest req,
+            [FromForm(Name = "proofDocument")] IFormFile? proofDocument)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            var vessel = await _db.Vessels.FirstOrDefaultAsync(v => v.Id == req.VesselId);
+            if (vessel is null)
+            {
+                return NotFound(new { message = "Vessel not found." });
+            }
+
+            string? proofPath = null;
+            string? proofName = null;
+            if (proofDocument is not null)
+            {
+                try
+                {
+                    proofPath = await SaveDischargeProofAsync(proofDocument);
+                    proofName = Path.GetFileName(proofDocument.FileName);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
+            }
+
+            var dischargeDate = req.Date.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(req.Date, DateTimeKind.Utc)
+                : req.Date.ToUniversalTime();
+
+            var update = new VesselDischargeUpdate
+            {
+                VesselId = vessel.Id,
+                DischargeDate = dischargeDate,
+                QuantityDischarged = req.QuantityDischarged,
+                Notes = NormalizeString(req.Notes),
+                ProofDocumentPath = proofPath,
+                ProofDocumentFileName = proofName,
+                CreatedByUserId = CurrentUserId(),
+                CreatedAt = DateTime.UtcNow,
+            };
+
+            _db.VesselDischargeUpdates.Add(update);
+
+            vessel.DischargedQuantity = Math.Round(vessel.DischargedQuantity + req.QuantityDischarged, 3);
+            vessel.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            var normalizedProof = NormalizePath(update.ProofDocumentPath);
+
+            var response = new
+            {
+                success = true,
+                message = "Discharge quantity updated successfully.",
+                vesselId = vessel.Id,
+                dischargedQuantity = vessel.DischargedQuantity,
+                discharged_quantity = vessel.DischargedQuantity,
+                cumulativeDischarged = vessel.DischargedQuantity,
+                update = new
+                {
+                    update.Id,
+                    update.VesselId,
+                    update.DischargeDate,
+                    update.QuantityDischarged,
+                    update.Notes,
+                    ProofDocumentUrl = MakeAbsolute(normalizedProof),
+                    ProofDocumentFile = normalizedProof,
+                    update.ProofDocumentFileName,
+                    update.CreatedAt,
+                },
+                vessel = new
+                {
+                    vessel.Id,
+                    vesselName = vessel.Name,
+                    vessel.Status,
+                    vessel.Quantity,
+                    discharged_quantity = vessel.DischargedQuantity,
+                    dischargedQuantity = vessel.DischargedQuantity,
+                }
+            };
+
+            return Ok(response);
         }
 
         // ---------- CREATE ----------
