@@ -27,6 +27,7 @@ public class ReportsControllerTests
             seedContext.Contracts.Add(new Contract
             {
                 Id = contractId,
+                SequenceNumber = 5,
                 PublicId = "CON-001",
                 SupplierName = "Acme Grain",
                 Quantity = 100,
@@ -94,7 +95,7 @@ public class ReportsControllerTests
         await using var context = new AppDbContext(options);
         var controller = new ReportsController(context);
 
-        var result = await controller.GetContractJourney(contractId);
+        var result = await controller.GetContractJourney(contractId.ToString());
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var report = Assert.IsType<ContractJourneyReportDto>(ok.Value);
@@ -139,8 +140,45 @@ public class ReportsControllerTests
         await using var context = new AppDbContext(options);
         var controller = new ReportsController(context);
 
-        var result = await controller.GetContractJourney(Guid.NewGuid());
+        var result = await controller.GetContractJourney(Guid.NewGuid().ToString());
 
         Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetContractJourney_SupportsSequenceNumberIdentifier()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        var contractId = Guid.NewGuid();
+
+        await using (var seedContext = new AppDbContext(options))
+        {
+            seedContext.Contracts.Add(new Contract
+            {
+                Id = contractId,
+                SequenceNumber = 42,
+                PublicId = "CON-042",
+                SupplierName = "Sequence Supplier",
+                CreatedAt = new DateTime(2025, 3, 15, 0, 0, 0, DateTimeKind.Utc),
+                Status = "Active"
+            });
+
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using var context = new AppDbContext(options);
+        var controller = new ReportsController(context);
+
+        var result = await controller.GetContractJourney("42");
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var report = Assert.IsType<ContractJourneyReportDto>(ok.Value);
+
+        Assert.Equal(contractId, report.Contract.Id);
+        Assert.Equal("CON-042", report.Contract.ContractNo);
+        Assert.Equal("Sequence Supplier", report.Contract.SupplierName);
     }
 }
