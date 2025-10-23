@@ -124,8 +124,8 @@ namespace WorkflowBackend.Api.DTOs
     );
 
     public record VesselStageEntryRequest(
-        [property: Required, MaxLength(100)] string StageId,
-        [property: Required, MaxLength(100)] string Value
+        [param: Required, MaxLength(100)] string StageId,
+        [param: Required, MaxLength(100)] string Value
     );
 
     public record VesselStageEntryResponse(
