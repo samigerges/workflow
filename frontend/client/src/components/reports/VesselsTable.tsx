@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Ship, Filter } from "lucide-react";
+import { useLocation } from "wouter";
 import { COUNTRIES } from "@/lib/constants";
 import type { VesselWithContract, DateRange } from "@/lib/schemas";
 
@@ -35,6 +36,8 @@ export function VesselsTable({
   onClearFilters,
   totalVesselsCount,
 }: VesselsTableProps) {
+  const [, navigate] = useLocation();
+
   const getStatusBadge = (status: string) => {
     const colorClass = STATUS_COLORS[status] || STATUS_COLORS.default;
     return (
@@ -105,6 +108,7 @@ export function VesselsTable({
               <TableRow>
                 <TableHead>Vessel Name</TableHead>
                 <TableHead>Supplier</TableHead>
+                <TableHead>Contract</TableHead>
                 <TableHead>Cargo Type</TableHead>
                 <TableHead>Country of Origin</TableHead>
                 <TableHead>Quantity</TableHead>
@@ -115,19 +119,38 @@ export function VesselsTable({
             </TableHeader>
             <TableBody>
               {vesselsWithContractInfo.map((vessel) => (
-                <TableRow 
+                <TableRow
                   key={vessel.id}
                   className={selectedSupplier && vessel.supplierName === selectedSupplier ? 'bg-blue-50' : ''}
                 >
                   <TableCell className="font-medium">{vessel.vesselName}</TableCell>
                   <TableCell>
-                    <Badge 
-                      variant="outline" 
+                    <Badge
+                      variant="outline"
                       className={`cursor-pointer ${vessel.supplierName === selectedSupplier ? 'bg-blue-100 text-blue-800 border-blue-300' : ''}`}
                       onClick={() => onSupplierSelect(vessel.supplierName)}
                     >
                       {vessel.supplierName}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {vessel.contractReportId ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-secondary-900">
+                          {vessel.contractPublicId ?? `Contract ${vessel.contractReportId.slice(0, 8)}…`}
+                        </span>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="px-0 justify-start"
+                          onClick={() => navigate(`/reports/contracts/${vessel.contractReportId}`)}
+                        >
+                          View journey
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-secondary-500">Unassigned</span>
+                    )}
                   </TableCell>
                   <TableCell>{vessel.cargoType}</TableCell>
                   <TableCell>

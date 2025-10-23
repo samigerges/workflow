@@ -266,4 +266,6 @@ export interface DisplayTotals {
 export interface VesselWithContract extends Vessel {
   supplierName: string;
   contractQuantity: number;
+  contractPublicId: string | null;
+  contractReportId: string | null;
 }
