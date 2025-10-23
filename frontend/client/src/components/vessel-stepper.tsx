@@ -219,6 +219,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
   const [showDocumentDialog, setShowDocumentDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [stageNumberValue, setStageNumberValue] = useState("");
+  const [hasEditedStageNumber, setHasEditedStageNumber] = useState(false);
 
   const vesselId = selectedVessel?.id;
 
@@ -352,8 +353,10 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
     if (stage?.entryType === "number") {
       const entry = stageEntriesByStage.get(stageId);
       setStageNumberValue(entry?.numberValue ?? "");
+      setHasEditedStageNumber(false);
     } else {
       setStageNumberValue("");
+      setHasEditedStageNumber(false);
     }
     setShowDocumentDialog(true);
   };
@@ -363,6 +366,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
     setActiveStageId(null);
     setSelectedFile(null);
     setStageNumberValue("");
+    setHasEditedStageNumber(false);
   };
 
   const handleDialogOpenChange = (open: boolean) => {
@@ -374,13 +378,20 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
   };
 
   useEffect(() => {
-    if (!showDocumentDialog || !activeStageId) return;
+    if (!showDocumentDialog || !activeStageId || hasEditedStageNumber) return;
     const stage = VESSEL_STAGES.find((item) => item.id === activeStageId);
     if (stage?.entryType === "number") {
       const entry = stageEntriesByStage.get(activeStageId);
-      setStageNumberValue(entry?.numberValue ?? "");
+      if (typeof entry?.numberValue === "string") {
+        setStageNumberValue(entry.numberValue);
+      }
     }
-  }, [showDocumentDialog, activeStageId, stageEntriesByStage]);
+  }, [
+    showDocumentDialog,
+    activeStageId,
+    stageEntriesByStage,
+    hasEditedStageNumber,
+  ]);
 
   const activeStage = activeStageId
     ? VESSEL_STAGES.find((stage) => stage.id === activeStageId)
@@ -735,7 +746,10 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                   inputMode="numeric"
                   autoComplete="off"
                   value={stageNumberValue}
-                  onChange={(event) => setStageNumberValue(event.target.value)}
+                  onChange={(event) => {
+                    setStageNumberValue(event.target.value);
+                    setHasEditedStageNumber(true);
+                  }}
                   disabled={isActionPending}
                 />
                 <p className="text-xs text-gray-500">
