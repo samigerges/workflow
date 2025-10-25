@@ -5,17 +5,6 @@ export const demoUser = {
   role: "admin",
 };
 
-export const needs = [
-  {
-    id: "1",
-    title: "Demo Need",
-    description: "Example need",
-    status: "active",
-    fulfillmentStartDate: "2024-01-01T00:00:00.000Z",
-    fulfillmentEndDate: "2024-02-01T00:00:00.000Z",
-  },
-];
-
 export const requests = [
   {
     id: 1,

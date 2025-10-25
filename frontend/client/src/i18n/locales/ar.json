@@ -1,7 +1,6 @@
 {
   "navigation": {
     "dashboard": "لوحة التحكم",
-    "needs": "الاحتياجات",
     "contractRequests": "طلبات العقود",
     "contracts": "العقود",
     "lettersOfCredit": "خطابات الاعتماد",
@@ -69,8 +68,6 @@
     "sessionExpiredDescription": "تم تسجيل خروجك. سيتم إعادة تسجيل الدخول..."
   },
   "forms": {
-    "needTitle": "عنوان الحاجة",
-    "requiredQuantity": "الكمية المطلوبة",
     "description": "الوصف",
     "priority": "الأولوية",
     "deadline": "الموعد النهائي",

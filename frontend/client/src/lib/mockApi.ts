@@ -1,7 +1,6 @@
 import { QueryFunction } from "@tanstack/react-query";
 import {
   demoUser,
-  needs,
   requests,
   contracts,
   lettersOfCredit,
@@ -535,6 +534,7 @@ export async function apiRequest(
   }
 
   const query = queryParams;
+  let match: RegExpMatchArray | null;
 
   // Authentication
   if (method === "GET" && url === "/api/auth/user") return jsonResponse(demoUser);
@@ -545,39 +545,11 @@ export async function apiRequest(
   // Dashboard stats
   if (method === "GET" && url === "/api/dashboard/stats")
     return jsonResponse({
-      needs: needs.length,
       requests: requests.length,
       contracts: contracts.length,
       vessels: vessels.length,
       lettersOfCredit: lettersOfCredit.length,
     });
-
-  // Needs
-  if (url === "/api/needs") {
-    if (method === "GET") return jsonResponse(needs);
-    if (method === "POST") {
-      const payload = body instanceof FormData ? formDataToObject(body) : body || {};
-      const newNeed = { id: String(generateId(needs)), ...payload } as any;
-      needs.push(newNeed);
-      return jsonResponse(newNeed, 201);
-    }
-  }
-  let match = url.match(/^\/api\/needs\/([^\/]+)$/);
-  if (match) {
-    const id = match[1];
-    const idx = needs.findIndex((n) => n.id === id);
-    if (idx !== -1) {
-      if (method === "PUT") {
-        const payload = body instanceof FormData ? formDataToObject(body) : body || {};
-        needs[idx] = { ...needs[idx], ...payload } as any;
-        return jsonResponse(needs[idx]);
-      }
-      if (method === "DELETE") {
-        needs.splice(idx, 1);
-        return jsonResponse({ ok: true });
-      }
-    }
-  }
 
   // Requests
   if (url === "/api/requests") {
@@ -1002,7 +974,6 @@ export async function apiRequest(
     const entity = match[1];
     const id = Number(match[2]);
     const collections: Record<string, any[]> = {
-      "needs": needs,
       "requests": requests,
       "contracts": contracts,
       "vessels": vessels,

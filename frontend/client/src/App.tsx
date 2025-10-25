@@ -9,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
-import Needs from "@/pages/needs";
 import Requests from "@/pages/requests";
 import Contracts from "@/pages/contracts";
 import LettersCredit from "@/pages/letters-credit";
@@ -40,7 +39,6 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Dashboard} />
-          <Route path="/needs" component={Needs} />
           <Route path="/requests" component={Requests} />
           <Route path="/contracts" component={Contracts} />
           <Route path="/letters-credit" component={LettersCredit} />

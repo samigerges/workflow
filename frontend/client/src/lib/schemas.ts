@@ -1,30 +1,5 @@
 import { z } from "zod";
 
-// Schema for creating needs
-export const insertNeedSchema = z.object({
-  title: z.string(),
-  description: z.string(),
-  category: z.string(),
-  requiredQuantity: z.number(),
-  unitOfMeasure: z.string(),
-  fulfillmentStartDate: z.string(),
-  fulfillmentEndDate: z.string(),
-  departmentCode: z.string().optional(),
-  notes: z.string().optional(),
-  createdBy: z.string().optional(),
-  // Optional fields that may be populated from the backend
-  actualQuantityReceived: z.number().optional(),
-  maxPricePerUnit: z.number().optional(),
-});
-
-export type Need = z.infer<typeof insertNeedSchema> & {
-  id: string;
-  status: string;
-  progressPercentage?: number;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
 // Schema for creating requests
 export const insertRequestSchema = z
   .object({

@@ -10,10 +10,6 @@ This document captures the current state of the authenticated pages and highligh
 - The dashboard already pulls live counts for requests, contracts, LCs, and vessels with 30‑second refresh intervals, and surfaces recent activity cards with drill-down modals.【F:frontend/client/src/pages/dashboard.tsx†L49-L198】
 - Consider rendering the `/api/dashboard/stats` payload (currently fetched but unused) for richer KPIs, adding skeletons or error messaging for failed queries, and letting users filter KPIs by date range or business unit.
 
-## Needs management
-- Needs support creation, editing, status updates, and deletion with optimistic cache invalidation and granular status dialogs.【F:frontend/client/src/pages/needs.tsx†L24-L118】
-- Enhancements to prioritise include: table-level filters/search, grouping by category or urgency, and a timeline of status changes so teams can audit approvals.
-
 ## Contract requests
 - Requests combine form dialogs, status changes, voting workflows, and summary modals so multiple departments can collaborate before approval.【F:frontend/client/src/pages/requests.tsx†L32-L200】
 - The status palette mixes casing and contains typos (e.g., "Legel"), and the view lacks filters by department/phase; adding consistent enums, audit trails of votes, and Slack/email notifications would tighten governance.

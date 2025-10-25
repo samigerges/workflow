@@ -18,7 +18,6 @@ namespace WorkflowBackend.Api.Controllers
         {
             var body = new
             {
-                needs = await _db.Needs.CountAsync(),
                 requests = await _db.Requests.CountAsync(),
                 contracts = await _db.Contracts.CountAsync(),
                 vessels = await _db.Vessels.CountAsync(),
