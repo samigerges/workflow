@@ -1,6 +1,6 @@
 export interface NormalizedLcSupplierAllocation {
   id: string | number | null;
-  supplierId: string | number | null;
+  supplierId: string | null;
   supplierName: string;
   quantity: number | null;
   amount: number | null;
@@ -67,6 +67,15 @@ const safeDateString = (value: unknown): string | null => {
     return trimmed.length > 0 ? trimmed : null;
   }
   return null;
+};
+
+const normalizeSupplierAllocationId = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const str = String(value).trim();
+  return str.length > 0 ? str : null;
 };
 
 const fallbackNumberFromId = (id: unknown): string | null => {
@@ -178,7 +187,7 @@ export function normalizeLc(raw: any): NormalizedLC {
 
       return {
         id: allocation?.id ?? allocation?.Id ?? null,
-        supplierId: allocation?.supplierId ?? allocation?.SupplierId ?? null,
+        supplierId: normalizeSupplierAllocationId(allocation?.supplierId ?? allocation?.SupplierId),
         supplierName: supplierName ?? "",
         quantity: quantity ?? null,
         amount: amount ?? null,

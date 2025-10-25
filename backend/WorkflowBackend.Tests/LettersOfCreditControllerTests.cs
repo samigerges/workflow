@@ -599,6 +599,89 @@ public class LettersOfCreditControllerTests
     }
 
     [Fact]
+    public async Task GetSupplierAllocationOptions_RespectsExistingAllocations()
+    {
+        var options = CreateInMemoryOptions();
+
+        await using var context = new AppDbContext(options);
+
+        var contractCurrent = new Contract
+        {
+            Title = "Contract Current",
+            SupplierName = "Supplier Current",
+            SequenceNumber = 10,
+            PublicId = "CON-010"
+        };
+
+        var contractOther = new Contract
+        {
+            Title = "Contract Other",
+            SupplierName = "Supplier Other",
+            SequenceNumber = 11,
+            PublicId = "CON-011"
+        };
+
+        var contractFree = new Contract
+        {
+            Title = "Contract Free",
+            SupplierName = "Supplier Free",
+            SequenceNumber = 12
+        };
+
+        context.Contracts.AddRange(contractCurrent, contractOther, contractFree);
+
+        var currentLc = new LetterOfCredit
+        {
+            Number = "LC-CURRENT",
+            ContractId = contractCurrent.Id
+        };
+
+        var otherLc = new LetterOfCredit
+        {
+            Number = "LC-OTHER",
+            ContractId = contractOther.Id
+        };
+
+        context.LettersOfCredit.AddRange(currentLc, otherLc);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.AddRange(
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = currentLc.Id,
+                SupplierId = contractCurrent.Id,
+                SupplierName = contractCurrent.SupplierName!,
+                Quantity = 10m
+            },
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = otherLc.Id,
+                SupplierId = contractOther.Id,
+                SupplierName = contractOther.SupplierName!,
+                Quantity = 5m
+            });
+
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetSupplierAllocationOptions(currentLc.Id);
+
+        var payload = Assert.IsAssignableFrom<IEnumerable<SupplierAllocationContractOption>>(result.Value);
+
+        Assert.Contains(payload, option => option.ContractId == contractCurrent.Id && option.SupplierName == contractCurrent.SupplierName);
+        Assert.Contains(payload, option => option.ContractId == contractFree.Id && option.SupplierName == contractFree.SupplierName);
+        Assert.DoesNotContain(payload, option => option.ContractId == contractOther.Id);
+
+        var currentOption = payload.First(option => option.ContractId == contractCurrent.Id);
+        Assert.Equal(contractCurrent.PublicId, currentOption.ContractPublicId);
+        Assert.Equal(contractCurrent.SequenceNumber, currentOption.SequenceNumber);
+
+        var freeOption = payload.First(option => option.ContractId == contractFree.Id);
+        Assert.Null(freeOption.ContractPublicId);
+    }
+
+    [Fact]
     public async Task GetSupplierAllocations_ReturnsAllAllocations()
     {
         var options = CreateInMemoryOptions();

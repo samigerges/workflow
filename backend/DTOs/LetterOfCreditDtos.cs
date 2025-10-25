@@ -93,4 +93,11 @@ namespace WorkflowBackend.Api.DTOs
         DateTime CreatedAt,
         DateTime UpdatedAt
     );
+
+    public record SupplierAllocationContractOption(
+        Guid ContractId,
+        string? ContractPublicId,
+        int SequenceNumber,
+        string SupplierName
+    );
 }
