@@ -9,7 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import StatusBadge from "@/components/ui/status-badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
-import { FileText, Ship, TrendingUp, AlertTriangle, Anchor, Clock } from "lucide-react";
+import {
+  FileText,
+  Ship,
+  TrendingUp,
+  AlertTriangle,
+  Anchor,
+  Clock,
+  Flag,
+} from "lucide-react";
 
 interface ContractJourneyReport {
   contract: {
@@ -111,6 +119,18 @@ function buildTimeline(report: ContractJourneyReport | undefined): TimelineEvent
     });
   }
 
+  if (report.milestones.length > 0) {
+    events.push(
+      ...report.milestones.map<TimelineEvent>((milestone, index) => ({
+        key: `milestone-${index}-${milestone.name}`,
+        title: milestone.name,
+        subtitle: milestone.by ? `By ${milestone.by}` : undefined,
+        date: milestone.at ? new Date(milestone.at) : null,
+        icon: <Flag className="h-4 w-4 text-amber-500" />,
+      })),
+    );
+  }
+
   const vesselEvents = report.vessels
     .slice()
     .sort((a, b) => toComparableTime(a.eta ?? a.etd) - toComparableTime(b.eta ?? b.etd))
@@ -126,7 +146,14 @@ function buildTimeline(report: ContractJourneyReport | undefined): TimelineEvent
       };
     });
 
-  return [...events, ...vesselEvents];
+  const sortedEvents = [...events, ...vesselEvents].sort((a, b) => {
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return a.date.getTime() - b.date.getTime();
+  });
+
+  return sortedEvents;
 }
 
 function isLateVessel(vessel: ContractJourneyReport["vessels"][number]): boolean {
@@ -266,6 +293,39 @@ export default function ContractJourneyReportPage() {
                 )}
               </CardContent>
             </Card>
+
+            {report.milestones.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Flag className="h-5 w-5 text-amber-500" />
+                    <span>Milestones</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Milestone</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Owner</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.milestones.map((milestone, index) => (
+                          <TableRow key={`${milestone.name}-${index}`}>
+                            <TableCell className="font-medium text-gray-900">{milestone.name}</TableCell>
+                            <TableCell>{formatMaybeDate(milestone.at)}</TableCell>
+                            <TableCell>{milestone.by ?? "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>
