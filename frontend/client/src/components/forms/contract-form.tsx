@@ -461,8 +461,8 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 Link this contract to an existing request and capture core supplier details.
               </p>
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="md:col-span-2 space-y-2">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="md:col-span-2 lg:col-span-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <Label htmlFor="requestId">Related Request</Label>
                   {selectedRequest && (
@@ -551,7 +551,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 Capture shipment specifics, volumes, and transportation preferences.
               </p>
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <div>
                 <Label htmlFor="cargoType">Cargo Type *</Label>
                 <Select
@@ -655,8 +655,8 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 Record the agreed price and preferred payment arrangements.
               </p>
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="md:col-span-2">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div>
                 <Label htmlFor="pricePerTon">Price per Ton (USD)</Label>
                 <Input
                   id="pricePerTon"
@@ -724,7 +724,7 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                 Upload the contract file and capture any key terms or internal remarks.
               </p>
             </div>
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-4">
                 <div>
                   <Label>Contract Document *</Label>
@@ -769,37 +769,39 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
                     <p className="text-sm text-red-500 mt-1">{errors.contractTerms.message}</p>
                   )}
                 </div>
-                <div>
-                  <Label htmlFor="letterOfGuarantee">Letter of Guarantee</Label>
-                  <Textarea
-                    id="letterOfGuarantee"
-                    {...register("letterOfGuarantee")}
-                    rows={3}
-                    placeholder="Enter letter of guarantee details or requirements"
-                    maxLength={LETTER_OF_GUARANTEE_LIMIT}
-                    className={errors.letterOfGuarantee ? "border-red-500" : ""}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Maximum {LETTER_OF_GUARANTEE_LIMIT.toLocaleString()} characters
-                  </p>
-                  {errors.letterOfGuarantee && (
-                    <p className="text-sm text-red-500 mt-1">{errors.letterOfGuarantee.message}</p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="reviewNotes">Review Notes</Label>
-                  <Textarea
-                    id="reviewNotes"
-                    {...register("reviewNotes")}
-                    rows={3}
-                    placeholder="Administrative notes and comments"
-                    maxLength={REVIEW_NOTES_LIMIT}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
-                  {errors.reviewNotes && (
-                    <p className="text-sm text-red-500 mt-1">{errors.reviewNotes.message}</p>
-                  )}
-                </div>
+              </div>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="letterOfGuarantee">Letter of Guarantee</Label>
+                <Textarea
+                  id="letterOfGuarantee"
+                  {...register("letterOfGuarantee")}
+                  rows={4}
+                  placeholder="Enter letter of guarantee details or requirements"
+                  maxLength={LETTER_OF_GUARANTEE_LIMIT}
+                  className={errors.letterOfGuarantee ? "border-red-500" : ""}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Maximum {LETTER_OF_GUARANTEE_LIMIT.toLocaleString()} characters
+                </p>
+                {errors.letterOfGuarantee && (
+                  <p className="text-sm text-red-500 mt-1">{errors.letterOfGuarantee.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reviewNotes">Review Notes</Label>
+                <Textarea
+                  id="reviewNotes"
+                  {...register("reviewNotes")}
+                  rows={4}
+                  placeholder="Administrative notes and comments"
+                  maxLength={REVIEW_NOTES_LIMIT}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+                {errors.reviewNotes && (
+                  <p className="text-sm text-red-500 mt-1">{errors.reviewNotes.message}</p>
+                )}
               </div>
             </div>
           </section>
