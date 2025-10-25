@@ -3,9 +3,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using System;
 using System.Globalization;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -22,6 +25,7 @@ namespace WorkflowBackend.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
+        private readonly IConfiguration _config;
         private readonly ILogger<ContractsController> _logger;
 
         private const string ContractIdPrefix = "2025/W/";
@@ -38,10 +42,11 @@ namespace WorkflowBackend.Api.Controllers
             ["Archived"]  = Array.Empty<string>()
         };
 
-        public ContractsController(AppDbContext db, IWebHostEnvironment env, ILogger<ContractsController> logger)
+        public ContractsController(AppDbContext db, IWebHostEnvironment env, IConfiguration config, ILogger<ContractsController> logger)
         {
             _db = db;
             _env = env;
+            _config = config;
             _logger = logger;
         }
 
@@ -510,6 +515,132 @@ namespace WorkflowBackend.Api.Controllers
 
             if (c is null) return NotFound();
             return ToResponse(c, uid);
+        }
+
+        // GET /api/contracts/{id}/available-lcs
+        [HttpGet("{id:guid}/available-lcs")]
+        public async Task<ActionResult<PaginatedResponse<AvailableLetterOfCreditSummary>>> GetAvailableLettersOfCredit(
+            Guid id,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 25,
+            [FromQuery] string? search = null)
+        {
+            var contract = await _db.Contracts
+                .AsNoTracking()
+                .Select(c => new { c.Id, c.SupplierName, c.CargoType })
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (contract is null)
+            {
+                return NotFound();
+            }
+
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize < 1 ? 1 : (pageSize > 100 ? 100 : pageSize);
+
+            var requireSupplierMatch = _config.GetValue("LcMatching:RequireSupplierMatch", true);
+            var requireProductMatch = _config.GetValue("LcMatching:RequireProductMatch", true);
+
+            var normalizedSupplier = NormalizeComparisonString(contract.SupplierName)?.ToLowerInvariant();
+            var normalizedProduct = NormalizeComparisonString(contract.CargoType)?.ToLowerInvariant();
+
+            if (requireSupplierMatch && normalizedSupplier is null)
+            {
+                return Ok(new PaginatedResponse<AvailableLetterOfCreditSummary>(
+                    Array.Empty<AvailableLetterOfCreditSummary>(),
+                    page,
+                    pageSize,
+                    0));
+            }
+
+            if (requireProductMatch && normalizedProduct is null)
+            {
+                return Ok(new PaginatedResponse<AvailableLetterOfCreditSummary>(
+                    Array.Empty<AvailableLetterOfCreditSummary>(),
+                    page,
+                    pageSize,
+                    0));
+            }
+
+            var lcQuery = _db.LettersOfCredit
+                .AsNoTracking()
+                .Where(lc => lc.Status != null && lc.Status.ToLower() == "active")
+                .Select(lc => new
+                {
+                    lc.Id,
+                    LcNumber = lc.Number,
+                    Supplier = lc.Contract != null ? lc.Contract.SupplierName : null,
+                    Product = lc.CargoType ?? (lc.Contract != null ? lc.Contract.CargoType : null),
+                    TotalQuantity = lc.Quantity ?? 0m,
+                    UsedQuantity = lc.SupplierAllocations.Sum(a => a.Quantity) ?? 0m,
+                    lc.ExpiryDate
+                });
+
+            if (requireSupplierMatch && normalizedSupplier is not null)
+            {
+                lcQuery = lcQuery.Where(lc => lc.Supplier != null && lc.Supplier.ToLower() == normalizedSupplier);
+            }
+
+            if (requireProductMatch && normalizedProduct is not null)
+            {
+                lcQuery = lcQuery.Where(lc => lc.Product != null && lc.Product.ToLower() == normalizedProduct);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                lcQuery = lcQuery.Where(lc => lc.LcNumber.ToLower().Contains(term));
+            }
+
+            var filtered = lcQuery
+                .Select(lc => new
+                {
+                    lc.Id,
+                    lc.LcNumber,
+                    lc.Supplier,
+                    lc.Product,
+                    lc.TotalQuantity,
+                    lc.UsedQuantity,
+                    RemainingQuantity = lc.TotalQuantity - lc.UsedQuantity,
+                    lc.ExpiryDate
+                })
+                .Where(lc => lc.TotalQuantity > 0m && lc.RemainingQuantity > 0m);
+
+            var total = await filtered.CountAsync();
+
+            var maxPage = total == 0 ? 1 : (int)Math.Ceiling(total / (double)pageSize);
+            var effectivePage = Math.Min(page, maxPage);
+            if (effectivePage < 1)
+            {
+                effectivePage = 1;
+            }
+
+            var skip = (effectivePage - 1) * pageSize;
+
+            var results = await filtered
+                .OrderByDescending(lc => lc.RemainingQuantity)
+                .ThenBy(lc => lc.ExpiryDate ?? DateTime.MaxValue)
+                .Skip(skip)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var items = results
+                .Select(lc => new AvailableLetterOfCreditSummary(
+                    lc.Id,
+                    lc.LcNumber,
+                    lc.Supplier,
+                    lc.Product,
+                    lc.TotalQuantity,
+                    lc.UsedQuantity,
+                    lc.RemainingQuantity,
+                    lc.ExpiryDate))
+                .ToList();
+
+            return Ok(new PaginatedResponse<AvailableLetterOfCreditSummary>(
+                items,
+                effectivePage,
+                pageSize,
+                total));
         }
 
         // -------- CREATE --------

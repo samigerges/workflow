@@ -1,23 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import { useQuery } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/main-layout";
 import LetterOfCreditForm from "@/components/forms/letter-of-credit-form";
-import LCSummary from "@/components/lc-summary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, University, Edit, Eye, Trash, Building2, Factory, ListPlus } from "lucide-react";
+import { Plus, University, Building2, Factory } from "lucide-react";
 import StatusBadge from "@/components/ui/status-badge";
 import {
   normalizeLc,
-  formatLcCurrency,
   formatLcDate,
   isLcExpired,
   daysUntilLcExpiry,
@@ -26,7 +20,6 @@ import {
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
-import LCSupplierAllocationDialog from "@/components/forms/lc-supplier-allocation-form";
 
 type FlowKey = NormalizedLC["flowKey"];
 
@@ -52,33 +45,14 @@ const JOURNEY_SEGMENTS: JourneySegment[] = [
   },
 ];
 
-const STATUS_OPTIONS = [
-  "Draft",
-  "Issued",
-  "Active",
-  "Amended",
-  "Utilized",
-  "Expired",
-  "Cancelled",
-  "Archived",
-] as const;
-
 export default function LettersCredit() {
-  const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
-  const { redirectToLogin } = useUnauthorizedRedirect({
+  useUnauthorizedRedirect({
     isAuthenticated,
     isLoading,
   });
-  const queryClient = useQueryClient();
   const [journeyFilter, setJourneyFilter] = useState<FlowKey>("gasc_to_upf");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showViewDialog, setShowViewDialog] = useState(false);
-  const [showAllocationDialog, setShowAllocationDialog] = useState(false);
-  const [editingLC, setEditingLC] = useState<any>(null);
-  const [viewingLC, setViewingLC] = useState<any>(null);
-  const [allocationLC, setAllocationLC] = useState<NormalizedLC | null>(null);
   const [suppressJourneySelection, setSuppressJourneySelection] = useState(false);
 
   useEffect(() => {
@@ -89,35 +63,6 @@ export default function LettersCredit() {
     const timer = window.setTimeout(() => setSuppressJourneySelection(false), 250);
     return () => window.clearTimeout(timer);
   }, [suppressJourneySelection]);
-
-  // Delete LC mutation
-  const deleteLCMutation = useMutation({
-      mutationFn: async (lcId: string | number) => {
-        await apiRequest("DELETE", `/api/letters-of-credit/${lcId}`);
-      },
-    onSuccess: () => {
-      // Remove all LC-related queries from cache completely
-      queryClient.removeQueries({ queryKey: ["/api/letters-of-credit"] });
-      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] === "/api/letters-of-credit" });
-      queryClient.removeQueries({ queryKey: ["/api/dashboard/stats"] });
-      
-      toast({
-        title: "Success",
-        description: "Letter of Credit deleted successfully",
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        redirectToLogin();
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to delete Letter of Credit",
-        variant: "destructive",
-      });
-    },
-  });
 
   const selectedJourney = useMemo(
     () => JOURNEY_SEGMENTS.find((segment) => segment.value === journeyFilter) ?? JOURNEY_SEGMENTS[0],
@@ -156,8 +101,6 @@ export default function LettersCredit() {
     [journeyEntries],
   );
 
-  const isUpfToSuppliers = journeyFilter === "upf_to_supplier";
-
   const issuedCount = journeyNormalizedLCs.filter((lc) => lc.statusKey === "issued").length;
   const documentsCount = journeyNormalizedLCs.filter((lc) => Boolean(lc.fileUrl)).length;
   const linkedContractsCount = journeyNormalizedLCs.reduce((set, lc) => {
@@ -174,27 +117,12 @@ export default function LettersCredit() {
     ? "Get started by creating your first letter of credit."
     : `No letters of credit found for ${journeyLabel}.`;
 
-  const handleStatusChange = async (lcId: string | number, newStatus: string) => {
-    try {
-      await apiRequest("POST", `/api/letters-of-credit/${lcId}/status`, { status: newStatus });
-      queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({
-        title: "Success",
-        description: "LC status updated successfully",
-      });
-    } catch (error) {
-      if (error instanceof Error && isUnauthorizedError(error)) {
-        redirectToLogin();
-        return;
-      }
-
-      toast({
-        title: "Error",
-        description: "Failed to update LC status",
-        variant: "destructive",
-      });
+  const formatQuantity = (value: number | null | undefined) => {
+    if (value === null || value === undefined) {
+      return "—";
     }
+
+    return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
   };
 
   if (isLoading) {
@@ -272,50 +200,6 @@ export default function LettersCredit() {
             </Dialog>
           </div>
         </section>
-
-        {/* Edit LC Dialog */}
-        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Letter of Credit</DialogTitle>
-            </DialogHeader>
-            {editingLC && (
-              <LetterOfCreditForm
-                lc={editingLC}
-                onSuccess={(flowKey) => {
-                  setShowEditDialog(false);
-                  setEditingLC(null);
-                  setJourneyFilter(flowKey);
-                }}
-                onCancel={() => {
-                  setShowEditDialog(false);
-                  setEditingLC(null);
-                }}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* View LC Summary Dialog */}
-        <LCSummary
-          lc={viewingLC}
-          isOpen={showViewDialog}
-          onClose={() => {
-            setShowViewDialog(false);
-            setViewingLC(null);
-          }}
-        />
-
-        <LCSupplierAllocationDialog
-          lc={allocationLC}
-          open={showAllocationDialog}
-          onOpenChange={(open) => {
-            setShowAllocationDialog(open);
-            if (!open) {
-              setAllocationLC(null);
-            }
-          }}
-        />
 
         {/* LC Stats Cards */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
@@ -397,131 +281,43 @@ export default function LettersCredit() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>LC Number</TableHead>
-                      <TableHead>Cargo Type</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Price per Unit</TableHead>
-                      <TableHead>Total Price</TableHead>
-                      <TableHead>Issuing Bank</TableHead>
-                      {!isUpfToSuppliers && <TableHead>Supplier</TableHead>}
-                      <TableHead>Shipment From</TableHead>
-                      <TableHead>Shipment To</TableHead>
-                      <TableHead>Issue Date</TableHead>
-                      <TableHead>Expiry Date</TableHead>
+                      <TableHead>LC No</TableHead>
+                      <TableHead>Supplier</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Total Qty</TableHead>
+                      <TableHead>Used Qty</TableHead>
+                      <TableHead>Remaining Qty</TableHead>
+                      <TableHead>Expiry</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {journeyEntries.map(({ raw, normalized }, index) => {
                       const rowKey = normalized.id ?? raw?.id ?? index;
                       const expired = isLcExpired(normalized.expiryDate);
-                      const statusValue = normalized.status || "Draft";
-                      const statusOptionsForRow = Array.from(new Set([...STATUS_OPTIONS, statusValue]));
-                      const lcIdentifier = raw?.id ?? normalized.id;
+                      const totalQuantity = typeof normalized.quantity === "number" ? normalized.quantity : null;
+                      const usedQuantity = typeof normalized.allocatedQuantity === "number" ? normalized.allocatedQuantity : 0;
+                      const remainingQuantity = totalQuantity != null
+                        ? Math.max(totalQuantity - usedQuantity, 0)
+                        : null;
+                      const remainingDepleted = totalQuantity != null && remainingQuantity === 0;
 
                       return (
                         <TableRow key={String(rowKey)} className={expired ? "bg-red-50" : ""}>
                           <TableCell className="font-medium">{normalized.number}</TableCell>
+                          <TableCell>{normalized.supplierName ?? "—"}</TableCell>
                           <TableCell>{normalized.cargoType ?? "—"}</TableCell>
-                          <TableCell>
-                            {typeof normalized.quantity === "number"
-                              ? normalized.quantity.toLocaleString()
-                              : "—"}
+                          <TableCell>{formatQuantity(totalQuantity)}</TableCell>
+                          <TableCell>{formatQuantity(usedQuantity)}</TableCell>
+                          <TableCell className={remainingDepleted ? "text-red-600 font-medium" : ""}>
+                            {formatQuantity(remainingQuantity)}
                           </TableCell>
-                          <TableCell>
-                            {formatLcCurrency(normalized.pricePerUnit, normalized.currency)}
-                          </TableCell>
-                          <TableCell>{formatLcCurrency(normalized.amount, normalized.currency)}</TableCell>
-                          <TableCell>{normalized.issuingBank ?? "—"}</TableCell>
-                          {!isUpfToSuppliers && (
-                            <TableCell>{normalized.supplierName ?? "—"}</TableCell>
-                          )}
-                          <TableCell>{formatLcDate(normalized.shipmentPeriodStart)}</TableCell>
-                          <TableCell>{formatLcDate(normalized.shipmentPeriodEnd)}</TableCell>
-                          <TableCell>{formatLcDate(normalized.issueDate)}</TableCell>
                           <TableCell className={expired ? "text-red-600 font-medium" : ""}>
                             {formatLcDate(normalized.expiryDate)}
                             {expired && <div className="text-xs text-red-500">Expired</div>}
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-col gap-2">
-                              <StatusBadge status={normalized.statusKey} type="lc" />
-                              <Select
-                                value={statusValue}
-                                onValueChange={(newStatus) => {
-                                  if (lcIdentifier == null) return;
-                                  handleStatusChange(lcIdentifier, newStatus);
-                                }}
-                                disabled={lcIdentifier == null}
-                              >
-                                <SelectTrigger className="w-40">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {statusOptionsForRow.map((option) => (
-                                    <SelectItem key={option} value={option}>
-                                      {option}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-blue-50 hover:bg-blue-100 border-blue-200"
-                                onClick={() => {
-                                  setViewingLC(raw);
-                                  setShowViewDialog(true);
-                                }}
-                                title="View LC summary"
-                              >
-                                <Eye size={14} className="mr-1" />
-                                View
-                              </Button>
-                              {isUpfToSuppliers && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
-                                  onClick={() => {
-                                    setAllocationLC(normalized);
-                                    setShowAllocationDialog(true);
-                                  }}
-                                  title="Manage supplier allocations"
-                                >
-                                  <ListPlus size={14} className="mr-1" />
-                                  Allocate
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                className="bg-blue-500 hover:bg-blue-600 text-white"
-                                onClick={() => {
-                                  setEditingLC(raw);
-                                  setShowEditDialog(true);
-                                }}
-                              >
-                                <Edit size={14} />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => {
-                                  if (window.confirm("Are you sure you want to delete this Letter of Credit?")) {
-                                    if (lcIdentifier == null) return;
-                                    deleteLCMutation.mutate(lcIdentifier);
-                                  }
-                                }}
-                                disabled={deleteLCMutation.isPending}
-                              >
-                                <Trash size={14} />
-                              </Button>
-                            </div>
+                            <StatusBadge status={normalized.statusKey} type="lc" />
                           </TableCell>
                         </TableRow>
                       );

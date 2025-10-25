@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging.Abstractions;
 using WorkflowBackend.Api.Controllers;
@@ -16,6 +17,9 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using System.IO;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace WorkflowBackend.Tests;
 
@@ -401,9 +405,321 @@ public class ContractsControllerTests
         Assert.Equal("The value for Title exceeds the maximum length of 200 characters.", message);
     }
 
-    private static ContractsController CreateController(AppDbContext context, IWebHostEnvironment? environment = null)
+    [Fact]
+    public async Task GetAvailableLettersOfCredit_ReturnsEligibleActiveContracts()
     {
-        var controller = new ContractsController(context, environment ?? new FakeWebHostEnvironment(), NullLogger<ContractsController>.Instance)
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Primary Contract",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-001"
+        };
+
+        var otherContract = new Contract
+        {
+            Title = "Other Contract",
+            SupplierName = "Supplier B",
+            CargoType = "Wheat",
+            SequenceNumber = 2,
+            PublicId = "CON-002"
+        };
+
+        context.Contracts.AddRange(contract, otherContract);
+        await context.SaveChangesAsync();
+
+        var lcOne = new LetterOfCredit
+        {
+            Number = "LC-001",
+            Status = "Active",
+            Quantity = 100m,
+            ContractId = contract.Id,
+            CargoType = "Wheat",
+            ExpiryDate = new DateTime(2030, 1, 1)
+        };
+
+        var lcTwo = new LetterOfCredit
+        {
+            Number = "LC-002",
+            Status = "Active",
+            Quantity = 80m,
+            ContractId = contract.Id,
+            CargoType = "Wheat",
+            ExpiryDate = new DateTime(2029, 6, 1)
+        };
+
+        var lcDifferentSupplier = new LetterOfCredit
+        {
+            Number = "LC-OTHER",
+            Status = "Active",
+            Quantity = 120m,
+            ContractId = otherContract.Id,
+            CargoType = "Wheat",
+            ExpiryDate = new DateTime(2030, 5, 1)
+        };
+
+        var lcDifferentProduct = new LetterOfCredit
+        {
+            Number = "LC-CORN",
+            Status = "Active",
+            Quantity = 75m,
+            ContractId = contract.Id,
+            CargoType = "Corn",
+            ExpiryDate = new DateTime(2030, 3, 1)
+        };
+
+        var lcWithoutRemaining = new LetterOfCredit
+        {
+            Number = "LC-FULL",
+            Status = "Active",
+            Quantity = 60m,
+            ContractId = contract.Id,
+            CargoType = "Wheat",
+            ExpiryDate = new DateTime(2030, 7, 1)
+        };
+
+        var lcInactive = new LetterOfCredit
+        {
+            Number = "LC-INACTIVE",
+            Status = "Issued",
+            Quantity = 90m,
+            ContractId = contract.Id,
+            CargoType = "Wheat",
+            ExpiryDate = new DateTime(2030, 8, 1)
+        };
+
+        context.LettersOfCredit.AddRange(lcOne, lcTwo, lcDifferentSupplier, lcDifferentProduct, lcWithoutRemaining, lcInactive);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.AddRange(
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = lcOne.Id,
+                SupplierName = "Supplier A",
+                Quantity = 25m
+            },
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = lcOne.Id,
+                SupplierName = "Supplier A",
+                Quantity = 15m
+            },
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = lcTwo.Id,
+                SupplierName = "Supplier A",
+                Quantity = 30m
+            },
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = lcDifferentSupplier.Id,
+                SupplierName = "Supplier B",
+                Quantity = 10m
+            },
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = lcWithoutRemaining.Id,
+                SupplierName = "Supplier A",
+                Quantity = 60m
+            }
+        );
+
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetAvailableLettersOfCredit(contract.Id, page: 1, pageSize: 10, search: null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(ok.Value);
+
+        Assert.Equal(2, payload.Total);
+        Assert.Equal(1, payload.Page);
+        Assert.Equal(10, payload.PageSize);
+        Assert.Equal(2, payload.Items.Count);
+
+        Assert.Equal(new[] { "LC-001", "LC-002" }, payload.Items.Select(i => i.LcNumber).ToArray());
+
+        var first = payload.Items[0];
+        Assert.Equal(100m, first.TotalQuantity);
+        Assert.Equal(40m, first.UsedQuantity);
+        Assert.Equal(60m, first.RemainingQuantity);
+        Assert.Equal("Supplier A", first.Supplier);
+        Assert.Equal("Wheat", first.Product);
+
+        var second = payload.Items[1];
+        Assert.Equal(80m, second.TotalQuantity);
+        Assert.Equal(30m, second.UsedQuantity);
+        Assert.Equal(50m, second.RemainingQuantity);
+    }
+
+    [Fact]
+    public async Task GetAvailableLettersOfCredit_AppliesPaginationAndSearch()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Paged Contract",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-010"
+        };
+
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        var letters = new List<LetterOfCredit>();
+
+        for (var i = 0; i < 12; i++)
+        {
+            letters.Add(new LetterOfCredit
+            {
+                Number = $"LC-{i:000}",
+                Status = "Active",
+                Quantity = 100m + i,
+                ContractId = contract.Id,
+                CargoType = "Wheat",
+                ExpiryDate = new DateTime(2030, 1, 1).AddDays(i)
+            });
+        }
+
+        context.LettersOfCredit.AddRange(letters);
+        await context.SaveChangesAsync();
+
+        foreach (var letter in letters)
+        {
+            context.LetterOfCreditSupplierAllocations.Add(new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = letter.Id,
+                SupplierName = "Supplier A",
+                Quantity = 10m
+            });
+        }
+
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var pagedResult = await controller.GetAvailableLettersOfCredit(contract.Id, page: 2, pageSize: 5, search: null);
+        var pagedOk = Assert.IsType<OkObjectResult>(pagedResult.Result);
+        var pagedPayload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(pagedOk.Value);
+
+        Assert.Equal(12, pagedPayload.Total);
+        Assert.Equal(2, pagedPayload.Page);
+        Assert.Equal(5, pagedPayload.PageSize);
+        Assert.Equal(5, pagedPayload.Items.Count);
+
+        var searchResult = await controller.GetAvailableLettersOfCredit(contract.Id, page: 1, pageSize: 5, search: "LC-007");
+        var searchOk = Assert.IsType<OkObjectResult>(searchResult.Result);
+        var searchPayload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(searchOk.Value);
+
+        Assert.Equal(1, searchPayload.Total);
+        Assert.Single(searchPayload.Items);
+        Assert.Equal("LC-007", searchPayload.Items[0].LcNumber);
+    }
+
+    [Fact]
+    public async Task GetAvailableLettersOfCredit_ProductMatchDisabledAllowsDifferentCargo()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Flexible Contract",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-500"
+        };
+
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        var matching = new LetterOfCredit
+        {
+            Number = "LC-WHEAT",
+            Status = "Active",
+            Quantity = 100m,
+            ContractId = contract.Id,
+            CargoType = "Wheat",
+            ExpiryDate = new DateTime(2030, 4, 1)
+        };
+
+        var differentCargo = new LetterOfCredit
+        {
+            Number = "LC-CORN",
+            Status = "Active",
+            Quantity = 90m,
+            ContractId = contract.Id,
+            CargoType = "Corn",
+            ExpiryDate = new DateTime(2030, 5, 1)
+        };
+
+        context.LettersOfCredit.AddRange(matching, differentCargo);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.AddRange(
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = matching.Id,
+                SupplierName = "Supplier A",
+                Quantity = 10m
+            },
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = differentCargo.Id,
+                SupplierName = "Supplier A",
+                Quantity = 20m
+            });
+
+        await context.SaveChangesAsync();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LcMatching:RequireSupplierMatch"] = "true",
+                ["LcMatching:RequireProductMatch"] = "false"
+            })
+            .Build();
+
+        var controller = CreateController(context, configuration: configuration);
+
+        var result = await controller.GetAvailableLettersOfCredit(contract.Id, page: 1, pageSize: 10, search: null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(ok.Value);
+
+        Assert.Equal(2, payload.Total);
+        Assert.Equal(new[] { "LC-CORN", "LC-WHEAT" }, payload.Items.Select(i => i.LcNumber).ToArray());
+    }
+
+    private static ContractsController CreateController(
+        AppDbContext context,
+        IWebHostEnvironment? environment = null,
+        IConfiguration? configuration = null)
+    {
+        var controller = new ContractsController(
+            context,
+            environment ?? new FakeWebHostEnvironment(),
+            configuration ?? new ConfigurationBuilder().Build(),
+            NullLogger<ContractsController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
