@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -465,11 +466,14 @@ function DischargeUpdateDialog({
 /* --------------------------------- Page ---------------------------------- */
 
 export default function VesselTracking() {
+  const [location] = useLocation();
   const [selectedContractId, setSelectedContractId] = useState<string>("all");
   const [selectedLcId, setSelectedLcId] = useState<string>("all");
   const [selectedVessel, setSelectedVessel] = useState<Vessel | null>(null);
   const [updateVessel, setUpdateVessel] = useState<Vessel | null>(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [pendingVesselId, setPendingVesselId] = useState<string | null>(null);
+  const [pendingContractId, setPendingContractId] = useState<string | null>(null);
 
   const { data: vessels, isLoading } = useQuery({
     queryKey: ["/api/vessels"],
@@ -531,6 +535,39 @@ export default function VesselTracking() {
       ),
     [upfSupplierLcOptions, selectedContractId],
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const vesselIdParam = searchParams.get("vesselId");
+    const contractIdParam = searchParams.get("contractId");
+    setPendingVesselId(vesselIdParam);
+    setPendingContractId(contractIdParam);
+    if (contractIdParam) {
+      setSelectedContractId(contractIdParam);
+    }
+  }, [location]);
+
+  useEffect(() => {
+    if (!pendingVesselId) return;
+    const list = vessels ?? [];
+    const match = list.find((vessel) => String(vessel.id) === pendingVesselId);
+    if (!match) return;
+
+    setSelectedVessel(match);
+
+    if (!pendingContractId) {
+      const contractId =
+        match.contractId !== undefined && match.contractId !== null
+          ? String(match.contractId)
+          : null;
+      if (contractId) {
+        setSelectedContractId(contractId);
+      }
+    }
+
+    setPendingVesselId(null);
+  }, [pendingVesselId, pendingContractId, vessels]);
 
   useEffect(() => {
     if (selectedLcId === "all") return;

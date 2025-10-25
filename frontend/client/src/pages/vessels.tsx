@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +8,6 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import MainLayout from "@/components/layout/main-layout";
 import VesselNominationForm from "@/components/forms/vessel-nomination-form";
 import VesselSummary from "@/components/vessel-summary";
-import VesselDischargeTracking from "@/components/vessel-discharge-tracking";
 import StatusBadge from "@/components/ui/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -137,14 +137,13 @@ export default function Vessels() {
     isLoading,
   });
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingVessel, setEditingVessel] = useState<any>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [viewingVessel, setViewingVessel] = useState<any>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
-  const [trackingVessel, setTrackingVessel] = useState<any>(null);
-  const [showTrackingDialog, setShowTrackingDialog] = useState(false);
 
   const statusQueryArg = useMemo(
     () => (statusFilter === "all" ? {} : { status: statusKeyToTitleCase(statusFilter) }),
@@ -361,15 +360,6 @@ export default function Vessels() {
                 }}
               />
 
-              {/* Discharge Tracking Dialog */}
-              <VesselDischargeTracking
-                vessel={trackingVessel}
-                isOpen={showTrackingDialog}
-                onClose={() => {
-                  setShowTrackingDialog(false);
-                  setTrackingVessel(null);
-                }}
-              />
           </div>
 
           {/* Vessel Stats Cards */}
@@ -579,19 +569,28 @@ export default function Vessels() {
                             >
                               <Edit size={14} />
                             </Button>
-                            {vessel.statusKey !== 'draft' && ['admin', 'shipping_officer'].includes((user as any)?.role || '') && (
-                              <Button 
-                                size="sm" 
-                                className="bg-orange-500 hover:bg-orange-600 text-white"
-                                onClick={() => {
-                                  setTrackingVessel(vessel);
-                                  setShowTrackingDialog(true);
-                                }}
-                                title="Track discharge progress"
-                              >
-                                <Activity size={14} />
-                              </Button>
-                            )}
+                              {vessel.statusKey !== 'draft' && ['admin', 'shipping_officer'].includes((user as any)?.role || '') && (
+                                <Button
+                                  size="sm"
+                                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                                  onClick={() => {
+                                    const params = new URLSearchParams({ vesselId: String(vessel.id) });
+                                    const contractId =
+                                      vessel.contractId ??
+                                      (relatedContract?.id !== undefined && relatedContract?.id !== null
+                                        ? relatedContract.id
+                                        : null);
+                                    if (contractId !== undefined && contractId !== null) {
+                                      params.set("contractId", String(contractId));
+                                    }
+                                    setLocation(`/vessel-tracking?${params.toString()}`);
+                                  }}
+                                  title="Track vessel"
+                                >
+                                  <Activity size={14} className="mr-1" />
+                                  Track
+                                </Button>
+                              )}
                             <Button 
                               size="sm" 
                               variant="destructive"
