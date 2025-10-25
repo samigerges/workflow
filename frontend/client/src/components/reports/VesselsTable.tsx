@@ -7,13 +7,15 @@ import { Ship, Filter } from "lucide-react";
 import { useLocation } from "wouter";
 import { COUNTRIES } from "@/lib/constants";
 import type { VesselWithContract, DateRange } from "@/lib/schemas";
+import { SUPPLIER_FILTER_SEPARATOR } from "@/types/reports";
 
 interface VesselsTableProps {
   vesselsWithContractInfo: VesselWithContract[];
-  selectedSupplier: string | null;
+  selectedSupplierValue: string | null;
+  selectedSupplierLabel: string | null;
   selectedCountry: string | null;
   dateRange: DateRange;
-  onSupplierSelect: (supplier: string) => void;
+  onSupplierSelect: (supplier: string | null) => void;
   onCountrySelect: (country: string | null) => void;
   onClearFilters: () => void;
   totalVesselsCount: number;
@@ -28,7 +30,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function VesselsTable({
   vesselsWithContractInfo,
-  selectedSupplier,
+  selectedSupplierValue,
+  selectedSupplierLabel,
   selectedCountry,
   dateRange,
   onSupplierSelect,
@@ -37,6 +40,17 @@ export function VesselsTable({
   totalVesselsCount,
 }: VesselsTableProps) {
   const [, navigate] = useLocation();
+
+  const buildSupplierFilterValue = (vessel: VesselWithContract): string | null => {
+    const contractId = vessel.contractReportId ?? null;
+    const supplierKey = vessel.supplierName?.trim().toLowerCase() || null;
+
+    if (!contractId || !supplierKey) {
+      return null;
+    }
+
+    return `${contractId}${SUPPLIER_FILTER_SEPARATOR}${supplierKey}`;
+  };
 
   const getStatusBadge = (status: string) => {
     const colorClass = STATUS_COLORS[status] || STATUS_COLORS.default;
@@ -59,16 +73,16 @@ export function VesselsTable({
           <div>
             <CardTitle className="text-lg font-bold text-secondary-900">
               Vessels Overview
-              {(selectedSupplier || selectedCountry) && (
+              {(selectedSupplierLabel || selectedCountry) && (
                 <span className="text-blue-600 font-normal">
-                  {selectedSupplier && ` - Supplier: ${selectedSupplier}`}
+                  {selectedSupplierLabel && ` - Supplier: ${selectedSupplierLabel}`}
                   {selectedCountry && ` - Country: ${selectedCountry}`}
                 </span>
               )}
             </CardTitle>
             <p className="text-sm text-secondary-600">
-              {(selectedSupplier || selectedCountry || dateRange.from || dateRange.to) ? 
-                `Showing ${vesselsWithContractInfo.length} filtered vessels` : 
+              {(selectedSupplierLabel || selectedCountry || dateRange.from || dateRange.to) ?
+                `Showing ${vesselsWithContractInfo.length} filtered vessels` :
                 `All ${totalVesselsCount} vessels`}
               {(dateRange.from || dateRange.to) && (
                 <span className="block text-xs text-blue-600">
@@ -93,7 +107,7 @@ export function VesselsTable({
                 ))}
               </SelectContent>
             </Select>
-            {(selectedSupplier || selectedCountry) && (
+            {(selectedSupplierLabel || selectedCountry) && (
               <Button variant="outline" onClick={onClearFilters}>
                 Clear Filters
               </Button>
@@ -118,18 +132,27 @@ export function VesselsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {vesselsWithContractInfo.map((vessel) => (
-                <TableRow
-                  key={vessel.id}
-                  className={selectedSupplier && vessel.supplierName === selectedSupplier ? 'bg-blue-50' : ''}
-                >
-                  <TableCell className="font-medium">{vessel.vesselName}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={`cursor-pointer ${vessel.supplierName === selectedSupplier ? 'bg-blue-100 text-blue-800 border-blue-300' : ''}`}
-                      onClick={() => onSupplierSelect(vessel.supplierName)}
-                    >
+              {vesselsWithContractInfo.map((vessel) => {
+                const supplierFilterValue = buildSupplierFilterValue(vessel);
+                const isSelected =
+                  supplierFilterValue != null && supplierFilterValue === selectedSupplierValue;
+
+                return (
+                  <TableRow
+                    key={vessel.id}
+                    className={isSelected ? 'bg-blue-50' : ''}
+                  >
+                    <TableCell className="font-medium">{vessel.vesselName}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`cursor-pointer ${isSelected ? 'bg-blue-100 text-blue-800 border-blue-300' : ''}`}
+                        onClick={() => {
+                          if (supplierFilterValue) {
+                            onSupplierSelect(supplierFilterValue);
+                          }
+                        }}
+                      >
                       {vessel.supplierName}
                     </Badge>
                   </TableCell>
@@ -166,15 +189,16 @@ export function VesselsTable({
                   <TableCell>{vessel.portOfDischarge || 'Not specified'}</TableCell>
                   <TableCell>{formatDate(vessel.eta || '')}</TableCell>
                   <TableCell>{getStatusBadge(vessel.status || 'pending')}</TableCell>
-                </TableRow>
-              ))}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           {vesselsWithContractInfo.length === 0 && (
             <div className="text-center py-8">
               <Ship className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">
-                {selectedSupplier ? `No vessels found for ${selectedSupplier}` : 'No vessels found'}
+                {selectedSupplierLabel ? `No vessels found for ${selectedSupplierLabel}` : 'No vessels found'}
               </p>
             </div>
           )}
