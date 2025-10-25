@@ -28,6 +28,17 @@ import {
   describeRedistributionOption,
   isCapacityAlertActive,
 } from "@/features/logistics/recommendations";
+import {
+  ResponsiveContainer,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  Legend,
+  Bar,
+  type TooltipProps,
+} from "recharts";
 
 const formatNumber = (value: number | null | undefined, suffix = "") => {
   if (value === null || value === undefined) {
@@ -49,6 +60,38 @@ const formatDate = (value: string | null | undefined) => {
 };
 
 const metricClass = "rounded-xl border border-secondary-200/60 bg-white/60 dark:bg-slate-900/40 p-4 flex flex-col gap-1";
+
+type QuantityChartDatum = {
+  name: string;
+  delivered: number;
+  upcoming: number;
+};
+
+const QuantityChartTooltip = ({
+  active,
+  payload,
+  label,
+}: TooltipProps<number, string>) => {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-lg border border-secondary-200/70 bg-white p-3 text-sm shadow-sm dark:border-slate-700/70 dark:bg-slate-900">
+      <p className="font-medium text-secondary-900 dark:text-white">{label}</p>
+      <div className="mt-2 space-y-1">
+        {payload.map((entry) => (
+          <div key={entry.dataKey} className="flex items-center justify-between gap-4">
+            <span className="capitalize text-secondary-600 dark:text-slate-300">{entry.name}</span>
+            <span className="font-medium text-secondary-900 dark:text-white">
+              {formatNumber(Number(entry.value ?? 0), " t")}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function PortsLogisticsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -115,6 +158,41 @@ export default function PortsLogisticsPage() {
       .map((port) => ({ id: port.portId, name: port.portName }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [ports, regionFilter]);
+
+  const quantityChartData = useMemo<QuantityChartDatum[]>(() => {
+    if (!Array.isArray(ports)) {
+      return [];
+    }
+
+    return ports.map((port) => {
+      const delivered = port.assignments.reduce((total, assignment) => {
+        if (assignment.isForecast) {
+          return total;
+        }
+
+        return total + (assignment.quantity ?? 0);
+      }, 0);
+
+      const upcoming = port.assignments.reduce((total, assignment) => {
+        if (!assignment.isForecast) {
+          return total;
+        }
+
+        return total + (assignment.quantity ?? 0);
+      }, 0);
+
+      return {
+        name: port.portName,
+        delivered,
+        upcoming,
+      };
+    });
+  }, [ports]);
+
+  const hasQuantityData = useMemo(
+    () => quantityChartData.some((entry) => entry.delivered > 0 || entry.upcoming > 0),
+    [quantityChartData],
+  );
 
   const redistributionPlan = useMemo(
     () => (activePort ? deriveRedistributionOptions(activePort, ports) : []),
@@ -293,6 +371,46 @@ export default function PortsLogisticsPage() {
           </Card>
         ) : (
           <div className="space-y-6">
+            <Card className="border border-secondary-200/70 shadow-none dark:border-slate-800/70">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Port quantity outlook</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {hasQuantityData ? (
+                  <div className="h-[360px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={quantityChartData} margin={{ top: 8, right: 16, left: 8, bottom: 32 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.35)" />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                          angle={-25}
+                          textAnchor="end"
+                          height={60}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                          tickFormatter={(value) => formatNumber(value as number, "")}
+                          width={80}
+                        />
+                        <RechartsTooltip content={<QuantityChartTooltip />} cursor={{ fill: "rgba(59, 130, 246, 0.08)" }} />
+                        <Legend
+                          wrapperStyle={{ paddingTop: 12 }}
+                          formatter={(value: string) => value.charAt(0).toUpperCase() + value.slice(1)}
+                        />
+                        <Bar dataKey="delivered" name="delivered" fill="#10b981" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="upcoming" name="upcoming" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-sm text-secondary-500 dark:text-slate-400">
+                    No recent quantity data is available for the selected ports.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             {alertingPorts.length > 0 && (
               <Card className="border border-amber-300/70 bg-amber-50/80 dark:border-amber-400/50 dark:bg-amber-500/10">
                 <CardContent className="py-4 flex items-center gap-3 text-amber-800 dark:text-amber-200">
