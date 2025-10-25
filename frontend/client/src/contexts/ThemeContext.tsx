@@ -48,17 +48,14 @@ function applyTheme(theme: Theme) {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
+    const initialTheme = getInitialTheme();
+
     if (typeof document !== "undefined") {
-      return document.documentElement.classList.contains("dark") ? "dark" : "light";
+      applyTheme(initialTheme);
     }
 
-    return "light";
+    return initialTheme;
   });
-
-  useEffect(() => {
-    const initialTheme = getInitialTheme();
-    setThemeState(initialTheme);
-  }, []);
 
   useEffect(() => {
     applyTheme(theme);
@@ -67,6 +64,46 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       window.localStorage.setItem(STORAGE_KEY, theme);
     }
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const handleMediaChange = (event: MediaQueryListEvent) => {
+      const storedTheme = window.localStorage.getItem(STORAGE_KEY);
+
+      if (storedTheme !== "light" && storedTheme !== "dark") {
+        setThemeState(event.matches ? "dark" : "light");
+      }
+    };
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleMediaChange);
+
+      return () => mediaQuery.removeEventListener("change", handleMediaChange);
+    }
+
+    mediaQuery.addListener(handleMediaChange);
+
+    return () => mediaQuery.removeListener(handleMediaChange);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+
+      if (event.newValue === "light" || event.newValue === "dark") {
+        setThemeState(event.newValue);
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
