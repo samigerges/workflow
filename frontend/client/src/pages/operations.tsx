@@ -22,6 +22,7 @@ export default function Reports() {
     availableSuppliers,
     vesselsWithContractInfo,
     vessels,
+    selectedSupplierLabel,
     isLoading: dataLoading,
     error,
   } = useReportsData({ selectedSupplier, selectedCountry, dateRange });
@@ -88,12 +89,13 @@ export default function Reports() {
 
         <KpiCards
           displayTotals={displayTotals}
-          selectedSupplier={selectedSupplier}
+          selectedSupplier={selectedSupplierLabel}
         />
 
         <VesselsTable
           vesselsWithContractInfo={vesselsWithContractInfo}
-          selectedSupplier={selectedSupplier}
+          selectedSupplierValue={selectedSupplier}
+          selectedSupplierLabel={selectedSupplierLabel}
           selectedCountry={selectedCountry}
           dateRange={dateRange}
           onSupplierSelect={setSelectedSupplier}

@@ -5,12 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Filter, Download } from "lucide-react";
 import type { DateRange } from "@/lib/schemas";
+import type { SupplierFilterOption } from "@/types/reports";
 
 interface FiltersSectionProps {
   dateRange: DateRange;
   selectedSupplier: string | null;
   selectedCountry: string | null;
-  availableSuppliers: string[];
+  availableSuppliers: SupplierFilterOption[];
   onDateRangeChange: (dateRange: DateRange) => void;
   onSupplierChange: (supplier: string | null) => void;
   onCountryChange: (country: string | null) => void;
@@ -60,18 +61,20 @@ export function FiltersSection({
             />
           </div>
           <div className="space-y-2">
-            <Label>Filter by Supplier</Label>
-            <Select 
-              value={selectedSupplier || "all"} 
+            <Label>Filter by Contract & Supplier</Label>
+            <Select
+              value={selectedSupplier || "all"}
               onValueChange={(value) => onSupplierChange(value === "all" ? null : value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="All Suppliers" />
+                <SelectValue placeholder="All Contracts & Suppliers" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Suppliers</SelectItem>
+                <SelectItem value="all">All Contracts & Suppliers</SelectItem>
                 {availableSuppliers.map((supplier) => (
-                  <SelectItem key={supplier} value={supplier}>{supplier}</SelectItem>
+                  <SelectItem key={supplier.value} value={supplier.value}>
+                    {supplier.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
