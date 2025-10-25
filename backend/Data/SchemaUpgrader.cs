@@ -16,17 +16,37 @@ namespace WorkflowBackend.Api.Data
 
             var provider = db.Database.ProviderName;
 
-            if (string.Equals(provider, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            if (provider is not null && provider.StartsWith("Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 await EnsureForPostgresAsync(db, cancellationToken);
             }
-            else if (string.Equals(provider, "Microsoft.EntityFrameworkCore.SqlServer", StringComparison.Ordinal))
+            else if (provider is not null && provider.StartsWith("Microsoft.EntityFrameworkCore.SqlServer", StringComparison.Ordinal))
             {
                 await EnsureForSqlServerAsync(db, cancellationToken);
             }
-            else if (string.Equals(provider, "Microsoft.EntityFrameworkCore.Sqlite", StringComparison.Ordinal))
+            else if (provider is not null && provider.StartsWith("Microsoft.EntityFrameworkCore.Sqlite", StringComparison.Ordinal))
             {
                 await EnsureForSqliteAsync(db, cancellationToken);
+            }
+        }
+
+        public static async Task EnsureVesselStageEntriesAsync(AppDbContext db, CancellationToken cancellationToken = default)
+        {
+            if (db is null) throw new ArgumentNullException(nameof(db));
+
+            var provider = db.Database.ProviderName;
+
+            if (provider is not null && provider.StartsWith("Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                await EnsureVesselStageEntriesForPostgresAsync(db, cancellationToken);
+            }
+            else if (provider is not null && provider.StartsWith("Microsoft.EntityFrameworkCore.SqlServer", StringComparison.Ordinal))
+            {
+                await EnsureVesselStageEntriesForSqlServerAsync(db, cancellationToken);
+            }
+            else if (provider is not null && provider.StartsWith("Microsoft.EntityFrameworkCore.Sqlite", StringComparison.Ordinal))
+            {
+                await EnsureVesselStageEntriesForSqliteAsync(db, cancellationToken);
             }
         }
 
@@ -251,25 +271,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "IX_Contracts_PublicId" ON "Contracts" ("Publi
 """,
                 cancellationToken);
 
-            await db.Database.ExecuteSqlRawAsync(
-                """
-CREATE TABLE IF NOT EXISTS "VesselStageEntries" (
-    "Id" uuid NOT NULL,
-    "VesselId" uuid NOT NULL,
-    "StageId" character varying(100) NOT NULL,
-    "NumberValue" character varying(100),
-    "UpdatedAt" timestamp with time zone NOT NULL,
-    CONSTRAINT "PK_VesselStageEntries" PRIMARY KEY ("Id"),
-    CONSTRAINT "FK_VesselStageEntries_Vessels_VesselId" FOREIGN KEY ("VesselId") REFERENCES "Vessels" ("Id") ON DELETE CASCADE
-);
-""",
-                cancellationToken);
-
-            await db.Database.ExecuteSqlRawAsync(
-                """
-CREATE UNIQUE INDEX IF NOT EXISTS "IX_VesselStageEntries_VesselId_StageId" ON "VesselStageEntries" ("VesselId", "StageId");
-""",
-                cancellationToken);
+            await EnsureVesselStageEntriesForPostgresAsync(db, cancellationToken);
         }
 
         private static async Task EnsureForSqlServerAsync(AppDbContext db, CancellationToken cancellationToken)
@@ -419,28 +421,10 @@ IF NOT EXISTS (
 BEGIN
     CREATE UNIQUE INDEX [IX_Contracts_PublicId] ON [Contracts] ([PublicId]);
 END;
-
-IF OBJECT_ID('[VesselStageEntries]', 'U') IS NULL
-BEGIN
-    CREATE TABLE [VesselStageEntries](
-        [Id] uniqueidentifier NOT NULL,
-        [VesselId] uniqueidentifier NOT NULL,
-        [StageId] nvarchar(100) NOT NULL,
-        [NumberValue] nvarchar(100) NULL,
-        [UpdatedAt] datetimeoffset NOT NULL,
-        CONSTRAINT [PK_VesselStageEntries] PRIMARY KEY ([Id]),
-        CONSTRAINT [FK_VesselStageEntries_Vessels_VesselId] FOREIGN KEY ([VesselId]) REFERENCES [Vessels]([Id]) ON DELETE CASCADE
-    );
-END;
-
-IF NOT EXISTS (
-    SELECT 1 FROM sys.indexes WHERE name = 'IX_VesselStageEntries_VesselId_StageId' AND object_id = OBJECT_ID('[VesselStageEntries]')
-)
-BEGIN
-    CREATE UNIQUE INDEX [IX_VesselStageEntries_VesselId_StageId] ON [VesselStageEntries] ([VesselId], [StageId]);
-END;
 """,
                 cancellationToken);
+
+            await EnsureVesselStageEntriesForSqlServerAsync(db, cancellationToken);
         }
 
         private static async Task EnsureForSqliteAsync(AppDbContext db, CancellationToken cancellationToken)
@@ -516,25 +500,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "IX_Contracts_PublicId" ON "Contracts" ("Publi
 """,
                 cancellationToken);
 
-            await db.Database.ExecuteSqlRawAsync(
-                """
-CREATE TABLE IF NOT EXISTS "VesselStageEntries" (
-    "Id" TEXT NOT NULL,
-    "VesselId" TEXT NOT NULL,
-    "StageId" TEXT NOT NULL,
-    "NumberValue" TEXT,
-    "UpdatedAt" TEXT NOT NULL,
-    CONSTRAINT "PK_VesselStageEntries" PRIMARY KEY ("Id"),
-    CONSTRAINT "FK_VesselStageEntries_Vessels_VesselId" FOREIGN KEY ("VesselId") REFERENCES "Vessels" ("Id") ON DELETE CASCADE
-);
-""",
-                cancellationToken);
-
-            await db.Database.ExecuteSqlRawAsync(
-                """
-CREATE UNIQUE INDEX IF NOT EXISTS "IX_VesselStageEntries_VesselId_StageId" ON "VesselStageEntries" ("VesselId", "StageId");
-""",
-                cancellationToken);
+            await EnsureVesselStageEntriesForSqliteAsync(db, cancellationToken);
 
             var hasShipmentPeriod = await db.Database.SqlQueryRaw<int>(
                     "SELECT COUNT(*) FROM pragma_table_info('LettersOfCredit') WHERE name = 'ShipmentPeriod';")
@@ -571,5 +537,64 @@ ALTER TABLE "LettersOfCredit" DROP COLUMN "Beneficiary";
                     cancellationToken);
             }
         }
+
+        private static Task EnsureVesselStageEntriesForPostgresAsync(AppDbContext db, CancellationToken cancellationToken) =>
+            db.Database.ExecuteSqlRawAsync(
+                """
+CREATE TABLE IF NOT EXISTS "VesselStageEntries" (
+    "Id" uuid NOT NULL,
+    "VesselId" uuid NOT NULL,
+    "StageId" character varying(100) NOT NULL,
+    "NumberValue" character varying(100),
+    "UpdatedAt" timestamp with time zone NOT NULL,
+    CONSTRAINT "PK_VesselStageEntries" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_VesselStageEntries_Vessels_VesselId" FOREIGN KEY ("VesselId") REFERENCES "Vessels" ("Id") ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_VesselStageEntries_VesselId_StageId" ON "VesselStageEntries" ("VesselId", "StageId");
+""",
+                cancellationToken);
+
+        private static Task EnsureVesselStageEntriesForSqlServerAsync(AppDbContext db, CancellationToken cancellationToken) =>
+            db.Database.ExecuteSqlRawAsync(
+                """
+IF OBJECT_ID('[VesselStageEntries]', 'U') IS NULL
+BEGIN
+    CREATE TABLE [VesselStageEntries](
+        [Id] uniqueidentifier NOT NULL,
+        [VesselId] uniqueidentifier NOT NULL,
+        [StageId] nvarchar(100) NOT NULL,
+        [NumberValue] nvarchar(100) NULL,
+        [UpdatedAt] datetimeoffset NOT NULL,
+        CONSTRAINT [PK_VesselStageEntries] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_VesselStageEntries_Vessels_VesselId] FOREIGN KEY ([VesselId]) REFERENCES [Vessels]([Id]) ON DELETE CASCADE
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes WHERE name = 'IX_VesselStageEntries_VesselId_StageId' AND object_id = OBJECT_ID('[VesselStageEntries]')
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_VesselStageEntries_VesselId_StageId] ON [VesselStageEntries] ([VesselId], [StageId]);
+END;
+""",
+                cancellationToken);
+
+        private static Task EnsureVesselStageEntriesForSqliteAsync(AppDbContext db, CancellationToken cancellationToken) =>
+            db.Database.ExecuteSqlRawAsync(
+                """
+CREATE TABLE IF NOT EXISTS "VesselStageEntries" (
+    "Id" TEXT NOT NULL,
+    "VesselId" TEXT NOT NULL,
+    "StageId" TEXT NOT NULL,
+    "NumberValue" TEXT,
+    "UpdatedAt" TEXT NOT NULL,
+    CONSTRAINT "PK_VesselStageEntries" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_VesselStageEntries_Vessels_VesselId" FOREIGN KEY ("VesselId") REFERENCES "Vessels" ("Id") ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_VesselStageEntries_VesselId_StageId" ON "VesselStageEntries" ("VesselId", "StageId");
+""",
+                cancellationToken);
     }
 }

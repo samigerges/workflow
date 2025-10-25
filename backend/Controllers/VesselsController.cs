@@ -753,6 +753,8 @@ namespace WorkflowBackend.Api.Controllers
             var exists = await _db.Vessels.AnyAsync(x => x.Id == id);
             if (!exists) return NotFound();
 
+            await SchemaUpgrader.EnsureVesselStageEntriesAsync(_db, HttpContext.RequestAborted);
+
             var entries = await _db.VesselStageEntries
                 .Where(e => e.VesselId == id)
                 .OrderBy(e => e.StageId)
@@ -780,6 +782,8 @@ namespace WorkflowBackend.Api.Controllers
             var value = req.Value?.Trim();
             if (string.IsNullOrWhiteSpace(value))
                 return BadRequest(new { message = "Stage value is required." });
+
+            await SchemaUpgrader.EnsureVesselStageEntriesAsync(_db, HttpContext.RequestAborted);
 
             var entry = await _db.VesselStageEntries
                 .FirstOrDefaultAsync(e => e.VesselId == id && e.StageId == normalizedStageId);
