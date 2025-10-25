@@ -1,7 +1,6 @@
 {
   "navigation": {
     "dashboard": "Dashboard",
-    "needs": "Needs",
     "contractRequests": "Contract Requests",
     "contracts": "Contracts",
     "lettersOfCredit": "Letters of Credit",
@@ -69,8 +68,6 @@
     "sessionExpiredDescription": "You are logged out. Logging in again..."
   },
   "forms": {
-    "needTitle": "Need Title",
-    "requiredQuantity": "Required Quantity",
     "description": "Description",
     "priority": "Priority",
     "deadline": "Deadline",

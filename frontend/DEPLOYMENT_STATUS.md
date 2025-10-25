@@ -12,7 +12,7 @@
 ### Working Features
 - ✅ **Login System**: Sign in with admin@example.com / ChangeMe123!
 - ✅ **Registration**: Create new users with different roles
-- ✅ **All Business Logic**: Contracts, vessels, needs, reports, etc. fully functional
+- ✅ **All Business Logic**: Contracts, vessels, reports, etc. fully functional
 - ✅ **Database Operations**: PostgreSQL integration working perfectly
 - ✅ **File Uploads**: Document management working
 - ✅ **Role-Based Access**: Admin, procurement, finance, shipping officer roles

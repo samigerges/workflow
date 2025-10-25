@@ -15,7 +15,6 @@ import {
   CreditCard,
   Menu,
   ChevronLeft,
-  Target,
   MapPin,
   BarChart3,
   Anchor
@@ -28,13 +27,6 @@ const getNavigation = (t: any) => [
     name: t("navigation.dashboard"),
     href: "/",
     icon: Home,
-    roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
-  },
-  {
-    nameKey: "navigation.needs",
-    name: t("navigation.needs"),
-    href: "/needs",
-    icon: Target,
     roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
   },
   {

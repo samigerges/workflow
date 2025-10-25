@@ -10,8 +10,6 @@ namespace WorkflowBackend.Api.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<User> Users => Set<User>();
-        public DbSet<Need> Needs => Set<Need>();
-
         public DbSet<Request> Requests => Set<Request>();
         public DbSet<RequestVote> RequestVotes => Set<RequestVote>();
 
@@ -44,20 +42,6 @@ namespace WorkflowBackend.Api.Data
 
             // User
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
-
-            // Need
-            modelBuilder.Entity<Need>().Property(n => n.Title).HasMaxLength(200).IsRequired();
-            modelBuilder.Entity<Need>().Property(n => n.Description).HasMaxLength(2000);
-            modelBuilder.Entity<Need>().Property(n => n.Status).HasMaxLength(50).HasDefaultValue("draft");
-            modelBuilder.Entity<Need>().Property(n => n.Category).HasMaxLength(100);
-            modelBuilder.Entity<Need>().Property(n => n.UnitOfMeasure).HasMaxLength(50);
-            modelBuilder.Entity<Need>().Property(n => n.ActualQuantityReceived).HasDefaultValue(0);
-            modelBuilder.Entity<Need>().Property(n => n.MaxPricePerUnit).HasPrecision(18, 2);
-            modelBuilder.Entity<Need>().Property(n => n.DepartmentCode).HasMaxLength(50);
-            modelBuilder.Entity<Need>().Property(n => n.Notes).HasMaxLength(2000);
-            modelBuilder.Entity<Need>()
-                .HasOne(n => n.CreatedBy).WithMany()
-                .HasForeignKey(n => n.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
 
             // Request
             modelBuilder.Entity<Request>().Property(r => r.Status).HasMaxLength(50).HasDefaultValue("pending");
