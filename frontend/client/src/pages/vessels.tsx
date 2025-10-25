@@ -551,9 +551,6 @@ export default function Vessels() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <span className="text-xs text-secondary-500 leading-snug">
-                              Update manually. The final SWIFT document marks a vessel as finished and locks the status.
-                            </span>
                           </div>
                         </TableCell>
                         <TableCell>
