@@ -132,14 +132,6 @@ export default function ContractSummary({ contract, isOpen, onClose }: ContractS
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Package className="h-4 w-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Incoterms:</span>
-                    <p className="text-gray-900">{contract.incoterms || '-'}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
                   <Truck className="h-4 w-4 text-gray-500" />
                   <div>
                     <span className="text-sm font-medium text-gray-500">Shipping Method:</span>
