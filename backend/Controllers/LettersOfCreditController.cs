@@ -701,6 +701,65 @@ namespace WorkflowBackend.Api.Controllers
 
         // -------- SUPPLIER ALLOCATIONS --------
 
+        // GET /api/letters-of-credit/supplier-allocation-options
+        [HttpGet("supplier-allocation-options")]
+        public async Task<ActionResult<IEnumerable<SupplierAllocationContractOption>>> GetSupplierAllocationOptions([FromQuery] Guid? lcId)
+        {
+            var excludedSupplierAllocationIdsQuery = _db.LetterOfCreditSupplierAllocations
+                .AsNoTracking()
+                .Where(a => a.SupplierId.HasValue);
+
+            if (lcId.HasValue)
+            {
+                excludedSupplierAllocationIdsQuery = excludedSupplierAllocationIdsQuery.Where(a => a.LetterOfCreditId != lcId.Value);
+            }
+
+            var excludedSupplierAllocationIds = await excludedSupplierAllocationIdsQuery
+                .Select(a => a.SupplierId!.Value)
+                .Distinct()
+                .ToListAsync();
+
+            var excludedContractIdsQuery = _db.LettersOfCredit
+                .AsNoTracking()
+                .Where(lc => lc.ContractId.HasValue);
+
+            if (lcId.HasValue)
+            {
+                excludedContractIdsQuery = excludedContractIdsQuery.Where(lc => lc.Id != lcId.Value);
+            }
+
+            var excludedContractIds = await excludedContractIdsQuery
+                .Select(lc => lc.ContractId!.Value)
+                .Distinct()
+                .ToListAsync();
+
+            var excludedIds = excludedSupplierAllocationIds
+                .Concat(excludedContractIds)
+                .Distinct()
+                .ToList();
+
+            var optionsQuery = _db.Contracts
+                .AsNoTracking()
+                .Where(c => !string.IsNullOrWhiteSpace(c.SupplierName));
+
+            if (excludedIds.Count > 0)
+            {
+                optionsQuery = optionsQuery.Where(c => !excludedIds.Contains(c.Id));
+            }
+
+            var options = await optionsQuery
+                .OrderBy(c => c.SupplierName)
+                .Select(c => new SupplierAllocationContractOption(
+                    c.Id,
+                    string.IsNullOrWhiteSpace(c.PublicId) ? null : c.PublicId,
+                    c.SequenceNumber,
+                    c.SupplierName!
+                ))
+                .ToListAsync();
+
+            return options;
+        }
+
         // GET /api/letters-of-credit/{id}/supplier-allocations
         [HttpGet("{id:guid}/supplier-allocations")]
         public async Task<ActionResult<IEnumerable<LetterOfCreditSupplierAllocationResponse>>> GetSupplierAllocations(Guid id)

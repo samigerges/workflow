@@ -23,6 +23,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ApiSupplierAllocation {
   id?: string | number | null;
@@ -41,11 +48,31 @@ interface ApiSupplierAllocation {
 
 interface AllocationRow {
   id?: string | number;
-  supplierId?: string | number | null;
+  supplierId?: string | null;
   supplierName: string;
   quantity: number | "";
   percentage: number | "";
   amount: number | "";
+}
+
+interface SupplierAllocationOption {
+  contractId: string;
+  contractPublicId: string | null;
+  sequenceNumber: number;
+  supplierName: string;
+}
+
+function getContractDisplayId(option: SupplierAllocationOption): string {
+  const explicitId = option.contractPublicId?.trim();
+  if (explicitId && explicitId.length > 0) {
+    return explicitId;
+  }
+
+  const normalizedSequence = Number.isFinite(option.sequenceNumber)
+    ? Math.max(0, Math.trunc(option.sequenceNumber))
+    : 0;
+
+  return `CON-${normalizedSequence.toString().padStart(3, "0")}`;
 }
 
 interface SavePayload {
@@ -77,6 +104,15 @@ function parseNumericValue(value: unknown): number | null {
   return null;
 }
 
+function normalizeSupplierId(value: unknown): string | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  const str = String(value).trim();
+  return str.length > 0 ? str : undefined;
+}
+
 function normalizeApiAllocation(input: ApiSupplierAllocation): AllocationRow {
   const supplierName =
     (typeof input.supplierName === "string" && input.supplierName) ||
@@ -96,7 +132,7 @@ function normalizeApiAllocation(input: ApiSupplierAllocation): AllocationRow {
 
   return {
     id: input.id ?? undefined,
-    supplierId: input.supplierId ?? undefined,
+    supplierId: normalizeSupplierId(input.supplierId),
     supplierName,
     quantity,
     percentage,
@@ -107,7 +143,7 @@ function normalizeApiAllocation(input: ApiSupplierAllocation): AllocationRow {
 function normalizeRowForComparison(row: AllocationRow) {
   return {
     id: row.id ?? null,
-    supplierId: row.supplierId ?? null,
+    supplierId: row.supplierId ? String(row.supplierId) : null,
     supplierName: row.supplierName.trim(),
     quantity: typeof row.quantity === "number" ? Number(row.quantity.toFixed(6)) : null,
     percentage: typeof row.percentage === "number" ? Number(row.percentage.toFixed(6)) : null,
@@ -117,6 +153,7 @@ function normalizeRowForComparison(row: AllocationRow) {
 
 function createEmptyRow(): AllocationRow {
   return {
+    supplierId: undefined,
     supplierName: "",
     quantity: "",
     percentage: "",
@@ -143,6 +180,38 @@ export default function LCSupplierAllocationDialog({
     enabled: open && Boolean(lcId),
     staleTime: 0,
   });
+
+  const supplierOptionsQuery = useQuery<SupplierAllocationOption[]>({
+    queryKey: [
+      "/api/letters-of-credit/supplier-allocation-options",
+      lcId ? { lcId } : null,
+    ],
+    enabled: open,
+    staleTime: 0,
+  });
+
+  const supplierOptions = useMemo<SupplierAllocationOption[]>(() => {
+    if (!supplierOptionsQuery.data || supplierOptionsQuery.data.length === 0) {
+      return [];
+    }
+
+    return supplierOptionsQuery.data.map((option) => ({
+      contractId: String(option.contractId),
+      contractPublicId: option.contractPublicId ?? null,
+      sequenceNumber: Number.isFinite(option.sequenceNumber)
+        ? option.sequenceNumber
+        : 0,
+      supplierName: option.supplierName,
+    }));
+  }, [supplierOptionsQuery.data]);
+
+  const supplierOptionMap = useMemo(() => {
+    const map = new Map<string, SupplierAllocationOption>();
+    supplierOptions.forEach((option) => {
+      map.set(option.contractId, option);
+    });
+    return map;
+  }, [supplierOptions]);
 
   const serverRows = useMemo<AllocationRow[]>(() => {
     if (!allocationsQuery.data || allocationsQuery.data.length === 0) {
@@ -203,7 +272,13 @@ export default function LCSupplierAllocationDialog({
     lcQuantity !== null &&
     combinedTotals.quantity > lcQuantity + 1e-6;
 
-  const hasEmptySupplier = rows.some((row) => row.supplierName.trim().length === 0);
+  const hasEmptySupplier = rows.some((row) => {
+    if (row.supplierId && row.supplierId.length > 0) {
+      return false;
+    }
+
+    return row.supplierName.trim().length === 0;
+  });
 
   const validationErrors: string[] = [];
 
@@ -214,7 +289,7 @@ export default function LCSupplierAllocationDialog({
   }
 
   if (hasEmptySupplier) {
-    validationErrors.push("Each allocation must include a supplier name.");
+    validationErrors.push("Each allocation must include a supplier selection or supplier name.");
   }
 
   const normalizedCurrent = useMemo(
@@ -249,7 +324,10 @@ export default function LCSupplierAllocationDialog({
       }
 
       const ensurePayload = (row: AllocationRow) => ({
-        supplierId: row.supplierId ?? null,
+        supplierId:
+          typeof row.supplierId === "string" && row.supplierId.trim().length > 0
+            ? row.supplierId.trim()
+            : null,
         supplierName: row.supplierName.trim(),
         quantity:
           typeof row.quantity === "number"
@@ -343,9 +421,10 @@ export default function LCSupplierAllocationDialog({
     const sanitizedRows = rows
       .map((row) => ({
         ...row,
+        supplierId: row.supplierId && row.supplierId.length > 0 ? row.supplierId : undefined,
         supplierName: row.supplierName.trim(),
       }))
-      .filter((row) => row.supplierName.length > 0);
+      .filter((row) => (row.supplierId && row.supplierId.length > 0) || row.supplierName.length > 0);
 
     mutation.mutate({ rows: sanitizedRows });
   };
@@ -474,28 +553,80 @@ export default function LCSupplierAllocationDialog({
                   <TableBody>
                     {rows.map((row, index) => {
                       const rowId = row.id ?? `new-${index}`;
+                      const selectedOption =
+                        row.supplierId && row.supplierId.length > 0
+                          ? supplierOptionMap.get(String(row.supplierId))
+                          : undefined;
                       return (
                         <TableRow key={rowId}>
                           <TableCell>
                             <Label htmlFor={`supplier-${rowId}`} className="sr-only">
-                              Supplier
+                              Supplier contract
                             </Label>
-                            <Input
-                              id={`supplier-${rowId}`}
-                              value={row.supplierName}
-                              onChange={(event) => {
-                                const value = event.target.value;
-                                setRows((prev) =>
-                                  prev.map((current, idx) =>
-                                    idx === index
-                                      ? { ...current, supplierName: value }
-                                      : current,
-                                  ),
-                                );
-                              }}
-                              placeholder="Supplier name"
-                              autoComplete="off"
-                            />
+                            <div className="space-y-2">
+                              <Select
+                                value={row.supplierId ?? ""}
+                                onValueChange={(value) => {
+                                  setRows((prev) =>
+                                    prev.map((current, idx) => {
+                                      if (idx !== index) {
+                                        return current;
+                                      }
+
+                                      if (value.length === 0) {
+                                        return {
+                                          ...current,
+                                          supplierId: undefined,
+                                        };
+                                      }
+
+                                      const option = supplierOptionMap.get(value);
+                                      return {
+                                        ...current,
+                                        supplierId: value,
+                                        supplierName: option?.supplierName ?? current.supplierName,
+                                      };
+                                    }),
+                                  );
+                                }}
+                                disabled={supplierOptionsQuery.isLoading}
+                              >
+                                <SelectTrigger id={`supplier-${rowId}`}>
+                                  <SelectValue placeholder="Select a contract" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">Unassigned</SelectItem>
+                                  {supplierOptions.map((option) => (
+                                    <SelectItem key={option.contractId} value={option.contractId}>
+                                      {`${getContractDisplayId(option)} — ${option.supplierName}`}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {row.supplierId && row.supplierId.length > 0 ? (
+                                <p className="text-xs text-secondary-500">
+                                  {selectedOption
+                                    ? `${getContractDisplayId(selectedOption)} — ${selectedOption.supplierName}`
+                                    : row.supplierName}
+                                </p>
+                              ) : (
+                                <Input
+                                  value={row.supplierName}
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    setRows((prev) =>
+                                      prev.map((current, idx) =>
+                                        idx === index
+                                          ? { ...current, supplierId: undefined, supplierName: value }
+                                          : current,
+                                      ),
+                                    );
+                                  }}
+                                  placeholder="Supplier name"
+                                  autoComplete="off"
+                                />
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Label htmlFor={`quantity-${rowId}`} className="sr-only">
@@ -634,7 +765,11 @@ export default function LCSupplierAllocationDialog({
                   disabled={
                     mutation.isPending ||
                     validationErrors.length > 0 ||
-                    rows.every((row) => row.supplierName.trim().length === 0)
+                    rows.every(
+                      (row) =>
+                        (!row.supplierId || row.supplierId.length === 0) &&
+                        row.supplierName.trim().length === 0,
+                    )
                   }
                 >
                   {mutation.isPending ? "Saving..." : "Save allocations"}

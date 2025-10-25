@@ -674,6 +674,64 @@ export async function apiRequest(
   }
 
   // Letters of Credit
+  if (url.startsWith("/api/letters-of-credit/supplier-allocation-options") && method === "GET") {
+    const parsedUrl = new URL(url, "http://localhost");
+    const lcIdParam = parsedUrl.searchParams.get("lcId");
+
+    const lcIdKey = lcIdParam ?? null;
+
+    const excludedSupplierIds = new Set<string>();
+    Object.entries(lcSupplierAllocations).forEach(([allocationLcId, allocationList]) => {
+      if (lcIdKey !== null && allocationLcId === lcIdKey) {
+        return;
+      }
+
+      (allocationList || []).forEach((allocation: any) => {
+        if (allocation && allocation.supplierId) {
+          excludedSupplierIds.add(String(allocation.supplierId));
+        }
+      });
+    });
+
+    const excludedContractIds = new Set<string>();
+    lettersOfCredit.forEach((lc) => {
+      if (lcIdKey !== null && String(lc.id) === lcIdKey) {
+        return;
+      }
+
+      if (lc && lc.contractId) {
+        excludedContractIds.add(String(lc.contractId));
+      }
+    });
+
+    const result = contracts
+      .filter((contract) => {
+        const supplierName = (contract as Record<string, any>)?.supplierName;
+        return typeof supplierName === "string" && supplierName.trim().length > 0;
+      })
+      .filter((contract) => {
+        const id = String((contract as Record<string, any>).id);
+        return !excludedSupplierIds.has(id) && !excludedContractIds.has(id);
+      })
+      .map((contract) => {
+        const record = contract as Record<string, any>;
+        const sequenceValue = Number(record.sequenceNumber);
+        const fallbackSequence = Number(record.id) || 0;
+
+        const publicId = typeof record.publicId === "string" ? record.publicId : null;
+        const supplierName = typeof record.supplierName === "string" ? record.supplierName : "";
+
+        return {
+          contractId: String(record.id),
+          contractPublicId: publicId,
+          sequenceNumber: Number.isFinite(sequenceValue) ? sequenceValue : fallbackSequence,
+          supplierName,
+        };
+      });
+
+    return jsonResponse(result);
+  }
+
   if (url === "/api/letters-of-credit") {
     if (method === "GET") return jsonResponse(lettersOfCredit);
     if (method === "POST") {
