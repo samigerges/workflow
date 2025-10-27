@@ -406,7 +406,7 @@ public class ContractsControllerTests
     }
 
     [Fact]
-    public async Task GetAvailableLettersOfCredit_ReturnsEligibleActiveContracts()
+    public async Task GetAvailableLettersOfCredit_ReturnsEligibleLettersWithRemainingQuantity()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -490,7 +490,7 @@ public class ContractsControllerTests
             Flow = "UPF_TO_SUPPLIER"
         };
 
-        var lcInactive = new LetterOfCredit
+        var lcIssued = new LetterOfCredit
         {
             Number = "LC-INACTIVE",
             Status = "Issued",
@@ -501,7 +501,7 @@ public class ContractsControllerTests
             Flow = "UPF_TO_SUPPLIER"
         };
 
-        context.LettersOfCredit.AddRange(lcOne, lcTwo, lcDifferentSupplier, lcDifferentProduct, lcWithoutRemaining, lcInactive);
+        context.LettersOfCredit.AddRange(lcOne, lcTwo, lcDifferentSupplier, lcDifferentProduct, lcWithoutRemaining, lcIssued);
         await context.SaveChangesAsync();
 
         context.LetterOfCreditSupplierAllocations.AddRange(
@@ -546,24 +546,32 @@ public class ContractsControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var payload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(ok.Value);
 
-        Assert.Equal(2, payload.Total);
+        Assert.Equal(3, payload.Total);
         Assert.Equal(1, payload.Page);
         Assert.Equal(10, payload.PageSize);
-        Assert.Equal(2, payload.Items.Count);
+        Assert.Equal(3, payload.Items.Count);
 
-        Assert.Equal(new[] { "LC-001", "LC-002" }, payload.Items.Select(i => i.LcNumber).ToArray());
+        Assert.Equal(new[] { "LC-INACTIVE", "LC-001", "LC-002" }, payload.Items.Select(i => i.LcNumber).ToArray());
 
         var first = payload.Items[0];
-        Assert.Equal(100m, first.TotalQuantity);
-        Assert.Equal(40m, first.UsedQuantity);
-        Assert.Equal(60m, first.RemainingQuantity);
+        Assert.Equal("LC-INACTIVE", first.LcNumber);
+        Assert.Equal(90m, first.TotalQuantity);
+        Assert.Equal(0m, first.UsedQuantity);
+        Assert.Equal(90m, first.RemainingQuantity);
         Assert.Equal("Supplier A", first.Supplier);
         Assert.Equal("Wheat", first.Product);
 
         var second = payload.Items[1];
-        Assert.Equal(80m, second.TotalQuantity);
-        Assert.Equal(30m, second.UsedQuantity);
-        Assert.Equal(50m, second.RemainingQuantity);
+        Assert.Equal("LC-001", second.LcNumber);
+        Assert.Equal(100m, second.TotalQuantity);
+        Assert.Equal(40m, second.UsedQuantity);
+        Assert.Equal(60m, second.RemainingQuantity);
+
+        var third = payload.Items[2];
+        Assert.Equal("LC-002", third.LcNumber);
+        Assert.Equal(80m, third.TotalQuantity);
+        Assert.Equal(30m, third.UsedQuantity);
+        Assert.Equal(50m, third.RemainingQuantity);
     }
 
     [Fact]

@@ -42,6 +42,13 @@ namespace WorkflowBackend.Api.Controllers
             ["Archived"]  = Array.Empty<string>()
         };
 
+        private static readonly HashSet<string> EligibleLetterOfCreditStatuses = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Active",
+            "Issued",
+            "Amended"
+        };
+
         public ContractsController(AppDbContext db, IWebHostEnvironment env, IConfiguration config, ILogger<ContractsController> logger)
         {
             _db = db;
@@ -566,7 +573,7 @@ namespace WorkflowBackend.Api.Controllers
             var lcQuery = _db.LettersOfCredit
                 .AsNoTracking()
                 .Where(lc =>
-                    lc.Status != null && lc.Status.ToLower() == "active" &&
+                    lc.Status != null && EligibleLetterOfCreditStatuses.Contains(lc.Status) &&
                     lc.Flow != null && lc.Flow.ToLower() == "upf_to_supplier")
                 .Select(lc => new
                 {
