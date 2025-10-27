@@ -583,12 +583,16 @@ namespace WorkflowBackend.Api.Controllers
 
             if (requireSupplierMatch && normalizedSupplier is not null)
             {
-                lcQuery = lcQuery.Where(lc => lc.Supplier != null && lc.Supplier.ToLower() == normalizedSupplier);
+                lcQuery = lcQuery.Where(lc =>
+                    lc.Supplier != null &&
+                    lc.Supplier.Trim().ToLower() == normalizedSupplier);
             }
 
             if (requireProductMatch && normalizedProduct is not null)
             {
-                lcQuery = lcQuery.Where(lc => lc.Product != null && lc.Product.ToLower() == normalizedProduct);
+                lcQuery = lcQuery.Where(lc =>
+                    lc.Product != null &&
+                    lc.Product.Trim().ToLower() == normalizedProduct);
             }
 
             if (!string.IsNullOrWhiteSpace(search))
