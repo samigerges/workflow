@@ -13,6 +13,7 @@ import StatusBadge from "@/components/ui/status-badge";
 import {
   normalizeLc,
   formatLcDate,
+  formatLcCurrency,
   isLcExpired,
   daysUntilLcExpiry,
   type NormalizedLC,
@@ -319,6 +320,9 @@ export default function LettersCredit() {
                       <TableHead>LC No</TableHead>
                       <TableHead>Supplier</TableHead>
                       <TableHead>Product</TableHead>
+                      <TableHead>Issuing Bank</TableHead>
+                      <TableHead>Applicant</TableHead>
+                      <TableHead>LC Value</TableHead>
                       <TableHead>Total Qty</TableHead>
                       <TableHead>Used Qty</TableHead>
                       <TableHead>Remaining Qty</TableHead>
@@ -344,6 +348,9 @@ export default function LettersCredit() {
                           <TableCell className="font-medium">{normalized.number}</TableCell>
                           <TableCell>{normalized.supplierName ?? "—"}</TableCell>
                           <TableCell>{normalized.cargoType ?? "—"}</TableCell>
+                          <TableCell>{normalized.issuingBank ?? "—"}</TableCell>
+                          <TableCell>{normalized.applicant ?? "—"}</TableCell>
+                          <TableCell>{formatLcCurrency(normalized.amount, normalized.currency)}</TableCell>
                           <TableCell>{formatQuantity(totalQuantity)}</TableCell>
                           <TableCell>{formatQuantity(usedQuantity)}</TableCell>
                           <TableCell className={remainingDepleted ? "text-red-600 font-medium" : ""}>
