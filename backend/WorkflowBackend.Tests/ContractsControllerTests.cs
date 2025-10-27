@@ -442,7 +442,8 @@ public class ContractsControllerTests
             Quantity = 100m,
             ContractId = contract.Id,
             CargoType = "Wheat",
-            ExpiryDate = new DateTime(2030, 1, 1)
+            ExpiryDate = new DateTime(2030, 1, 1),
+            Flow = "UPF_TO_SUPPLIER"
         };
 
         var lcTwo = new LetterOfCredit
@@ -452,7 +453,8 @@ public class ContractsControllerTests
             Quantity = 80m,
             ContractId = contract.Id,
             CargoType = "Wheat",
-            ExpiryDate = new DateTime(2029, 6, 1)
+            ExpiryDate = new DateTime(2029, 6, 1),
+            Flow = "UPF_TO_SUPPLIER"
         };
 
         var lcDifferentSupplier = new LetterOfCredit
@@ -462,7 +464,8 @@ public class ContractsControllerTests
             Quantity = 120m,
             ContractId = otherContract.Id,
             CargoType = "Wheat",
-            ExpiryDate = new DateTime(2030, 5, 1)
+            ExpiryDate = new DateTime(2030, 5, 1),
+            Flow = "UPF_TO_SUPPLIER"
         };
 
         var lcDifferentProduct = new LetterOfCredit
@@ -472,7 +475,8 @@ public class ContractsControllerTests
             Quantity = 75m,
             ContractId = contract.Id,
             CargoType = "Corn",
-            ExpiryDate = new DateTime(2030, 3, 1)
+            ExpiryDate = new DateTime(2030, 3, 1),
+            Flow = "UPF_TO_SUPPLIER"
         };
 
         var lcWithoutRemaining = new LetterOfCredit
@@ -482,7 +486,8 @@ public class ContractsControllerTests
             Quantity = 60m,
             ContractId = contract.Id,
             CargoType = "Wheat",
-            ExpiryDate = new DateTime(2030, 7, 1)
+            ExpiryDate = new DateTime(2030, 7, 1),
+            Flow = "UPF_TO_SUPPLIER"
         };
 
         var lcInactive = new LetterOfCredit
@@ -492,7 +497,8 @@ public class ContractsControllerTests
             Quantity = 90m,
             ContractId = contract.Id,
             CargoType = "Wheat",
-            ExpiryDate = new DateTime(2030, 8, 1)
+            ExpiryDate = new DateTime(2030, 8, 1),
+            Flow = "UPF_TO_SUPPLIER"
         };
 
         context.LettersOfCredit.AddRange(lcOne, lcTwo, lcDifferentSupplier, lcDifferentProduct, lcWithoutRemaining, lcInactive);
@@ -561,6 +567,90 @@ public class ContractsControllerTests
     }
 
     [Fact]
+    public async Task GetAvailableLettersOfCredit_ExcludesIncorrectFlowOrLinkedContracts()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Target Contract",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-001"
+        };
+
+        var otherContract = new Contract
+        {
+            Title = "Other",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 2,
+            PublicId = "CON-002"
+        };
+
+        context.Contracts.AddRange(contract, otherContract);
+        await context.SaveChangesAsync();
+
+        var eligible = new LetterOfCredit
+        {
+            Number = "LC-ELIGIBLE",
+            Status = "Active",
+            Quantity = 90m,
+            CargoType = "Wheat",
+            Flow = "UPF_TO_SUPPLIER",
+            ExpiryDate = new DateTime(2030, 1, 1)
+        };
+
+        var wrongFlow = new LetterOfCredit
+        {
+            Number = "LC-WRONG-FLOW",
+            Status = "Active",
+            Quantity = 90m,
+            CargoType = "Wheat",
+            Flow = "GASC_TO_UPF",
+            ExpiryDate = new DateTime(2030, 1, 1)
+        };
+
+        var linkedElsewhere = new LetterOfCredit
+        {
+            Number = "LC-LINKED",
+            Status = "Active",
+            Quantity = 90m,
+            CargoType = "Wheat",
+            Flow = "UPF_TO_SUPPLIER",
+            ContractId = otherContract.Id,
+            ExpiryDate = new DateTime(2030, 1, 1)
+        };
+
+        context.LettersOfCredit.AddRange(eligible, wrongFlow, linkedElsewhere);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.Add(new LetterOfCreditSupplierAllocation
+        {
+            LetterOfCreditId = eligible.Id,
+            SupplierName = "Supplier A",
+            Quantity = 10m
+        });
+
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetAvailableLettersOfCredit(contract.Id, page: 1, pageSize: 10, search: null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(ok.Value);
+
+        Assert.Single(payload.Items);
+        Assert.Equal("LC-ELIGIBLE", payload.Items[0].LcNumber);
+    }
+
+    [Fact]
     public async Task GetAvailableLettersOfCredit_AppliesPaginationAndSearch()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -592,7 +682,8 @@ public class ContractsControllerTests
                 Quantity = 100m + i,
                 ContractId = contract.Id,
                 CargoType = "Wheat",
-                ExpiryDate = new DateTime(2030, 1, 1).AddDays(i)
+                ExpiryDate = new DateTime(2030, 1, 1).AddDays(i),
+                Flow = "UPF_TO_SUPPLIER"
             });
         }
 
@@ -659,7 +750,8 @@ public class ContractsControllerTests
             Quantity = 100m,
             ContractId = contract.Id,
             CargoType = "Wheat",
-            ExpiryDate = new DateTime(2030, 4, 1)
+            ExpiryDate = new DateTime(2030, 4, 1),
+            Flow = "UPF_TO_SUPPLIER"
         };
 
         var differentCargo = new LetterOfCredit
@@ -669,7 +761,8 @@ public class ContractsControllerTests
             Quantity = 90m,
             ContractId = contract.Id,
             CargoType = "Corn",
-            ExpiryDate = new DateTime(2030, 5, 1)
+            ExpiryDate = new DateTime(2030, 5, 1),
+            Flow = "UPF_TO_SUPPLIER"
         };
 
         context.LettersOfCredit.AddRange(matching, differentCargo);
@@ -708,6 +801,90 @@ public class ContractsControllerTests
 
         Assert.Equal(2, payload.Total);
         Assert.Equal(new[] { "LC-CORN", "LC-WHEAT" }, payload.Items.Select(i => i.LcNumber).ToArray());
+    }
+
+    [Fact]
+    public async Task LinkLetterOfCredit_AttachesEligibleLetter()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Linkable",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-0100"
+        };
+
+        var letter = new LetterOfCredit
+        {
+            Number = "LC-LINK",
+            Status = "Active",
+            Quantity = 100m,
+            CargoType = "Wheat",
+            Flow = "UPF_TO_SUPPLIER",
+            ExpiryDate = new DateTime(2030, 1, 1)
+        };
+
+        context.Contracts.Add(contract);
+        context.LettersOfCredit.Add(letter);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.Add(new LetterOfCreditSupplierAllocation
+        {
+            LetterOfCreditId = letter.Id,
+            SupplierName = "Supplier A",
+            Quantity = 40m
+        });
+
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.LinkLetterOfCredit(contract.Id, new ContractLetterOfCreditLinkRequest(letter.Id));
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(contract.Id, context.LettersOfCredit.Single().ContractId);
+    }
+
+    [Fact]
+    public async Task LinkLetterOfCredit_ReturnsConflictWhenLinkedElsewhere()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contractA = new Contract { Title = "A", SequenceNumber = 1, PublicId = "CON-A" };
+        var contractB = new Contract { Title = "B", SequenceNumber = 2, PublicId = "CON-B" };
+
+        var letter = new LetterOfCredit
+        {
+            Number = "LC-CONFLICT",
+            Status = "Active",
+            Quantity = 100m,
+            Flow = "UPF_TO_SUPPLIER",
+            ContractId = contractA.Id
+        };
+
+        context.Contracts.AddRange(contractA, contractB);
+        context.LettersOfCredit.Add(letter);
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.LinkLetterOfCredit(contractB.Id, new ContractLetterOfCreditLinkRequest(letter.Id));
+
+        var conflict = Assert.IsType<ConflictObjectResult>(result);
+        var payload = conflict.Value;
+        var message = payload?.GetType().GetProperty("message")?.GetValue(payload) as string;
+        Assert.Equal("This letter of credit is already linked to a different contract.", message);
     }
 
     private static ContractsController CreateController(

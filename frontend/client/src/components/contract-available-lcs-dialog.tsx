@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,6 +14,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatLcDate } from "@/lib/lc";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ContractReference {
   id: string | number;
@@ -58,10 +61,13 @@ export default function ContractAvailableLcsDialog({
   open,
   onOpenChange,
 }: ContractAvailableLcsDialogProps) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
+  const [selectedLcId, setSelectedLcId] = useState("");
 
   useEffect(() => {
     if (!open) {
@@ -69,6 +75,7 @@ export default function ContractAvailableLcsDialog({
       setPageSize(10);
       setSearchInput("");
       setAppliedSearch("");
+      setSelectedLcId("");
     }
   }, [open]);
 
@@ -77,6 +84,10 @@ export default function ContractAvailableLcsDialog({
       setPage(1);
     }
   }, [contract?.id, open]);
+
+  useEffect(() => {
+    setSelectedLcId("");
+  }, [contract?.id]);
 
   const queryKey = useMemo(
     () => [
@@ -119,11 +130,58 @@ export default function ContractAvailableLcsDialog({
   const displayTotalPages = total === 0 ? 1 : totalPages;
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * currentPageSize + 1;
   const rangeEnd = total === 0 ? 0 : Math.min(rangeStart + items.length - 1, total);
+  const selectedOption = items.find(item => item.id === selectedLcId) ?? null;
+
+  useEffect(() => {
+    if (selectedLcId && !items.some(item => item.id === selectedLcId)) {
+      setSelectedLcId("");
+    }
+  }, [items, selectedLcId]);
 
   const contractLabel = contract?.publicId
     ?? contract?.code
     ?? contract?.title
     ?? "selected";
+
+  const attachMutation = useMutation({
+    mutationFn: async (letterOfCreditId: string) => {
+      const contractId = contract?.id;
+      if (!contractId) {
+        throw new Error("Contract identifier is missing.");
+      }
+
+      await apiRequest("POST", `/api/contracts/${contractId}/letter-of-credit-link`, {
+        letterOfCreditId,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Letter of Credit Linked",
+        description: "The letter of credit was added to the contract successfully.",
+      });
+      setSelectedLcId("");
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Failed to link the letter of credit.";
+      toast({
+        title: "Link failed",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAttach = () => {
+    if (!selectedLcId || attachMutation.isPending) {
+      return;
+    }
+    attachMutation.mutate(selectedLcId);
+  };
+
+  const isAttachDisabled = !selectedLcId || attachMutation.isPending || !contract?.id;
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -191,6 +249,50 @@ export default function ContractAvailableLcsDialog({
               </Select>
             </div>
           </form>
+
+          {items.length > 0 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex flex-1 flex-col gap-2">
+                <Label htmlFor="availableLcSelect">Select Letter of Credit</Label>
+                <Select
+                  value={selectedLcId}
+                  onValueChange={(value) => setSelectedLcId(value)}
+                  disabled={attachMutation.isPending}
+                >
+                  <SelectTrigger id="availableLcSelect" className="w-full">
+                    <SelectValue placeholder="Choose an LC number" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {items.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        <div className="flex flex-col text-left">
+                          <span className="font-medium">{item.lcNumber}</span>
+                          <span className="text-xs text-secondary-600">
+                            Remaining {formatQuantity(item.remainingQuantity)} • Supplier {item.supplier ?? "—"}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedOption && (
+                  <p className="text-xs text-secondary-600">
+                    Selected LC has {formatQuantity(selectedOption.remainingQuantity)} remaining out of
+                    {" "}
+                    {formatQuantity(selectedOption.totalQuantity)} total.
+                  </p>
+                )}
+              </div>
+              <Button
+                type="button"
+                className="sm:w-auto"
+                onClick={handleAttach}
+                disabled={isAttachDisabled}
+              >
+                {attachMutation.isPending ? "Linking..." : "Add to Contract"}
+              </Button>
+            </div>
+          )}
 
           {isError && (
             <Alert variant="destructive">
