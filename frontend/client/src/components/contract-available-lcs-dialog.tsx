@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -63,27 +62,13 @@ export default function ContractAvailableLcsDialog({
 }: ContractAvailableLcsDialogProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [searchInput, setSearchInput] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
   const [selectedLcId, setSelectedLcId] = useState("");
 
   useEffect(() => {
     if (!open) {
-      setPage(1);
-      setPageSize(10);
-      setSearchInput("");
-      setAppliedSearch("");
       setSelectedLcId("");
     }
   }, [open]);
-
-  useEffect(() => {
-    if (open) {
-      setPage(1);
-    }
-  }, [contract?.id, open]);
 
   useEffect(() => {
     setSelectedLcId("");
@@ -95,18 +80,15 @@ export default function ContractAvailableLcsDialog({
       contract?.id ?? "placeholder",
       "available-lcs",
       {
-        page,
-        pageSize,
-        search: appliedSearch || undefined,
+        all: true,
       },
     ] as const,
-    [contract?.id, page, pageSize, appliedSearch],
+    [contract?.id],
   );
 
   const {
     data,
     isLoading,
-    isFetching,
     isError,
     error,
     refetch,
@@ -116,20 +98,8 @@ export default function ContractAvailableLcsDialog({
     keepPreviousData: true,
   });
 
-  useEffect(() => {
-    if (data?.page && data.page !== page) {
-      setPage(data.page);
-    }
-  }, [data?.page, page]);
-
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
-  const currentPageSize = data?.pageSize ?? pageSize;
-  const currentPage = data?.page ?? page;
-  const totalPages = total > 0 ? Math.ceil(total / currentPageSize) : 1;
-  const displayTotalPages = total === 0 ? 1 : totalPages;
-  const rangeStart = total === 0 ? 0 : (currentPage - 1) * currentPageSize + 1;
-  const rangeEnd = total === 0 ? 0 : Math.min(rangeStart + items.length - 1, total);
   const selectedOption = items.find(item => item.id === selectedLcId) ?? null;
 
   useEffect(() => {
@@ -183,18 +153,6 @@ export default function ContractAvailableLcsDialog({
 
   const isAttachDisabled = !selectedLcId || attachMutation.isPending || !contract?.id;
 
-  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setPage(1);
-    setAppliedSearch(searchInput.trim());
-  };
-
-  const handleClearSearch = () => {
-    setSearchInput("");
-    setAppliedSearch("");
-    setPage(1);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl">
@@ -205,51 +163,6 @@ export default function ContractAvailableLcsDialog({
         </DialogHeader>
 
         <div className="space-y-6">
-          <form
-            onSubmit={handleSearchSubmit}
-            className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex flex-1 items-center gap-2">
-              <Input
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Search by LC No"
-              />
-              <Button type="submit" disabled={isFetching}>
-                Search
-              </Button>
-              {(searchInput.length > 0 || appliedSearch.length > 0) && (
-                <Button type="button" variant="ghost" onClick={handleClearSearch} disabled={isFetching}>
-                  Clear
-                </Button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-secondary-600">Page size</span>
-              <Select
-                value={String(pageSize)}
-                onValueChange={(value) => {
-                  const nextSize = Number(value);
-                  setPageSize(nextSize);
-                  setPage(1);
-                }}
-                disabled={isFetching}
-              >
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[10, 25].map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </form>
-
           {items.length > 0 && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex flex-1 flex-col gap-2">
@@ -312,6 +225,11 @@ export default function ContractAvailableLcsDialog({
             <div className="py-16 text-center text-secondary-600">Loading available LCs…</div>
           ) : (
             <div className="space-y-4">
+              <div className="text-sm text-secondary-600">
+                {total === 0
+                  ? "No available LCs match this contract."
+                  : `${total.toLocaleString()} LCs match this contract.`}
+              </div>
               <div className="overflow-x-auto rounded-lg border border-secondary-200">
                 <Table>
                   <TableHeader>
@@ -355,35 +273,6 @@ export default function ContractAvailableLcsDialog({
                     )}
                   </TableBody>
                 </Table>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-secondary-600">
-                  {total === 0
-                    ? "No results"
-                    : `Showing ${rangeStart.toLocaleString()}–${rangeEnd.toLocaleString()} of ${total.toLocaleString()}`}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                    disabled={isFetching || currentPage <= 1}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-sm text-secondary-600">
-                    Page {currentPage} of {displayTotalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((prev) => prev + 1)}
-                    disabled={isFetching || total === 0 || currentPage >= totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
               </div>
             </div>
           )}
