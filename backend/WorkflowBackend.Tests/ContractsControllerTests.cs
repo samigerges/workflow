@@ -651,6 +651,53 @@ public class ContractsControllerTests
     }
 
     [Fact]
+    public async Task GetAvailableLettersOfCredit_TreatsEmptyContractIdAsUnlinked()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Primary Contract",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-003"
+        };
+
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        var letter = new LetterOfCredit
+        {
+            Number = "LC-EMPTY",
+            Status = "Active",
+            Quantity = 90m,
+            ContractId = Guid.Empty,
+            CargoType = "Wheat",
+            Flow = "UPF_TO_SUPPLIER"
+        };
+
+        context.LettersOfCredit.Add(letter);
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetAvailableLettersOfCredit(contract.Id, page: 1, pageSize: 10, search: null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(ok.Value);
+
+        var lc = Assert.Single(payload.Items);
+        Assert.Equal("LC-EMPTY", lc.LcNumber);
+        Assert.Equal(90m, lc.TotalQuantity);
+        Assert.Equal(90m, lc.RemainingQuantity);
+    }
+
+    [Fact]
     public async Task GetAvailableLettersOfCredit_AppliesPaginationAndSearch()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -850,6 +897,50 @@ public class ContractsControllerTests
 
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Equal(contract.Id, context.LettersOfCredit.Single().ContractId);
+    }
+
+    [Fact]
+    public async Task LinkLetterOfCredit_AllowsLinkWhenContractIdIsEmptyGuid()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Empty Link",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-0101"
+        };
+
+        var letter = new LetterOfCredit
+        {
+            Number = "LC-EMPTY-LINK",
+            Status = "Active",
+            Quantity = 50m,
+            CargoType = "Wheat",
+            Flow = "UPF_TO_SUPPLIER",
+            ContractId = Guid.Empty
+        };
+
+        context.Contracts.Add(contract);
+        context.LettersOfCredit.Add(letter);
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.LinkLetterOfCredit(contract.Id, new ContractLetterOfCreditLinkRequest(letter.Id));
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        dynamic payload = ok.Value!;
+        Assert.Equal("Letter of credit linked to contract successfully.", (string)payload.message);
+
+        var updated = await context.LettersOfCredit.FindAsync(letter.Id);
+        Assert.Equal(contract.Id, updated!.ContractId);
     }
 
     [Fact]
