@@ -31,6 +31,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const UNASSIGNED_SUPPLIER_VALUE = "__UNASSIGNED_SUPPLIER__";
+
 interface ApiSupplierAllocation {
   id?: string | number | null;
   supplierId?: string | number | null;
@@ -565,7 +567,7 @@ export default function LCSupplierAllocationDialog({
                             </Label>
                             <div className="space-y-2">
                               <Select
-                                value={row.supplierId ?? ""}
+                                value={row.supplierId ?? UNASSIGNED_SUPPLIER_VALUE}
                                 onValueChange={(value) => {
                                   setRows((prev) =>
                                     prev.map((current, idx) => {
@@ -573,7 +575,7 @@ export default function LCSupplierAllocationDialog({
                                         return current;
                                       }
 
-                                      if (value.length === 0) {
+                                      if (value === UNASSIGNED_SUPPLIER_VALUE) {
                                         return {
                                           ...current,
                                           supplierId: undefined,
@@ -595,7 +597,7 @@ export default function LCSupplierAllocationDialog({
                                   <SelectValue placeholder="Select a contract" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">Unassigned</SelectItem>
+                                  <SelectItem value={UNASSIGNED_SUPPLIER_VALUE}>Unassigned</SelectItem>
                                   {supplierOptions.map((option) => (
                                     <SelectItem key={option.contractId} value={option.contractId}>
                                       {`${getContractDisplayId(option)} — ${option.supplierName}`}

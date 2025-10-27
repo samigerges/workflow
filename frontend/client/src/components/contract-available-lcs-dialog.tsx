@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -52,6 +52,8 @@ const formatQuantity = (value: number | null | undefined) => {
   return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
 };
 
+const ALL_CARGO_TYPES_VALUE = "all";
+
 interface ContractAvailableLcsDialogProps {
   contract: ContractReference | null;
   open: boolean;
@@ -66,7 +68,7 @@ export default function ContractAvailableLcsDialog({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [selectedLcId, setSelectedLcId] = useState("");
-  const [cargoTypeFilter, setCargoTypeFilter] = useState("");
+  const [cargoTypeFilter, setCargoTypeFilter] = useState(ALL_CARGO_TYPES_VALUE);
 
   useEffect(() => {
     if (!open) {
@@ -79,12 +81,14 @@ export default function ContractAvailableLcsDialog({
   }, [contract?.id]);
 
   useEffect(() => {
-    setCargoTypeFilter(contract?.cargoType ?? "");
+    setCargoTypeFilter(contract?.cargoType ?? ALL_CARGO_TYPES_VALUE);
   }, [contract?.cargoType]);
 
   useEffect(() => {
     setSelectedLcId("");
   }, [cargoTypeFilter]);
+
+  const cargoTypeQueryValue = cargoTypeFilter === ALL_CARGO_TYPES_VALUE ? undefined : cargoTypeFilter;
 
   const queryKey = useMemo(
     () => [
@@ -93,10 +97,10 @@ export default function ContractAvailableLcsDialog({
       "available-lcs",
       {
         all: true,
-        cargoType: cargoTypeFilter || undefined,
+        cargoType: cargoTypeQueryValue,
       },
     ] as const,
-    [contract?.id, cargoTypeFilter],
+    [contract?.id, cargoTypeQueryValue],
   );
 
   const {
@@ -108,10 +112,10 @@ export default function ContractAvailableLcsDialog({
   } = useQuery<AvailableLcsResponse>({
     queryKey,
     enabled: open && Boolean(contract?.id),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
-  const items = data?.items ?? [];
+  const items: AvailableLcItem[] = data?.items ?? [];
   const total = data?.total ?? 0;
   const selectedOption = items.find(item => item.id === selectedLcId) ?? null;
 
@@ -126,11 +130,11 @@ export default function ContractAvailableLcsDialog({
     ?? contract?.title
     ?? "selected";
 
-  const cargoFilterDescription = cargoTypeFilter
-    ? `${getOptionLabel(CARGO_TYPES, cargoTypeFilter)} cargo`
-    : contract?.cargoType
+  const cargoFilterDescription = cargoTypeFilter === ALL_CARGO_TYPES_VALUE
+    ? contract?.cargoType
       ? `${getOptionLabel(CARGO_TYPES, contract.cargoType)} cargo (contract default)`
-      : "all cargo types";
+      : "all cargo types"
+    : `${getOptionLabel(CARGO_TYPES, cargoTypeFilter)} cargo`;
 
   const attachMutation = useMutation({
     mutationFn: async (letterOfCreditId: string) => {
@@ -193,7 +197,7 @@ export default function ContractAvailableLcsDialog({
                 <SelectValue placeholder="Choose cargo type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All cargo types</SelectItem>
+                <SelectItem value={ALL_CARGO_TYPES_VALUE}>All cargo types</SelectItem>
                 {CARGO_TYPES.map((cargo) => (
                   <SelectItem key={cargo.value} value={cargo.value}>
                     {cargo.label}
