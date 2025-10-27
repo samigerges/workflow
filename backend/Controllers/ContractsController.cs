@@ -531,7 +531,8 @@ namespace WorkflowBackend.Api.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 25,
             [FromQuery] string? search = null,
-            [FromQuery] bool all = false)
+            [FromQuery] bool all = false,
+            [FromQuery] string? cargoType = null)
         {
             var contract = await _db.Contracts
                 .AsNoTracking()
@@ -550,7 +551,11 @@ namespace WorkflowBackend.Api.Controllers
             var requireProductMatch = _config.GetValue("LcMatching:RequireProductMatch", true);
 
             var normalizedSupplier = NormalizeComparisonString(contract.SupplierName)?.ToLowerInvariant();
-            var normalizedProduct = NormalizeComparisonString(contract.CargoType)?.ToLowerInvariant();
+            var normalizedProduct = NormalizeComparisonString(
+                string.IsNullOrWhiteSpace(cargoType)
+                    ? contract.CargoType
+                    : cargoType
+            )?.ToLowerInvariant();
 
             if (requireSupplierMatch && normalizedSupplier is null)
             {
