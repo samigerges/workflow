@@ -575,60 +575,72 @@ namespace WorkflowBackend.Api.Controllers
                     0));
             }
 
-            var lcQuery = _db.LettersOfCredit
+            var baseLcQuery = _db.LettersOfCredit
                 .AsNoTracking()
                 .Where(lc =>
                     lc.Status != null && EligibleLetterOfCreditStatuses.Contains(lc.Status) &&
-                    lc.Flow != null && lc.Flow.ToLower() == "upf_to_supplier")
-                .Select(lc => new
-                {
-                    lc.Id,
-                    LcNumber = lc.Number,
-                    Supplier = lc.Contract != null ? lc.Contract.SupplierName : null,
-                    Product = lc.CargoType ?? (lc.Contract != null ? lc.Contract.CargoType : null),
-                    TotalQuantity = lc.Quantity ?? 0m,
-                    UsedQuantity = lc.SupplierAllocations.Sum(a => a.Quantity) ?? 0m,
-                    lc.ExpiryDate,
-                    lc.ContractId
-                });
+                    lc.Flow != null && lc.Flow.ToLower() == "upf_to_supplier");
 
-            lcQuery = lcQuery.Where(lc =>
+            baseLcQuery = baseLcQuery.Where(lc =>
                 lc.ContractId == null ||
                 lc.ContractId == Guid.Empty ||
                 lc.ContractId == id);
 
             if (requireSupplierMatch && normalizedSupplier is not null)
             {
-                lcQuery = lcQuery.Where(lc =>
-                    lc.Supplier != null &&
-                    lc.Supplier.Trim().ToLower() == normalizedSupplier);
+                baseLcQuery = baseLcQuery.Where(lc =>
+                    (lc.Contract != null &&
+                        lc.Contract.SupplierName != null &&
+                        lc.Contract.SupplierName.Trim().ToLower() == normalizedSupplier) ||
+                    lc.SupplierAllocations.Any(a =>
+                        a.SupplierName != null &&
+                        a.SupplierName.Trim().ToLower() == normalizedSupplier));
             }
 
             if (requireProductMatch && normalizedProduct is not null)
             {
-                lcQuery = lcQuery.Where(lc =>
-                    lc.Product != null &&
-                    lc.Product.Trim().ToLower() == normalizedProduct);
+                baseLcQuery = baseLcQuery.Where(lc =>
+                    (lc.CargoType != null &&
+                        lc.CargoType.Trim().ToLower() == normalizedProduct) ||
+                    (lc.Contract != null &&
+                        lc.Contract.CargoType != null &&
+                        lc.Contract.CargoType.Trim().ToLower() == normalizedProduct));
             }
 
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var term = search.Trim().ToLowerInvariant();
-                lcQuery = lcQuery.Where(lc => lc.LcNumber.ToLower().Contains(term));
+                baseLcQuery = baseLcQuery.Where(lc => lc.Number.ToLower().Contains(term));
             }
 
-            var filtered = lcQuery
+            var lcQuery = baseLcQuery
+                .Select(lc => new
+                {
+                    lc.Id,
+                    LcNumber = lc.Number,
+                    ContractSupplier = lc.Contract != null ? lc.Contract.SupplierName : null,
+                    SupplierFromAllocations = lc.SupplierAllocations
+                        .OrderBy(a => a.CreatedAt)
+                        .Select(a => a.SupplierName)
+                        .FirstOrDefault(),
+                    Product = lc.CargoType ?? (lc.Contract != null ? lc.Contract.CargoType : null),
+                    TotalQuantity = lc.Quantity ?? 0m,
+                    UsedQuantity = lc.SupplierAllocations.Sum(a => a.Quantity) ?? 0m,
+                    lc.ExpiryDate
+                })
                 .Select(lc => new
                 {
                     lc.Id,
                     lc.LcNumber,
-                    lc.Supplier,
+                    Supplier = lc.ContractSupplier ?? lc.SupplierFromAllocations,
                     lc.Product,
                     lc.TotalQuantity,
                     lc.UsedQuantity,
                     RemainingQuantity = lc.TotalQuantity - lc.UsedQuantity,
                     lc.ExpiryDate
-                })
+                });
+
+            var filtered = lcQuery
                 .Where(lc => lc.TotalQuantity > 0m && lc.RemainingQuantity > 0m);
 
             var ordered = filtered

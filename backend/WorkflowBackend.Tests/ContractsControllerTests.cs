@@ -868,6 +868,65 @@ public class ContractsControllerTests
     }
 
     [Fact]
+    public async Task GetAvailableLettersOfCredit_UsesSupplierAllocationsWhenContractIsNull()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Unlinked Supplier Match",
+            SupplierName = "Supplier Z",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-Z"
+        };
+
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        var letterOfCredit = new LetterOfCredit
+        {
+            Number = "LC-UNLINKED",
+            Status = "Active",
+            Quantity = 50m,
+            Flow = "UPF_TO_SUPPLIER",
+            CargoType = "Wheat"
+        };
+
+        context.LettersOfCredit.Add(letterOfCredit);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.Add(new LetterOfCreditSupplierAllocation
+        {
+            LetterOfCreditId = letterOfCredit.Id,
+            SupplierName = "Supplier Z",
+            Quantity = 10m
+        });
+
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetAvailableLettersOfCredit(contract.Id, page: 1, pageSize: 10, search: null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(ok.Value);
+
+        Assert.Equal(1, payload.Total);
+        Assert.Single(payload.Items);
+        var summary = payload.Items[0];
+        Assert.Equal("LC-UNLINKED", summary.LcNumber);
+        Assert.Equal("Supplier Z", summary.Supplier);
+        Assert.Equal(50m, summary.TotalQuantity);
+        Assert.Equal(10m, summary.UsedQuantity);
+        Assert.Equal(40m, summary.RemainingQuantity);
+    }
+
+    [Fact]
     public async Task LinkLetterOfCredit_AttachesEligibleLetter()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
