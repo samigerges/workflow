@@ -15,12 +15,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatLcDate } from "@/lib/lc";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { CARGO_TYPES } from "@/lib/constants";
+import { getOptionLabel } from "@/lib/utils";
 
 interface ContractReference {
   id: string | number;
   publicId?: string | null;
   code?: string | null;
   title?: string | null;
+  cargoType?: string | null;
 }
 
 interface AvailableLcItem {
@@ -63,6 +66,7 @@ export default function ContractAvailableLcsDialog({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [selectedLcId, setSelectedLcId] = useState("");
+  const [cargoTypeFilter, setCargoTypeFilter] = useState("");
 
   useEffect(() => {
     if (!open) {
@@ -74,6 +78,14 @@ export default function ContractAvailableLcsDialog({
     setSelectedLcId("");
   }, [contract?.id]);
 
+  useEffect(() => {
+    setCargoTypeFilter(contract?.cargoType ?? "");
+  }, [contract?.cargoType]);
+
+  useEffect(() => {
+    setSelectedLcId("");
+  }, [cargoTypeFilter]);
+
   const queryKey = useMemo(
     () => [
       "/api/contracts",
@@ -81,9 +93,10 @@ export default function ContractAvailableLcsDialog({
       "available-lcs",
       {
         all: true,
+        cargoType: cargoTypeFilter || undefined,
       },
     ] as const,
-    [contract?.id],
+    [contract?.id, cargoTypeFilter],
   );
 
   const {
@@ -112,6 +125,12 @@ export default function ContractAvailableLcsDialog({
     ?? contract?.code
     ?? contract?.title
     ?? "selected";
+
+  const cargoFilterDescription = cargoTypeFilter
+    ? `${getOptionLabel(CARGO_TYPES, cargoTypeFilter)} cargo`
+    : contract?.cargoType
+      ? `${getOptionLabel(CARGO_TYPES, contract.cargoType)} cargo (contract default)`
+      : "all cargo types";
 
   const attachMutation = useMutation({
     mutationFn: async (letterOfCreditId: string) => {
@@ -163,6 +182,30 @@ export default function ContractAvailableLcsDialog({
         </DialogHeader>
 
         <div className="space-y-6">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="availableLcCargoFilter">Filter by cargo type</Label>
+            <Select
+              value={cargoTypeFilter}
+              onValueChange={(value) => setCargoTypeFilter(value)}
+              disabled={isLoading}
+            >
+              <SelectTrigger id="availableLcCargoFilter" className="w-full">
+                <SelectValue placeholder="Choose cargo type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All cargo types</SelectItem>
+                {CARGO_TYPES.map((cargo) => (
+                  <SelectItem key={cargo.value} value={cargo.value}>
+                    {cargo.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-secondary-600">
+              Showing letters of credit for {cargoFilterDescription.toLowerCase()}.
+            </p>
+          </div>
+
           {items.length > 0 && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex flex-1 flex-col gap-2">
@@ -227,8 +270,8 @@ export default function ContractAvailableLcsDialog({
             <div className="space-y-4">
               <div className="text-sm text-secondary-600">
                 {total === 0
-                  ? "No available LCs match this contract."
-                  : `${total.toLocaleString()} LCs match this contract.`}
+                  ? "No available LCs match the selected criteria."
+                  : `${total.toLocaleString()} LCs match the selected criteria.`}
               </div>
               <div className="overflow-x-auto rounded-lg border border-secondary-200">
                 <Table>
@@ -267,7 +310,7 @@ export default function ContractAvailableLcsDialog({
                     ) : (
                       <TableRow>
                         <TableCell colSpan={7} className="py-12 text-center text-secondary-600">
-                          No available LCs for this contract.
+                          No available LCs for the selected cargo type.
                         </TableCell>
                       </TableRow>
                     )}
