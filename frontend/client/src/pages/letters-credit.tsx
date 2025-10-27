@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/main-layout";
 import LetterOfCreditForm from "@/components/forms/letter-of-credit-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, University, Building2, Factory } from "lucide-react";
+import { Plus, University, Building2, Factory, Eye, Edit, Trash } from "lucide-react";
 import StatusBadge from "@/components/ui/status-badge";
 import {
   normalizeLc,
@@ -20,6 +20,10 @@ import {
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import LCSummary from "@/components/lc-summary";
 
 type FlowKey = NormalizedLC["flowKey"];
 
@@ -47,13 +51,19 @@ const JOURNEY_SEGMENTS: JourneySegment[] = [
 
 export default function LettersCredit() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  useUnauthorizedRedirect({
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { redirectToLogin } = useUnauthorizedRedirect({
     isAuthenticated,
     isLoading,
   });
   const [journeyFilter, setJourneyFilter] = useState<FlowKey>("gasc_to_upf");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [suppressJourneySelection, setSuppressJourneySelection] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingLc, setEditingLc] = useState<any>(null);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [viewingLc, setViewingLc] = useState<any>(null);
 
   useEffect(() => {
     if (!suppressJourneySelection) {
@@ -124,6 +134,31 @@ export default function LettersCredit() {
 
     return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
   };
+
+  const deleteMutation = useMutation<void, Error, string | number>({
+    mutationFn: async (lcId) => {
+      await apiRequest("DELETE", `/api/letters-of-credit/${lcId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({
+        title: "Success",
+        description: "Letter of Credit deleted successfully",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        redirectToLogin();
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete letter of credit",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -289,6 +324,7 @@ export default function LettersCredit() {
                       <TableHead>Remaining Qty</TableHead>
                       <TableHead>Expiry</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -301,6 +337,7 @@ export default function LettersCredit() {
                         ? Math.max(totalQuantity - usedQuantity, 0)
                         : null;
                       const remainingDepleted = totalQuantity != null && remainingQuantity === 0;
+                      const lcId = normalized.id ?? raw?.id;
 
                       return (
                         <TableRow key={String(rowKey)} className={expired ? "bg-red-50" : ""}>
@@ -318,6 +355,51 @@ export default function LettersCredit() {
                           </TableCell>
                           <TableCell>
                             <StatusBadge status={normalized.statusKey} type="lc" />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-blue-50 hover:bg-blue-100 border-blue-200"
+                                onClick={() => {
+                                  setViewingLc(raw ?? normalized);
+                                  setShowViewDialog(true);
+                                }}
+                                title="View LC summary"
+                              >
+                                <Eye size={14} className="mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-blue-500 hover:bg-blue-600 text-white"
+                                onClick={() => {
+                                  setEditingLc(raw ?? normalized);
+                                  setShowEditDialog(true);
+                                }}
+                                title="Edit LC"
+                                disabled={!lcId}
+                              >
+                                <Edit size={14} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  if (!lcId) {
+                                    return;
+                                  }
+                                  if (window.confirm("Are you sure you want to delete this letter of credit?")) {
+                                    deleteMutation.mutate(lcId);
+                                  }
+                                }}
+                                disabled={!lcId || deleteMutation.isPending}
+                                title="Delete LC"
+                              >
+                                <Trash size={14} />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -344,6 +426,45 @@ export default function LettersCredit() {
               )}
             </CardContent>
           </Card>
+          <Dialog
+            open={showEditDialog}
+            onOpenChange={(open) => {
+              setShowEditDialog(open);
+              if (!open) {
+                setEditingLc(null);
+              }
+            }}
+          >
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit Letter of Credit</DialogTitle>
+              </DialogHeader>
+              {editingLc ? (
+                <LetterOfCreditForm
+                  lc={editingLc}
+                  onSuccess={(flowKey) => {
+                    setSuppressJourneySelection(true);
+                    setJourneyFilter(flowKey);
+                    setShowEditDialog(false);
+                    setEditingLc(null);
+                  }}
+                  onCancel={() => {
+                    setShowEditDialog(false);
+                    setEditingLc(null);
+                  }}
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
+
+          <LCSummary
+            lc={viewingLc}
+            isOpen={showViewDialog}
+            onClose={() => {
+              setShowViewDialog(false);
+              setViewingLc(null);
+            }}
+          />
       </div>
     </MainLayout>
   );
