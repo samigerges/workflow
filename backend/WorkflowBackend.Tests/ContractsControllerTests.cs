@@ -760,6 +760,15 @@ public class ContractsControllerTests
         Assert.Equal(5, pagedPayload.PageSize);
         Assert.Equal(5, pagedPayload.Items.Count);
 
+        var allResult = await controller.GetAvailableLettersOfCredit(contract.Id, page: 1, pageSize: 5, search: null, all: true);
+        var allOk = Assert.IsType<OkObjectResult>(allResult.Result);
+        var allPayload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(allOk.Value);
+
+        Assert.Equal(12, allPayload.Total);
+        Assert.Equal(1, allPayload.Page);
+        Assert.Equal(12, allPayload.PageSize);
+        Assert.Equal(12, allPayload.Items.Count);
+
         var searchResult = await controller.GetAvailableLettersOfCredit(contract.Id, page: 1, pageSize: 5, search: "LC-007");
         var searchOk = Assert.IsType<OkObjectResult>(searchResult.Result);
         var searchPayload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(searchOk.Value);

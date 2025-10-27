@@ -523,7 +523,8 @@ namespace WorkflowBackend.Api.Controllers
             Guid id,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 25,
-            [FromQuery] string? search = null)
+            [FromQuery] string? search = null,
+            [FromQuery] bool all = false)
         {
             var contract = await _db.Contracts
                 .AsNoTracking()
@@ -618,7 +619,34 @@ namespace WorkflowBackend.Api.Controllers
                 })
                 .Where(lc => lc.TotalQuantity > 0m && lc.RemainingQuantity > 0m);
 
-            var total = await filtered.CountAsync();
+            var ordered = filtered
+                .OrderByDescending(lc => lc.RemainingQuantity)
+                .ThenBy(lc => lc.ExpiryDate ?? DateTime.MaxValue);
+
+            var total = await ordered.CountAsync();
+
+            if (all)
+            {
+                var allResults = await ordered.ToListAsync();
+
+                var allItems = allResults
+                    .Select(lc => new AvailableLetterOfCreditSummary(
+                        lc.Id,
+                        lc.LcNumber,
+                        lc.Supplier,
+                        lc.Product,
+                        lc.TotalQuantity,
+                        lc.UsedQuantity,
+                        lc.RemainingQuantity,
+                        lc.ExpiryDate))
+                    .ToList();
+
+                return Ok(new PaginatedResponse<AvailableLetterOfCreditSummary>(
+                    allItems,
+                    1,
+                    allItems.Count,
+                    total));
+            }
 
             var maxPage = total == 0 ? 1 : (int)Math.Ceiling(total / (double)pageSize);
             var effectivePage = Math.Min(page, maxPage);
@@ -629,9 +657,7 @@ namespace WorkflowBackend.Api.Controllers
 
             var skip = (effectivePage - 1) * pageSize;
 
-            var results = await filtered
-                .OrderByDescending(lc => lc.RemainingQuantity)
-                .ThenBy(lc => lc.ExpiryDate ?? DateTime.MaxValue)
+            var results = await ordered
                 .Skip(skip)
                 .Take(pageSize)
                 .ToListAsync();
