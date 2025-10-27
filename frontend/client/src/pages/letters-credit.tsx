@@ -318,14 +318,10 @@ export default function LettersCredit() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>LC No</TableHead>
-                      <TableHead>Supplier</TableHead>
                       <TableHead>Product</TableHead>
                       <TableHead>Issuing Bank</TableHead>
-                      <TableHead>Applicant</TableHead>
                       <TableHead>LC Value</TableHead>
                       <TableHead>Total Qty</TableHead>
-                      <TableHead>Used Qty</TableHead>
-                      <TableHead>Remaining Qty</TableHead>
                       <TableHead>Expiry</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
@@ -336,26 +332,15 @@ export default function LettersCredit() {
                       const rowKey = normalized.id ?? raw?.id ?? index;
                       const expired = isLcExpired(normalized.expiryDate);
                       const totalQuantity = typeof normalized.quantity === "number" ? normalized.quantity : null;
-                      const usedQuantity = typeof normalized.allocatedQuantity === "number" ? normalized.allocatedQuantity : 0;
-                      const remainingQuantity = totalQuantity != null
-                        ? Math.max(totalQuantity - usedQuantity, 0)
-                        : null;
-                      const remainingDepleted = totalQuantity != null && remainingQuantity === 0;
                       const lcId = normalized.id ?? raw?.id;
 
                       return (
                         <TableRow key={String(rowKey)} className={expired ? "bg-red-50" : ""}>
                           <TableCell className="font-medium">{normalized.number}</TableCell>
-                          <TableCell>{normalized.supplierName ?? "—"}</TableCell>
                           <TableCell>{normalized.cargoType ?? "—"}</TableCell>
                           <TableCell>{normalized.issuingBank ?? "—"}</TableCell>
-                          <TableCell>{normalized.applicant ?? "—"}</TableCell>
                           <TableCell>{formatLcCurrency(normalized.amount, normalized.currency)}</TableCell>
                           <TableCell>{formatQuantity(totalQuantity)}</TableCell>
-                          <TableCell>{formatQuantity(usedQuantity)}</TableCell>
-                          <TableCell className={remainingDepleted ? "text-red-600 font-medium" : ""}>
-                            {formatQuantity(remainingQuantity)}
-                          </TableCell>
                           <TableCell className={expired ? "text-red-600 font-medium" : ""}>
                             {formatLcDate(normalized.expiryDate)}
                             {expired && <div className="text-xs text-red-500">Expired</div>}
