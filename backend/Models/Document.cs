@@ -4,7 +4,7 @@ namespace WorkflowBackend.Api.Models
 {
     /// <summary>
     /// Global document linked to any entity via (EntityType, EntityId).
-    /// EntityType values you’ll likely use: "Contract", "LetterOfCredit", "Vessel", "Shipment", "Request", "Need".
+    /// EntityType values you’ll likely use: "Contract", "LetterOfCredit", "Vessel", "Shipment", "Request".
     /// </summary>
     public class Document
     {
