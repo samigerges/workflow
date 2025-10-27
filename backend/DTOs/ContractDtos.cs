@@ -54,6 +54,10 @@ namespace WorkflowBackend.Api.DTOs
     /// </summary>
     public record ContractVoteRequest(bool? Approve, int? Value);
 
+    public record ContractLetterOfCreditLinkRequest(
+        [property:Required] Guid LetterOfCreditId
+    );
+
     public record ContractResponse(
         Guid Id,
         string PublicId,

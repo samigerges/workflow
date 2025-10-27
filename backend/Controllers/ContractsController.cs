@@ -564,7 +564,9 @@ namespace WorkflowBackend.Api.Controllers
 
             var lcQuery = _db.LettersOfCredit
                 .AsNoTracking()
-                .Where(lc => lc.Status != null && lc.Status.ToLower() == "active")
+                .Where(lc =>
+                    lc.Status != null && lc.Status.ToLower() == "active" &&
+                    lc.Flow != null && lc.Flow.ToLower() == "upf_to_supplier")
                 .Select(lc => new
                 {
                     lc.Id,
@@ -573,8 +575,11 @@ namespace WorkflowBackend.Api.Controllers
                     Product = lc.CargoType ?? (lc.Contract != null ? lc.Contract.CargoType : null),
                     TotalQuantity = lc.Quantity ?? 0m,
                     UsedQuantity = lc.SupplierAllocations.Sum(a => a.Quantity) ?? 0m,
-                    lc.ExpiryDate
+                    lc.ExpiryDate,
+                    lc.ContractId
                 });
+
+            lcQuery = lcQuery.Where(lc => lc.ContractId == null || lc.ContractId == id);
 
             if (requireSupplierMatch && normalizedSupplier is not null)
             {
@@ -641,6 +646,61 @@ namespace WorkflowBackend.Api.Controllers
                 effectivePage,
                 pageSize,
                 total));
+        }
+
+        [HttpPost("{id:guid}/letter-of-credit-link")]
+        public async Task<ActionResult> LinkLetterOfCredit(Guid id, [FromBody] ContractLetterOfCreditLinkRequest request)
+        {
+            if (request is null || request.LetterOfCreditId == Guid.Empty)
+            {
+                return BadRequest(new { message = "A valid letter of credit must be selected." });
+            }
+
+            var contract = await _db.Contracts.FirstOrDefaultAsync(c => c.Id == id);
+            if (contract is null)
+            {
+                return NotFound(new { message = "Contract not found." });
+            }
+
+            var letterOfCredit = await _db.LettersOfCredit
+                .Include(lc => lc.SupplierAllocations)
+                .FirstOrDefaultAsync(lc => lc.Id == request.LetterOfCreditId);
+
+            if (letterOfCredit is null)
+            {
+                return NotFound(new { message = "Letter of credit not found." });
+            }
+
+            if (!string.Equals(letterOfCredit.Flow, "UPF_TO_SUPPLIER", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { message = "Only UPF to Supplier letters of credit can be linked to a contract." });
+            }
+
+            if (letterOfCredit.ContractId.HasValue && letterOfCredit.ContractId.Value != id)
+            {
+                return Conflict(new { message = "This letter of credit is already linked to a different contract." });
+            }
+
+            if (!string.Equals(letterOfCredit.Status, "Active", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { message = "Only active letters of credit can be linked." });
+            }
+
+            var totalQuantity = letterOfCredit.Quantity ?? 0m;
+            var usedQuantity = letterOfCredit.SupplierAllocations.Sum(a => a.Quantity ?? 0m);
+            var remainingQuantity = totalQuantity - usedQuantity;
+
+            if (totalQuantity <= 0m || remainingQuantity <= 0m)
+            {
+                return BadRequest(new { message = "The selected letter of credit does not have any remaining quantity." });
+            }
+
+            letterOfCredit.ContractId = id;
+            letterOfCredit.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Letter of credit linked to contract successfully." });
         }
 
         // -------- CREATE --------
