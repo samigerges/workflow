@@ -579,7 +579,10 @@ namespace WorkflowBackend.Api.Controllers
                     lc.ContractId
                 });
 
-            lcQuery = lcQuery.Where(lc => lc.ContractId == null || lc.ContractId == id);
+            lcQuery = lcQuery.Where(lc =>
+                lc.ContractId == null ||
+                lc.ContractId == Guid.Empty ||
+                lc.ContractId == id);
 
             if (requireSupplierMatch && normalizedSupplier is not null)
             {
@@ -680,7 +683,11 @@ namespace WorkflowBackend.Api.Controllers
                 return BadRequest(new { message = "Only UPF to Supplier letters of credit can be linked to a contract." });
             }
 
-            if (letterOfCredit.ContractId.HasValue && letterOfCredit.ContractId.Value != id)
+            var existingContractId = letterOfCredit.ContractId.HasValue && letterOfCredit.ContractId.Value == Guid.Empty
+                ? (Guid?)null
+                : letterOfCredit.ContractId;
+
+            if (existingContractId.HasValue && existingContractId.Value != id)
             {
                 return Conflict(new { message = "This letter of credit is already linked to a different contract." });
             }
