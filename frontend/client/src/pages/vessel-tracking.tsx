@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Ship, Eye, Edit, TrendingUp, CheckCircle } from "lucide-react";
+import { MapPin, Ship, Eye, TrendingUp, CheckCircle } from "lucide-react";
 import VesselStepper, {
   VESSEL_STAGES,
   findStageByStatus,
@@ -732,11 +732,7 @@ export default function VesselTracking() {
                     <TableRow>
                       <TableHead>Vessel</TableHead>
                       <TableHead>ETA Date</TableHead>
-                      <TableHead>ATA Date</TableHead>
                       <TableHead>Contractual Quantity</TableHead>
-                      <TableHead>Start of Discharge</TableHead>
-                      <TableHead>Quantity Discharged</TableHead>
-                      <TableHead>Progress</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -744,11 +740,6 @@ export default function VesselTracking() {
                     {filteredVessels.map((vessel) => {
                       const stageMeta = findStageByStatus(vessel.status);
                       const contractualQty = vessel.quantity ?? 0;
-                      const dischargedQty = vessel.discharged_quantity ?? 0;
-                      const progressPercent =
-                        contractualQty > 0
-                          ? (dischargedQty / contractualQty) * 100
-                          : 0;
 
                       return (
                         <TableRow
@@ -782,58 +773,8 @@ export default function VesselTracking() {
                           </TableCell>
 
                           <TableCell>
-                            <div className="text-sm">
-                              {formatDate(vessel.arrivalDate)}
-                              {vessel.arrivalDate && (
-                                <div className="text-xs text-gray-500">
-                                  {formatTime(vessel.arrivalDate)}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
                             <div className="font-medium">
                               {contractualQty.toLocaleString()} tons
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
-                            <div className="text-sm">
-                              {formatDate(vessel.dischargeStartDate)}
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="font-medium">
-                                {dischargedQty.toLocaleString()} tons
-                              </div>
-                              {contractualQty > 0 && (
-                                <div className="text-xs text-gray-500">
-                                  {(dischargedQty / contractualQty * 100).toFixed(1)}% complete
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
-                            <div className="space-y-2">
-                              <div className="w-24 bg-gray-200 rounded-full h-2" aria-hidden>
-                                <div
-                                  className={`h-2 rounded-full transition-all ${
-                                    progressPercent >= 100
-                                      ? "bg-green-500"
-                                      : progressPercent >= 50
-                                      ? "bg-blue-500"
-                                      : "bg-yellow-500"
-                                  }`}
-                                  style={{ width: `${clamp(progressPercent, 0, 100)}%` }}
-                                />
-                              </div>
-                              <div className="text-xs text-center">
-                                {progressPercent.toFixed(0)}%
-                              </div>
                             </div>
                           </TableCell>
 
@@ -852,17 +793,6 @@ export default function VesselTracking() {
                               >
                                 <Eye className="h-4 w-4" />
                                 <span>View</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setUpdateVessel(vessel);
-                                  setShowUpdateDialog(true);
-                                }}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                              >
-                                <Edit className="h-4 w-4 mr-1" />
-                                Update
                               </Button>
                             </div>
                           </TableCell>
