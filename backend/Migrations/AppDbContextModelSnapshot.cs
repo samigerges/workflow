@@ -340,100 +340,6 @@ namespace WorkflowBackend.Api.Migrations
                     b.ToTable("LetterOfCreditSupplierAllocations");
                 });
 
-            modelBuilder.Entity("WorkflowBackend.Api.Models.Port", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Country")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal?>("DailyThroughputCapacity")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<int?>("MaxConcurrentVessels")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Region")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<decimal?>("StorageCapacity")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique()
-                        .HasFilter("\"Code\" IS NOT NULL");
-
-                    b.ToTable("Ports");
-                });
-
-            modelBuilder.Entity("WorkflowBackend.Api.Models.PortSchedule", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsForecast")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("PortId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal?>("Quantity")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("numeric(18,3)");
-
-                    b.Property<string>("Status")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("VesselId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("Eta")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("Etd")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PortId", "VesselId")
-                        .IsUnique();
-
-                    b.HasIndex("VesselId");
-
-                    b.ToTable("PortSchedules");
-                });
-
             modelBuilder.Entity("WorkflowBackend.Api.Models.LoadingPort", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1215,25 +1121,6 @@ namespace WorkflowBackend.Api.Migrations
                     b.Navigation("Shipment");
                 });
 
-            modelBuilder.Entity("WorkflowBackend.Api.Models.PortSchedule", b =>
-                {
-                    b.HasOne("WorkflowBackend.Api.Models.Port", "Port")
-                        .WithMany("Schedules")
-                        .HasForeignKey("PortId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("WorkflowBackend.Api.Models.Vessel", "Vessel")
-                        .WithMany("PortSchedules")
-                        .HasForeignKey("VesselId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Port");
-
-                    b.Navigation("Vessel");
-                });
-
             modelBuilder.Entity("WorkflowBackend.Api.Models.Vessel", b =>
                 {
                     b.HasOne("WorkflowBackend.Api.Models.Contract", "Contract")
@@ -1335,11 +1222,6 @@ namespace WorkflowBackend.Api.Migrations
                     b.Navigation("Documents");
                 });
 
-            modelBuilder.Entity("WorkflowBackend.Api.Models.Port", b =>
-                {
-                    b.Navigation("Schedules");
-                });
-
             modelBuilder.Entity("WorkflowBackend.Api.Models.Vessel", b =>
                 {
                     b.Navigation("Documents");
@@ -1349,8 +1231,6 @@ namespace WorkflowBackend.Api.Migrations
                     b.Navigation("LettersOfCredit");
 
                     b.Navigation("LoadingPorts");
-
-                    b.Navigation("PortSchedules");
 
                     b.Navigation("StageEntries");
                 });

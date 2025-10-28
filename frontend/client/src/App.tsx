@@ -14,12 +14,10 @@ import Contracts from "@/pages/contracts";
 import LettersCredit from "@/pages/letters-credit";
 import Vessels from "@/pages/vessels";
 import VesselTracking from "@/pages/vessel-tracking";
-import PortsLogistics from "@/pages/ports-logistics";
 import LCDetail from "@/pages/lc-detail";
 import ContractDetail from "@/pages/contract-detail";
 import ContractJourneyReportPage from "@/pages/report-contract-journey";
 import Reports from "@/pages/operations";
-
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -44,7 +42,6 @@ function Router() {
           <Route path="/letters-credit" component={LettersCredit} />
           <Route path="/vessels" component={Vessels} />
           <Route path="/vessel-tracking" component={VesselTracking} />
-          <Route path="/ports-logistics" component={PortsLogistics} />
           <Route path="/lc/:id" component={LCDetail} />
           <Route path="/contract/:id" component={ContractDetail} />
           <Route path="/reports" component={Reports} />
