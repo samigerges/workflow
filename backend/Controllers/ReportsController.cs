@@ -155,7 +155,8 @@ namespace WorkflowBackend.Api.Controllers
                     v.Name,
                     v.PortOfDischarge,
                     v.Eta,
-                    v.Etd
+                    v.Etd,
+                    v.Quantity
                 })
                 .ToListAsync();
 
