@@ -34,6 +34,7 @@ namespace WorkflowBackend.Api.DTOs
         string? Port,
         DateTime? Eta,
         DateTime? Etd,
+        decimal? ContractualQuantity,
         int ShipmentCount,
         int RequiredDocsCount,
         int SubmittedDocsCount

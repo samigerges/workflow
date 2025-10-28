@@ -60,6 +60,7 @@ public class ReportsControllerTests
                 Id = vesselId,
                 Name = "MV Progress",
                 ContractId = contractId,
+                Quantity = 75m,
                 PortOfDischarge = "Alexandria",
                 Eta = new DateTime(2025, 1, 10, 0, 0, 0, DateTimeKind.Utc),
                 Etd = new DateTime(2025, 1, 12, 0, 0, 0, DateTimeKind.Utc)
@@ -121,6 +122,7 @@ public class ReportsControllerTests
         Assert.Equal(vesselId, vessel.VesselId);
         Assert.Equal("MV Progress", vessel.VesselName);
         Assert.Equal("Alexandria", vessel.Port);
+        Assert.Equal(75m, vessel.ContractualQuantity);
         Assert.Equal(1, vessel.ShipmentCount);
         Assert.Equal(1, vessel.SubmittedDocsCount);
         Assert.Equal(1, vessel.RequiredDocsCount);

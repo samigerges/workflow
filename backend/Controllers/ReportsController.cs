@@ -219,6 +219,7 @@ namespace WorkflowBackend.Api.Controllers
                         v.PortOfDischarge,
                         v.Eta,
                         v.Etd,
+                        v.Quantity,
                         shipmentCount,
                         requiredDocs,
                         submittedDocs
