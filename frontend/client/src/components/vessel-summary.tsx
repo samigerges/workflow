@@ -1,13 +1,33 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Ship, Package, MapPin, FileText, ExternalLink, University } from "lucide-react";
+import {
+  Calendar,
+  Ship,
+  Package,
+  MapPin,
+  FileText,
+  ExternalLink,
+  University,
+  Globe,
+  Clock,
+  DollarSign,
+  Layers,
+  User,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import StatusBadge from "@/components/ui/status-badge";
 import VesselDocuments from "@/components/vessel-documents";
 import { normalizeLc, type NormalizedLC, formatLcCurrency } from "@/lib/lc";
+import {
+  CARGO_TYPES,
+  CONTRACT_PAYMENT_METHODS,
+  CONTRACT_SHIPPING_METHODS,
+} from "@/lib/constants";
+import { getOptionLabel } from "@/lib/utils";
 
 function extractLcId(link: any): string | null {
   if (!link) return null;
@@ -33,6 +53,72 @@ interface VesselSummaryProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+interface InfoRowProps {
+  icon?: LucideIcon;
+  label: string;
+  value: ReactNode;
+  highlight?: boolean;
+}
+
+const InfoRow = ({ icon: Icon, label, value, highlight = false }: InfoRowProps) => {
+  return (
+    <div className="flex items-start gap-3">
+      {Icon ? <Icon className="mt-0.5 h-4 w-4 text-gray-400" /> : null}
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+        <div
+          className={
+            highlight
+              ? "text-base font-semibold text-gray-900"
+              : "text-sm font-medium text-gray-900"
+          }
+        >
+          {value ?? "—"}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const parseNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const formatQuantity = (value: unknown) => {
+  const parsed = parseNumber(value);
+  return parsed !== null ? `${parsed.toLocaleString()} tons` : "—";
+};
+
+const formatNumber = (value: unknown) => {
+  const parsed = parseNumber(value);
+  return parsed !== null ? parsed.toLocaleString() : "—";
+};
+
+const formatUsd = (value: unknown) => {
+  const parsed = parseNumber(value);
+  return parsed !== null ? `$${parsed.toLocaleString()} USD` : "—";
+};
+
+const formatDate = (value: string | Date | null | undefined) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString();
+};
+
+const formatDateTime = (value: string | Date | null | undefined) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `${date.toLocaleDateString()} • ${time}`;
+};
 
 export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummaryProps) {
   if (!vessel) return null;
@@ -78,6 +164,80 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
 
   const associatedContract = contractsArray.find((contract: any) => contract.id === vessel.contractId);
 
+  const dischargedQuantity =
+    vessel.discharged_quantity ?? vessel.dischargedQuantity ?? vessel.dischargeQuantity ?? null;
+
+  const tradeTermsLabel = (vessel.tradeTerms ?? "FOB").toUpperCase();
+  const tradeTermsDescription =
+    tradeTermsLabel === "CIF" ? "Cost, Insurance, and Freight" : "Free On Board";
+
+  const contractPublicId = associatedContract?.publicId ??
+    (vessel.contractId != null
+      ? `CON-${vessel.contractId.toString().padStart(3, "0")}`
+      : "—");
+
+  const contractQuantity = formatQuantity(associatedContract?.quantity);
+  const contractPricePerTon = (() => {
+    const parsed = parseNumber(associatedContract?.pricePerTon);
+    return parsed !== null ? `$${parsed.toLocaleString()}` : "—";
+  })();
+
+  const contractCargoType = associatedContract?.cargoType
+    ? getOptionLabel(CARGO_TYPES, associatedContract.cargoType)
+    : associatedContract?.cargoType ?? "—";
+
+  const contractPaymentMethod = associatedContract?.paymentMethod
+    ? getOptionLabel(CONTRACT_PAYMENT_METHODS, associatedContract.paymentMethod)
+    : associatedContract?.paymentMethod ?? "—";
+
+  const contractShippingMethod = associatedContract?.shippingMethod
+    ? getOptionLabel(CONTRACT_SHIPPING_METHODS, associatedContract.shippingMethod)
+    : associatedContract?.shippingMethod ?? "—";
+
+  const lcTotals = useMemo(() => {
+    let totalLcQuantity = 0;
+    let totalAssignedQuantity = 0;
+    let totalAmount = 0;
+    let currency: string | null = null;
+
+    vesselLCsArray.forEach((vesselLC: any) => {
+      const assigned = parseNumber(vesselLC.quantity) ?? 0;
+      totalAssignedQuantity += assigned;
+
+      const linkId = extractLcId(vesselLC);
+      const normalizedLc = linkId ? normalizedLcMap.get(linkId) : undefined;
+
+      if (normalizedLc?.quantity != null) {
+        totalLcQuantity += Number(normalizedLc.quantity);
+      }
+
+      if (normalizedLc?.amount != null) {
+        totalAmount += normalizedLc.amount;
+        if (currency === null) {
+          currency = normalizedLc.currency ?? null;
+        } else if (normalizedLc.currency !== currency) {
+          currency = null;
+        }
+      }
+    });
+
+    return {
+      totalLcQuantity,
+      totalAssignedQuantity,
+      totalAmount,
+      currency,
+    };
+  }, [normalizedLcMap, vesselLCsArray]);
+
+  const lcCoverage = lcTotals.totalLcQuantity > 0
+    ? Math.min(100, (lcTotals.totalAssignedQuantity / lcTotals.totalLcQuantity) * 100)
+    : null;
+
+  const lcTotalAmountLabel =
+    lcTotals.currency && lcTotals.totalAmount > 0
+      ? formatLcCurrency(lcTotals.totalAmount, lcTotals.currency)
+      : null;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -89,226 +249,239 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Status */}
-          <div className="flex items-center space-x-4">
-            <StatusBadge status={vessel.status} type="vessel" />
-            {vessel.createdAt && (
-              <div className="flex items-center space-x-1 text-sm text-gray-600">
-                <Calendar className="h-4 w-4" />
-                <span>Created: {new Date(vessel.createdAt).toLocaleDateString()}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Basic Vessel Information */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Vessel Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold text-gray-900">Vessel Name</h4>
-                  <p className="text-gray-700">{vessel.vesselName}</p>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Package className="h-4 w-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Total Quantity:</span>
-                    <p className="text-gray-900">{vessel.quantity || 0} tons</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">ETA:</span>
-                    <p className="text-gray-900">
-                      {vessel.eta ? new Date(vessel.eta).toLocaleDateString() : 'Not specified'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">ETA Time:</span>
-                    <p className="text-gray-900">
-                      {vessel.eta ? new Date(vessel.eta).toLocaleTimeString() : 'Not specified'}
-                    </p>
-                  </div>
+            <CardHeader className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle className="text-lg">Vessel Overview</CardTitle>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={vessel.status} type="vessel" />
+                  {vessel.publicId ? (
+                    <Badge variant="outline" className="uppercase tracking-wide">
+                      {vessel.publicId}
+                    </Badge>
+                  ) : null}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Loading Ports */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center space-x-2">
-                <MapPin className="h-5 w-5" />
-                <span>Loading Ports</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingPortsArray.length > 0 ? (
-                <div className="space-y-3">
-                  {loadingPortsArray.map((port: any, index: number) => (
-                    <div key={index} className="p-3 border rounded-lg">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Port Name:</span>
-                          <p className="text-gray-900">{port.portName}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Country:</span>
-                          <p className="text-gray-900">{port.country || 'Not specified'}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Expected Quantity:</span>
-                          <p className="text-gray-900">{port.expectedQuantity} tons</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Status:</span>
-                          <Badge variant={port.loadingStatus === 'completed' ? 'default' : 'secondary'}>
-                            {port.loadingStatus || 'pending'}
-                          </Badge>
-                        </div>
-                      </div>
-                      {port.loadingDate && (
-                        <div className="mt-2">
-                          <span className="text-sm font-medium text-gray-500">Loading Date:</span>
-                          <p className="text-gray-700">{new Date(port.loadingDate).toLocaleDateString()}</p>
-                        </div>
-                      )}
-                      {port.notes && (
-                        <div className="mt-2">
-                          <span className="text-sm font-medium text-gray-500">Notes:</span>
-                          <p className="text-gray-700 text-sm">{port.notes}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-4">No loading ports specified for this vessel</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Port of Discharge */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center space-x-2">
-                <MapPin className="h-5 w-5" />
-                <span>Port of Discharge</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <div>
-                  <span className="text-sm font-medium text-gray-500">Destination Port:</span>
-                  <p className="text-gray-900">{vessel.portOfDischarge || 'Not specified'}</p>
-                </div>
-              </div>
-          </CardContent>
-        </Card>
-
-        {/* Trade Terms & Companies */}
-        <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Trade Terms & Service Providers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <span className="font-semibold text-blue-600 text-lg">{vessel.tradeTerms || 'FOB'}</span>
-                  <span className="text-sm text-gray-500">
-                    ({vessel.tradeTerms === 'CIF' ? 'Cost, Insurance, and Freight' : 'Free On Board'})
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Insurance Company:</span>
-                    <p className="text-gray-900">{vessel.insuranceCompany || 'Not specified'}</p>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                {vessel.createdAt && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>Created {formatDate(vessel.createdAt)}</span>
                   </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Inspection Company:</span>
-                    <p className="text-gray-900">{vessel.inspectionCompany || 'Not specified'}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Shipping Company:</span>
-                    <p className="text-gray-900">{vessel.shippingCompany || 'Not specified'}</p>
-                  </div>
-                </div>
-
-                {/* FOB Costs - only show when trade terms is FOB and costs exist */}
-                {vessel.tradeTerms === 'FOB' && (vessel.insuranceCost || vessel.inspectionCost || vessel.shippingCost) && (
-                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <h4 className="font-semibold text-yellow-900 mb-3">FOB Additional Costs</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-yellow-700">Insurance Cost:</span>
-                        <p className="font-medium">${parseFloat(vessel.insuranceCost || 0).toLocaleString()} USD</p>
-                      </div>
-                      <div>
-                        <span className="text-yellow-700">Inspection Cost:</span>
-                        <p className="font-medium">${parseFloat(vessel.inspectionCost || 0).toLocaleString()} USD</p>
-                      </div>
-                      <div>
-                        <span className="text-yellow-700">Shipping Cost:</span>
-                        <p className="font-medium">${parseFloat(vessel.shippingCost || 0).toLocaleString()} USD</p>
-                      </div>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-yellow-300">
-                      <span className="text-yellow-700">Total Additional Costs:</span>
-                      <p className="font-bold text-lg text-yellow-900">
-                        ${((parseFloat(vessel.insuranceCost || 0)) + (parseFloat(vessel.inspectionCost || 0)) + (parseFloat(vessel.shippingCost || 0))).toLocaleString()} USD
-                      </p>
-                    </div>
+                )}
+                {vessel.updatedAt && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>Last updated {formatDate(vessel.updatedAt)}</span>
                   </div>
                 )}
               </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+                  Identification & Capacity
+                </h4>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <InfoRow icon={Ship} label="Vessel Name" value={vessel.vesselName ?? "—"} highlight />
+                  <InfoRow icon={Package} label="Nomination Quantity" value={formatQuantity(vessel.quantity)} highlight />
+                  <InfoRow icon={Layers} label="Cargo Type" value={vessel.cargoType ?? "—"} />
+                  <InfoRow icon={Globe} label="Country of Origin" value={vessel.countryOfOrigin ?? "Not specified"} />
+                  <InfoRow icon={MapPin} label="Port of Loading" value={vessel.portOfLoading ?? "Not specified"} />
+                  <InfoRow icon={MapPin} label="Port of Discharge" value={vessel.portOfDischarge ?? "Not specified"} />
+                  <InfoRow icon={Package} label="Discharged Quantity" value={formatQuantity(dischargedQuantity)} />
+                  <InfoRow icon={University} label="Linked Contract" value={contractPublicId} />
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+                  Schedule
+                </h4>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <InfoRow icon={Calendar} label="Estimated Arrival (ETA)" value={formatDateTime(vessel.eta)} />
+                  <InfoRow icon={Clock} label="Estimated Departure (ETD)" value={formatDateTime(vessel.etd)} />
+                  {vessel.actualArrivalDate ? (
+                    <InfoRow
+                      icon={Calendar}
+                      label="Actual Arrival"
+                      value={formatDateTime(vessel.actualArrivalDate)}
+                    />
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+                  Trade & Service Providers
+                </h4>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <InfoRow
+                    icon={DollarSign}
+                    label="Trade Terms"
+                    value={
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="uppercase">
+                          {tradeTermsLabel}
+                        </Badge>
+                        <span className="text-xs text-gray-500">{tradeTermsDescription}</span>
+                      </div>
+                    }
+                  />
+                  <InfoRow
+                    icon={User}
+                    label="Insurance Company"
+                    value={vessel.insuranceCompany ?? "Not specified"}
+                  />
+                  <InfoRow
+                    icon={User}
+                    label="Inspection Company"
+                    value={vessel.inspectionCompany ?? "Not specified"}
+                  />
+                  <InfoRow
+                    icon={User}
+                    label="Shipping Company"
+                    value={vessel.shippingCompany ?? "Not specified"}
+                  />
+                </div>
+
+                {tradeTermsLabel === "FOB" &&
+                (vessel.insuranceCost || vessel.inspectionCost || vessel.shippingCost) ? (
+                  <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                    <h4 className="font-semibold text-yellow-900">FOB Additional Costs</h4>
+                    <div className="mt-3 grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
+                      <InfoRow
+                        label="Insurance Cost"
+                        value={formatUsd(vessel.insuranceCost)}
+                      />
+                      <InfoRow
+                        label="Inspection Cost"
+                        value={formatUsd(vessel.inspectionCost)}
+                      />
+                      <InfoRow
+                        label="Shipping Cost"
+                        value={formatUsd(vessel.shippingCost)}
+                      />
+                    </div>
+                    <div className="mt-3 border-t border-yellow-200 pt-3 text-sm font-semibold text-yellow-900">
+                      Total Additional Costs: $
+                      {formatNumber(
+                        (parseNumber(vessel.insuranceCost) ?? 0) +
+                          (parseNumber(vessel.inspectionCost) ?? 0) +
+                          (parseNumber(vessel.shippingCost) ?? 0),
+                      )} USD
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="space-y-3">
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+                  Loading Ports
+                </h4>
+                {loadingPortsArray.length > 0 ? (
+                  <div className="space-y-3">
+                    {loadingPortsArray.map((port: any, index: number) => {
+                      const statusVariant =
+                        port.loadingStatus && String(port.loadingStatus).toLowerCase() === "completed"
+                          ? "default"
+                          : "secondary";
+                      return (
+                        <div key={index} className="rounded-lg border border-dashed border-gray-200 p-4">
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <InfoRow icon={MapPin} label="Port" value={port.portName || "—"} />
+                            <InfoRow icon={Globe} label="Country" value={port.country || "Not specified"} />
+                            <InfoRow
+                              icon={Package}
+                              label="Expected Quantity"
+                              value={formatQuantity(port.expectedQuantity)}
+                            />
+                            <InfoRow
+                              label="Status"
+                              value={<Badge variant={statusVariant}>{port.loadingStatus || "Pending"}</Badge>}
+                            />
+                          </div>
+                          <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            {port.loadingDate ? (
+                              <InfoRow
+                                icon={Calendar}
+                                label="Loading Date"
+                                value={formatDate(port.loadingDate)}
+                              />
+                            ) : null}
+                            {port.notes ? (
+                              <InfoRow label="Notes" value={<span className="text-sm text-gray-700">{port.notes}</span>} />
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="py-4 text-center text-sm text-gray-500">
+                    No loading ports specified for this vessel.
+                  </p>
+                )}
+              </section>
             </CardContent>
           </Card>
 
           {/* Associated Contract */}
           {associatedContract && (
             <Card>
-              <CardHeader>
+              <CardHeader className="space-y-2">
                 <CardTitle className="text-lg">Associated Contract</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Contract ID</h4>
-                    <p className="text-gray-700">
-                      {associatedContract?.publicId ?? (
-                        vessel.contractId != null
-                          ? `CON-${vessel.contractId.toString().padStart(3, '0')}`
-                          : '—'
-                      )}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Supplier</h4>
-                    <p className="text-gray-700">{associatedContract.supplierName}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Cargo Type</h4>
-                    <p className="text-gray-700">{associatedContract.cargoType}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Package className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Contract Quantity:</span>
-                      <p className="text-gray-900">{(associatedContract.quantity || 0).toLocaleString()} tons</p>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                  {associatedContract.status ? (
+                    <Badge variant="outline" className="capitalize">
+                      {associatedContract.status}
+                    </Badge>
+                  ) : null}
+                  {associatedContract.createdAt ? (
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>Created {formatDate(associatedContract.createdAt)}</span>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <InfoRow icon={FileText} label="Contract ID" value={contractPublicId} highlight />
+                  <InfoRow label="Supplier" value={associatedContract.supplierName ?? "—"} />
+                  <InfoRow label="Cargo Type" value={contractCargoType} />
+                  <InfoRow icon={Package} label="Contract Quantity" value={contractQuantity} />
+                  <InfoRow icon={DollarSign} label="Price per Ton" value={contractPricePerTon} />
+                  <InfoRow label="Payment Method" value={contractPaymentMethod} />
+                  <InfoRow label="Shipping Method" value={contractShippingMethod} />
+                  <InfoRow
+                    icon={Globe}
+                    label="Country of Origin"
+                    value={associatedContract.countryOfOrigin ?? "—"}
+                  />
+                  {associatedContract.startDate ? (
+                    <InfoRow
+                      icon={Calendar}
+                      label="Import Start"
+                      value={formatDate(associatedContract.startDate)}
+                    />
+                  ) : null}
+                  {associatedContract.endDate ? (
+                    <InfoRow
+                      icon={Calendar}
+                      label="Import End"
+                      value={formatDate(associatedContract.endDate)}
+                    />
+                  ) : null}
+                </div>
+                {associatedContract.contractTerms ? (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Contract Terms
+                    </div>
+                    <p className="mt-2 whitespace-pre-line">{associatedContract.contractTerms}</p>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           )}
@@ -316,20 +489,46 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
           {/* Associated Letters of Credit */}
           {vesselLCsArray.length > 0 && (
             <Card>
-              <CardHeader>
+              <CardHeader className="space-y-3">
                 <CardTitle className="text-lg flex items-center space-x-2">
                   <University className="h-5 w-5" />
                   <span>Associated Letters of Credit ({vesselLCsArray.length})</span>
                 </CardTitle>
-                <div className="flex items-center space-x-2 text-sm">
-                  <Package className="h-4 w-4 text-gray-500" />
-                  <span className="font-medium text-gray-500">Total LC Quantity:</span>
-                  <span className="font-semibold text-gray-900">
-                    {vesselLCsArray.reduce(
-                      (total: number, lc: any) => total + (lc.quantity || 0),
-                      0,
-                    ).toLocaleString()} tons
-                  </span>
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg bg-blue-50 p-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                      Total LC Quantity
+                    </div>
+                    <div className="text-lg font-semibold text-blue-900">
+                      {lcTotals.totalLcQuantity > 0
+                        ? `${lcTotals.totalLcQuantity.toLocaleString()} tons`
+                        : "—"}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-emerald-50 p-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      Assigned to Vessel
+                    </div>
+                    <div className="text-lg font-semibold text-emerald-900">
+                      {lcTotals.totalAssignedQuantity.toLocaleString()} tons
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-amber-50 p-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                      Coverage
+                    </div>
+                    <div className="text-lg font-semibold text-amber-900">
+                      {lcCoverage !== null ? `${lcCoverage.toFixed(1)}%` : "—"}
+                    </div>
+                  </div>
+                  {lcTotalAmountLabel ? (
+                    <div className="rounded-lg bg-purple-50 p-3">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-purple-700">
+                        Total LC Amount
+                      </div>
+                      <div className="text-lg font-semibold text-purple-900">{lcTotalAmountLabel}</div>
+                    </div>
+                  ) : null}
                 </div>
               </CardHeader>
               <CardContent>
@@ -351,46 +550,55 @@ export default function VesselSummary({ vessel, isOpen, onClose }: VesselSummary
                       normalizedLc?.pricePerUnit ?? null,
                       normalizedLc?.currency ?? null,
                     );
+                    const lcQuantityLabel = normalizedLc?.quantity
+                      ? `${Number(normalizedLc.quantity).toLocaleString()} tons`
+                      : "—";
+                    const assignedQuantity = parseNumber(vesselLC.quantity) ?? 0;
+                    const lcCoverageLabel = normalizedLc?.quantity
+                      ? `${Math.min(100, (assignedQuantity / Number(normalizedLc.quantity)) * 100).toFixed(1)}%`
+                      : "—";
+                    const issueDateLabel = formatDate(normalizedLc?.issueDate ?? null);
+                    const shipmentWindowLabel = normalizedLc?.shipmentPeriodStart || normalizedLc?.shipmentPeriodEnd
+                      ? `${formatDate(normalizedLc?.shipmentPeriodStart)} → ${formatDate(normalizedLc?.shipmentPeriodEnd)}`
+                      : "—";
+                    const expiryDateLabel = formatDate(normalizedLc?.expiryDate ?? null);
                     return (
-                      <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <h4 className="font-semibold text-gray-900">LC Number</h4>
-                            <p className="text-gray-700">{lcNumber}</p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Package className="h-4 w-4 text-gray-500" />
-                            <div>
-                              <span className="text-sm font-medium text-gray-500">Assigned Quantity:</span>
-                              <p className="text-gray-900">{vesselLC.quantity || 0} tons</p>
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">Issuing Bank</h4>
-                            <p className="text-gray-700">{issuingBank}</p>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">Status</h4>
-                            <Badge
-                              className={
-                                lcStatusKey === "issued"
-                                  ? "bg-green-100 text-green-800"
-                                  : lcStatusKey === "expired"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }
-                            >
-                              {statusLabel}
-                            </Badge>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">Price per Unit</h4>
-                            <p className="text-gray-700">{pricePerUnitLabel}</p>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">Total Price</h4>
-                            <p className="text-gray-700">{lcAmountLabel}</p>
-                          </div>
+                      <div key={index} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                          <InfoRow label="LC Number" value={lcNumber} highlight />
+                          <InfoRow label="Issuing Bank" value={issuingBank} />
+                          <InfoRow
+                            label="Status"
+                            value={
+                              <Badge
+                                className={
+                                  lcStatusKey === "issued"
+                                    ? "bg-green-100 text-green-800"
+                                    : lcStatusKey === "expired"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-gray-100 text-gray-800"
+                                }
+                              >
+                                {statusLabel}
+                              </Badge>
+                            }
+                          />
+                          <InfoRow
+                            label="LC Quantity"
+                            value={lcQuantityLabel}
+                          />
+                          <InfoRow
+                            label="Assigned to Vessel"
+                            value={`${assignedQuantity.toLocaleString()} tons`}
+                          />
+                          <InfoRow label="Coverage" value={lcCoverageLabel} />
+                          <InfoRow label="Applicant" value={normalizedLc?.applicant ?? "—"} />
+                          <InfoRow label="Beneficiary" value={normalizedLc?.supplierName ?? "—"} />
+                          <InfoRow label="Price per Unit" value={pricePerUnitLabel} />
+                          <InfoRow label="Total Amount" value={lcAmountLabel} />
+                          <InfoRow label="Issue Date" value={issueDateLabel} />
+                          <InfoRow label="Shipment Window" value={shipmentWindowLabel} />
+                          <InfoRow label="Expiry Date" value={expiryDateLabel} />
                         </div>
                       </div>
                     );
