@@ -1,23 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/main-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import StatusBadge from "@/components/ui/status-badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
-import {
-  FileText,
-  Ship,
-  TrendingUp,
-  AlertTriangle,
-  Anchor,
-  Clock,
-  Flag,
-} from "lucide-react";
+import { FileText, Ship, TrendingUp, AlertTriangle, Clock, Flag } from "lucide-react";
 
 interface ContractJourneyReport {
   contract: {
@@ -44,6 +35,7 @@ interface ContractJourneyReport {
     port?: string | null;
     eta?: string | null;
     etd?: string | null;
+    contractualQuantity?: number | null;
     shipmentCount: number;
     requiredDocsCount: number;
     submittedDocsCount: number;
@@ -168,8 +160,6 @@ export default function ContractJourneyReportPage() {
   const { id } = useParams();
   const { isAuthenticated, isLoading } = useAuth();
   useUnauthorizedRedirect({ isAuthenticated, isLoading });
-
-  const [selectedVessel, setSelectedVessel] = useState<ContractJourneyReport["vessels"][number] | null>(null);
 
   const { data, isLoading: isReportLoading, error } = useQuery<ContractJourneyReport | null>({
     queryKey: [`/api/reports/contract-journey/${id}`],
@@ -381,20 +371,14 @@ export default function ContractJourneyReportPage() {
                           <TableHead>Name</TableHead>
                           <TableHead>Port</TableHead>
                           <TableHead>ETA</TableHead>
-                          <TableHead>ETD</TableHead>
-                          <TableHead className="text-center">Shipments</TableHead>
-                          <TableHead className="text-center">Docs submitted / required</TableHead>
+                          <TableHead>Contractual quantity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {report.vessels.map((vessel) => {
                           const late = isLateVessel(vessel);
                           return (
-                            <TableRow
-                              key={vessel.vesselId}
-                              className="cursor-pointer hover:bg-gray-50"
-                              onClick={() => setSelectedVessel(vessel)}
-                            >
+                            <TableRow key={vessel.vesselId}>
                               <TableCell className="font-medium text-gray-900">
                                 <div className="flex items-center gap-2">
                                   {vessel.vesselName}
@@ -407,11 +391,7 @@ export default function ContractJourneyReportPage() {
                               </TableCell>
                               <TableCell>{vessel.port ?? "—"}</TableCell>
                               <TableCell>{formatMaybeDate(vessel.eta)}</TableCell>
-                              <TableCell>{formatMaybeDate(vessel.etd)}</TableCell>
-                              <TableCell className="text-center">{vessel.shipmentCount}</TableCell>
-                              <TableCell className="text-center">
-                                {vessel.submittedDocsCount}/{vessel.requiredDocsCount}
-                              </TableCell>
+                              <TableCell>{formatMaybeNumber(vessel.contractualQuantity)}</TableCell>
                             </TableRow>
                           );
                         })}
@@ -425,51 +405,6 @@ export default function ContractJourneyReportPage() {
         )}
       </div>
 
-      <Dialog
-        open={Boolean(selectedVessel)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedVessel(null);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Anchor className="h-5 w-5 text-indigo-500" />
-              {selectedVessel?.vesselName ?? "Vessel details"}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedVessel && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <div className="text-sm text-gray-500">Port</div>
-                  <div className="text-gray-900">{selectedVessel.port ?? "—"}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">ETA</div>
-                  <div className="text-gray-900">{formatMaybeDate(selectedVessel.eta)}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">ETD</div>
-                  <div className="text-gray-900">{formatMaybeDate(selectedVessel.etd)}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500">Shipments</div>
-                  <div className="text-gray-900">{selectedVessel.shipmentCount}</div>
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Documents</div>
-                <div className="text-gray-900">
-                  {selectedVessel.submittedDocsCount} submitted / {selectedVessel.requiredDocsCount} required
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </MainLayout>
   );
 }
