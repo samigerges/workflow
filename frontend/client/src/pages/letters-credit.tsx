@@ -6,9 +6,17 @@ import LetterOfCreditForm from "@/components/forms/letter-of-credit-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, University, Building2, Factory, Eye, Edit, Trash } from "lucide-react";
+import { Plus, University, Building2, Factory, Eye, Edit, Trash, FilePlus2 } from "lucide-react";
 import StatusBadge from "@/components/ui/status-badge";
 import {
   normalizeLc,
@@ -25,6 +33,9 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import LCSummary from "@/components/lc-summary";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import FileUpload from "@/components/ui/file-upload";
 
 type FlowKey = NormalizedLC["flowKey"];
 
@@ -65,6 +76,11 @@ export default function LettersCredit() {
   const [editingLc, setEditingLc] = useState<any>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [viewingLc, setViewingLc] = useState<any>(null);
+  const [showModificationDialog, setShowModificationDialog] = useState(false);
+  const [modificationLc, setModificationLc] = useState<NormalizedLC | null>(null);
+  const [modificationDescription, setModificationDescription] = useState("");
+  const [modificationFiles, setModificationFiles] = useState<File[]>([]);
+  const [modificationError, setModificationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!suppressJourneySelection) {
@@ -134,6 +150,45 @@ export default function LettersCredit() {
     }
 
     return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
+  };
+
+  const resetModificationState = () => {
+    setShowModificationDialog(false);
+    setModificationLc(null);
+    setModificationDescription("");
+    setModificationFiles([]);
+    setModificationError(null);
+  };
+
+  const handleOpenModification = (lc: NormalizedLC) => {
+    setModificationLc(lc);
+    setModificationDescription("");
+    setModificationFiles([]);
+    setModificationError(null);
+    setShowModificationDialog(true);
+  };
+
+  const handleModificationSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!modificationDescription.trim()) {
+      setModificationError("Please describe the modification.");
+      return;
+    }
+
+    if (modificationFiles.length === 0) {
+      setModificationError("Please upload a supporting document for this modification.");
+      return;
+    }
+
+    const lcLabel = modificationLc?.number ? `LC ${modificationLc.number}` : "the selected LC";
+
+    toast({
+      title: "Modification saved",
+      description: `Your modification for ${lcLabel} has been recorded.`,
+    });
+
+    resetModificationState();
   };
 
   const deleteMutation = useMutation<void, Error, string | number>({
@@ -375,6 +430,18 @@ export default function LettersCredit() {
                               >
                                 <Edit size={14} />
                               </Button>
+                              {journeyFilter === "upf_to_supplier" ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700"
+                                  onClick={() => handleOpenModification(normalized)}
+                                  title="Add modification"
+                                >
+                                  <FilePlus2 size={14} className="mr-1" />
+                                  Add modification
+                                </Button>
+                              ) : null}
                               <Button
                                 size="sm"
                                 variant="destructive"
@@ -418,6 +485,76 @@ export default function LettersCredit() {
               )}
             </CardContent>
           </Card>
+          <Dialog
+            open={showModificationDialog}
+            onOpenChange={(open) => {
+              if (!open) {
+                resetModificationState();
+              } else {
+                setShowModificationDialog(true);
+              }
+            }}
+          >
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Add modification</DialogTitle>
+                <DialogDescription>
+                  {modificationLc?.number
+                    ? `Provide details for the modification to LC ${modificationLc.number}.`
+                    : "Provide details for the LC modification."}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleModificationSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="modification-description">Modification details</Label>
+                  <Textarea
+                    id="modification-description"
+                    value={modificationDescription}
+                    onChange={(event) => {
+                      setModificationDescription(event.target.value);
+                      if (modificationError) {
+                        setModificationError(null);
+                      }
+                    }}
+                    placeholder="Describe the modification you want to make"
+                    rows={4}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Supporting document</Label>
+                  <FileUpload
+                    accept=".pdf,.doc,.docx,.xlsx,.xls,.png,.jpg"
+                    multiple={false}
+                    description="Upload one file to support this modification request"
+                    onFileSelect={(files) => {
+                      setModificationFiles(files);
+                      if (modificationError) {
+                        setModificationError(null);
+                      }
+                    }}
+                  />
+                </div>
+                {modificationError ? (
+                  <p className="text-sm text-red-600">{modificationError}</p>
+                ) : null}
+                <DialogFooter className="sm:justify-between">
+                  <div className="text-sm text-secondary-500">
+                    {modificationLc?.number
+                      ? `LC reference: ${modificationLc.number}`
+                      : ""}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button type="button" variant="outline" onClick={resetModificationState}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="bg-amber-500 hover:bg-amber-600 text-white">
+                      Submit modification
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           <Dialog
             open={showEditDialog}
             onOpenChange={(open) => {
