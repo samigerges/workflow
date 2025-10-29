@@ -7,9 +7,8 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import MainLayout from "@/components/layout/main-layout";
 import StatementOfNeedsForm from "@/components/forms/statement-of-needs-form";
 import DocumentVoting from "@/components/document-voting";
-import RequestVoting, { RequestVotingContent, RequestVoteButton } from "@/components/request-voting";
+import { RequestVoteButton } from "@/components/request-voting";
 import RequestSummary from "@/components/request-summary";
-import StatusChangeDropdown from "@/components/ui/status-change-dropdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +17,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, FileText, Edit, Trash, Settings, Vote, Eye, MessageSquare } from "lucide-react";
 import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
+import {
+  getRequestStatusConfig,
+  isValidRequestStatus,
+  normalizeRequestStatus,
+  REQUEST_STATUS_OPTIONS,
+  type RequestStatusKey,
+} from "@/lib/request-statuses";
 
 const formatRequestPreview = (description?: string) => {
   if (!description) return "No additional notes";
@@ -78,7 +84,11 @@ export default function Requests() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+    mutationFn: async ({ id, status }: { id: number; status: RequestStatusKey }) => {
+      if (!isValidRequestStatus(status)) {
+        throw new Error("Invalid status selection");
+      }
+
       await apiRequest("POST", `/api/requests/${id}/status`, { status });
     },
     onSuccess: () => {
@@ -102,18 +112,6 @@ export default function Requests() {
       });
     },
   });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "supply chain": return "bg-yellow-100 text-yellow-800";
-      case "Finance": return "bg-green-100 text-green-800";
-      case "Legel": return "bg-red-100 text-red-800";
-      case "colonel Wael": return "bg-blue-100 text-blue-800";
-      case "General hazem": return "bg-purple-100 text-purple-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -177,35 +175,57 @@ export default function Requests() {
               </DialogHeader>
               {statusEditingRequest && (
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-2">
-                      Current status: <Badge className={getStatusColor(statusEditingRequest?.status ?? "") }>
-                        {statusEditingRequest?.status
-                          ? statusEditingRequest.status.charAt(0).toUpperCase() + statusEditingRequest.status.slice(1)
-                          : "Unknown"}
-                      </Badge>
-                    </p>
-                    <p className="text-sm font-medium">Request: {getRequestLabel(statusEditingRequest)}</p>
-                  </div>
+                  {(() => {
+                    const currentStatusConfig = getRequestStatusConfig(statusEditingRequest?.status);
+                    const normalizedStatus = normalizeRequestStatus(statusEditingRequest?.status);
+                    return (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          Current status:
+                          <Badge className={`ml-1 ${currentStatusConfig.color}`}>
+                            {currentStatusConfig.label}
+                          </Badge>
+                        </p>
+                        <p className="text-sm font-medium">
+                          Request: {getRequestLabel(statusEditingRequest)}
+                        </p>
+                        {!normalizedStatus && (
+                          <p className="text-xs text-red-600">
+                            Unable to recognise current status. Select a valid option below.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div>
                     <label className="text-sm font-medium">New Status:</label>
-                    <Select 
+                    <Select
                       onValueChange={(value) => {
-                        updateStatusMutation.mutate({ 
-                          id: statusEditingRequest.id, 
-                          status: value 
+                        if (!isValidRequestStatus(value)) {
+                          toast({
+                            title: "Invalid status",
+                            description: "Please select one of the supported request statuses.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+
+                        updateStatusMutation.mutate({
+                          id: statusEditingRequest.id,
+                          status: value
                         });
                       }}
+                      defaultValue={normalizeRequestStatus(statusEditingRequest?.status)}
                     >
                       <SelectTrigger className="w-full mt-1">
                         <SelectValue placeholder="Select new status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Supply_chain">Supply chain</SelectItem>
-                        <SelectItem value="Legel">Legel</SelectItem>
-                        <SelectItem value="Finance">Finance</SelectItem>
-                        <SelectItem value="Colnel_wael">Colnel wael</SelectItem>
-                        <SelectItem value="General_hazem">General hazem</SelectItem>
+                        {REQUEST_STATUS_OPTIONS.map(({ value, label }) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -260,6 +280,7 @@ export default function Requests() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Request ID</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Supplier</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead>Cargo</TableHead>
@@ -274,107 +295,118 @@ export default function Requests() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Array.isArray(requests) && requests.map((request: any) => (
-                      <TableRow key={request.id}>
-                        <TableCell className="font-medium">
-                          {request.publicId ?? request.id}
-                        </TableCell>
-                        <TableCell>
-                          {request.supplierName || '-'}
-                        </TableCell>
-                        <TableCell>
-                          {request.quantity} {request.unitOfMeasure}
-                        </TableCell>
-                        <TableCell>
-                          {request.cargoType || '-'}
-                        </TableCell>
-                        <TableCell>
-                          ${parseFloat(request.pricePerTon || request.estimatedValue || 0).toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          {request.paymentMethod || '-'}
-                        </TableCell>
-                        <TableCell>
-                          {request.shippingMethod || '-'}
-                        </TableCell>
-                        <TableCell className="max-w-xs">
-                          <span
-                            className="block max-w-xs truncate text-sm text-secondary-700"
-                            title={request.letterOfGuarantee || '-'}
-                          >
-                            {request.letterOfGuarantee || '-'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {request.countryOfOrigin || '-'}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(request.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {request.status !== 'applied' ? (
-                            <RequestVoteButton 
-                              requestId={request.id}
-                              currentUserId={(user as any)?.id}
-                            />
-                          ) : (
-                            <span className="text-gray-500 text-sm">Hidden (status: applied)</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              className="bg-blue-50 hover:bg-blue-100 border-blue-200"
-                              onClick={() => {
-                                setSummaryRequest(request);
-                                setShowSummaryDialog(true);
-                              }}
-                              title="View request summary"
+                    {Array.isArray(requests) && requests.map((request: any) => {
+                      const normalizedStatus = normalizeRequestStatus(request.status);
+                      const statusConfig = getRequestStatusConfig(request.status);
+                      const statusLabel = statusConfig.label;
+
+                      return (
+                        <TableRow key={request.id}>
+                          <TableCell className="font-medium">
+                            {request.publicId ?? request.id}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={statusConfig.color}>{statusLabel}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {request.supplierName || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {request.quantity} {request.unitOfMeasure}
+                          </TableCell>
+                          <TableCell>
+                            {request.cargoType || '-'}
+                          </TableCell>
+                          <TableCell>
+                            ${parseFloat(request.pricePerTon || request.estimatedValue || 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            {request.paymentMethod || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {request.shippingMethod || '-'}
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            <span
+                              className="block max-w-xs truncate text-sm text-secondary-700"
+                              title={request.letterOfGuarantee || '-'}
                             >
-                              <Eye size={14} className="mr-1" />
-                              View
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              className="bg-blue-500 hover:bg-blue-600 text-white"
-                              onClick={() => {
-                                setEditingRequest(request);
-                                setShowEditDialog(true);
-                              }}
-                            >
-                              <Edit size={14} />
-                            </Button>
-                            {((user as any)?.role === 'admin' || (user as any)?.role === 'procurement_officer') && (
-                              <Button 
-                                size="sm" 
-                                className="bg-green-500 hover:bg-green-600 text-white"
+                              {request.letterOfGuarantee || '-'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {request.countryOfOrigin || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(request.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            {normalizedStatus !== 'applied' ? (
+                              <RequestVoteButton
+                                requestId={request.id}
+                                currentUserId={(user as any)?.id}
+                              />
+                            ) : (
+                              <span className="text-gray-500 text-sm">
+                                Hidden (status: {statusLabel})
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-blue-50 hover:bg-blue-100 border-blue-200"
                                 onClick={() => {
-                                  setStatusEditingRequest(request);
-                                  setShowStatusDialog(true);
+                                  setSummaryRequest(request);
+                                  setShowSummaryDialog(true);
+                                }}
+                                title="View request summary"
+                              >
+                                <Eye size={14} className="mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-blue-500 hover:bg-blue-600 text-white"
+                                onClick={() => {
+                                  setEditingRequest(request);
+                                  setShowEditDialog(true);
                                 }}
                               >
-                                <Settings size={14} />
+                                <Edit size={14} />
                               </Button>
-                            )}
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => {
-                                if (window.confirm("Are you sure you want to delete this request?")) {
-                                  deleteMutation.mutate(request.id);
-                                }
-                              }}
-                              disabled={deleteMutation.isPending}
-                              title="Delete request"
-                            >
-                              <Trash size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              {((user as any)?.role === 'admin' || (user as any)?.role === 'procurement_officer') && (
+                                <Button
+                                  size="sm"
+                                  className="bg-green-500 hover:bg-green-600 text-white"
+                                  onClick={() => {
+                                    setStatusEditingRequest(request);
+                                    setShowStatusDialog(true);
+                                  }}
+                                >
+                                  <Settings size={14} />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  if (window.confirm("Are you sure you want to delete this request?")) {
+                                    deleteMutation.mutate(request.id);
+                                  }
+                                }}
+                                disabled={deleteMutation.isPending}
+                                title="Delete request"
+                              >
+                                <Trash size={14} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               ) : (

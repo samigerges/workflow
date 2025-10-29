@@ -71,15 +71,7 @@ export const WORKFLOW_STEPS = [
   }
 ];
 
-export const REQUEST_STATUSES = {
-  pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
-  approved: { label: 'Approved', color: 'bg-green-100 text-green-800' },
-  rejected: { label: 'Rejected', color: 'bg-red-100 text-red-800' },
-  contracted: { label: 'Contracted', color: 'bg-blue-100 text-blue-800' },
-  applied: { label: 'Applied', color: 'bg-indigo-100 text-indigo-800' },
-  in_progress: { label: 'In Progress', color: 'bg-cyan-100 text-cyan-800' },
-  completed: { label: 'Completed', color: 'bg-purple-100 text-purple-800' }
-};
+export { REQUEST_STATUSES } from "./request-statuses";
 
 export const CONTRACT_STATUSES = {
   draft: { label: 'Draft', color: 'bg-gray-100 text-gray-800' },

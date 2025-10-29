@@ -1,17 +1,20 @@
 import { Badge } from "@/components/ui/badge";
-import { 
-  REQUEST_STATUSES,
+import {
   CONTRACT_STATUSES,
   LC_STATUSES,
   VESSEL_STATUSES,
   SHIPMENT_STATUSES,
   SETTLEMENT_STATUSES,
 } from "@/lib/constants";
+import {
+  DEFAULT_STATUS_CONFIG,
+  getRequestStatusConfig,
+} from "@/lib/request-statuses";
 import { StatusBadgeProps } from "@/lib/types";
 
 export default function StatusBadge({ status, type = 'request' }: StatusBadgeProps) {
   let statusConfig;
-  
+
   switch (type) {
     case 'contract':
       statusConfig = CONTRACT_STATUSES[status as keyof typeof CONTRACT_STATUSES];
@@ -29,11 +32,13 @@ export default function StatusBadge({ status, type = 'request' }: StatusBadgePro
       statusConfig = SETTLEMENT_STATUSES[status as keyof typeof SETTLEMENT_STATUSES];
       break;
     default:
-      statusConfig = REQUEST_STATUSES[status as keyof typeof REQUEST_STATUSES];
+      statusConfig = getRequestStatusConfig(status);
   }
 
   if (!statusConfig) {
-    statusConfig = { label: status, color: 'bg-gray-100 text-gray-800' };
+    statusConfig = status
+      ? { label: status, color: DEFAULT_STATUS_CONFIG.color }
+      : DEFAULT_STATUS_CONFIG;
   }
 
   return (
