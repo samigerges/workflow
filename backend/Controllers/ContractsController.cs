@@ -551,28 +551,15 @@ namespace WorkflowBackend.Api.Controllers
             var requireProductMatch = _config.GetValue("LcMatching:RequireProductMatch", true);
 
             var normalizedSupplier = NormalizeComparisonString(contract.SupplierName)?.ToLowerInvariant();
-            var normalizedProduct = NormalizeComparisonString(
-                string.IsNullOrWhiteSpace(cargoType)
-                    ? contract.CargoType
-                    : cargoType
-            )?.ToLowerInvariant();
+            var normalizedProduct = NormalizeComparisonString(cargoType)?.ToLowerInvariant();
 
-            if (requireSupplierMatch && normalizedSupplier is null)
-            {
-                return Ok(new PaginatedResponse<AvailableLetterOfCreditSummary>(
-                    Array.Empty<AvailableLetterOfCreditSummary>(),
-                    page,
-                    pageSize,
-                    0));
-            }
+            var enforceSupplierMatch = requireSupplierMatch && normalizedSupplier is not null;
+            var enforceProductMatch = requireProductMatch && normalizedProduct is not null;
 
-            if (requireProductMatch && normalizedProduct is null)
+            if (!enforceProductMatch && requireProductMatch && !all)
             {
-                return Ok(new PaginatedResponse<AvailableLetterOfCreditSummary>(
-                    Array.Empty<AvailableLetterOfCreditSummary>(),
-                    page,
-                    pageSize,
-                    0));
+                normalizedProduct = NormalizeComparisonString(contract.CargoType)?.ToLowerInvariant();
+                enforceProductMatch = normalizedProduct is not null;
             }
 
             var baseLcQuery = _db.LettersOfCredit
@@ -586,7 +573,7 @@ namespace WorkflowBackend.Api.Controllers
                 lc.ContractId == Guid.Empty ||
                 lc.ContractId == id);
 
-            if (requireSupplierMatch && normalizedSupplier is not null)
+            if (enforceSupplierMatch)
             {
                 baseLcQuery = baseLcQuery.Where(lc =>
                     (lc.Contract != null &&
@@ -597,7 +584,7 @@ namespace WorkflowBackend.Api.Controllers
                         a.SupplierName.Trim().ToLower() == normalizedSupplier));
             }
 
-            if (requireProductMatch && normalizedProduct is not null)
+            if (enforceProductMatch)
             {
                 baseLcQuery = baseLcQuery.Where(lc =>
                     (lc.CargoType != null &&

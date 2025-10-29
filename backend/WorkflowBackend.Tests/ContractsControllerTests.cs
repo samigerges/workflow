@@ -927,6 +927,159 @@ public class ContractsControllerTests
     }
 
     [Fact]
+    public async Task GetAvailableLettersOfCredit_ReturnsResultsWhenContractCargoMissing()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Missing Cargo",
+            SupplierName = "Supplier A",
+            SequenceNumber = 1,
+            PublicId = "CON-MISSING"
+        };
+
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        var letter = new LetterOfCredit
+        {
+            Number = "LC-NO-CARGO",
+            Status = "Active",
+            Quantity = 75m,
+            CargoType = "Wheat",
+            Flow = "UPF_TO_SUPPLIER"
+        };
+
+        context.LettersOfCredit.Add(letter);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.Add(new LetterOfCreditSupplierAllocation
+        {
+            LetterOfCreditId = letter.Id,
+            SupplierName = "Supplier A",
+            Quantity = 15m
+        });
+
+        await context.SaveChangesAsync();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LcMatching:RequireSupplierMatch"] = "true",
+                ["LcMatching:RequireProductMatch"] = "true"
+            })
+            .Build();
+
+        var controller = CreateController(context, configuration: configuration);
+
+        var result = await controller.GetAvailableLettersOfCredit(
+            contract.Id,
+            page: 1,
+            pageSize: 10,
+            search: null,
+            all: true,
+            cargoType: null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(ok.Value);
+
+        Assert.Equal(1, payload.Total);
+        Assert.Single(payload.Items);
+        Assert.Equal("LC-NO-CARGO", payload.Items[0].LcNumber);
+    }
+
+    [Fact]
+    public async Task GetAvailableLettersOfCredit_AllFilterIncludesAllCargoTypes()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "All Cargo",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-ALL"
+        };
+
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        var wheat = new LetterOfCredit
+        {
+            Number = "LC-WHEAT-ALL",
+            Status = "Active",
+            Quantity = 120m,
+            CargoType = "Wheat",
+            Flow = "UPF_TO_SUPPLIER",
+            ExpiryDate = new DateTime(2030, 1, 1)
+        };
+
+        var rice = new LetterOfCredit
+        {
+            Number = "LC-RICE-ALL",
+            Status = "Active",
+            Quantity = 110m,
+            CargoType = "Rice",
+            Flow = "UPF_TO_SUPPLIER",
+            ExpiryDate = new DateTime(2030, 2, 1)
+        };
+
+        context.LettersOfCredit.AddRange(wheat, rice);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.AddRange(
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = wheat.Id,
+                SupplierName = "Supplier A",
+                Quantity = 20m
+            },
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = rice.Id,
+                SupplierName = "Supplier A",
+                Quantity = 10m
+            });
+
+        await context.SaveChangesAsync();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LcMatching:RequireSupplierMatch"] = "true",
+                ["LcMatching:RequireProductMatch"] = "true"
+            })
+            .Build();
+
+        var controller = CreateController(context, configuration: configuration);
+
+        var result = await controller.GetAvailableLettersOfCredit(
+            contract.Id,
+            page: 1,
+            pageSize: 10,
+            search: null,
+            all: true,
+            cargoType: null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(ok.Value);
+
+        Assert.Equal(2, payload.Total);
+        Assert.Equal(2, payload.Items.Count);
+        Assert.Equal(new[] { "LC-WHEAT-ALL", "LC-RICE-ALL" }, payload.Items.Select(i => i.LcNumber).ToArray());
+    }
+
+    [Fact]
     public async Task LinkLetterOfCredit_AttachesEligibleLetter()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
