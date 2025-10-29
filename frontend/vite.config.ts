@@ -25,4 +25,8 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+  test: {
+    environment: "jsdom",
+    setupFiles: path.resolve(import.meta.dirname, "client", "src", "setupTests.ts"),
+  },
 });
