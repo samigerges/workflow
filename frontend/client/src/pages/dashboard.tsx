@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/main-layout";
@@ -22,15 +21,9 @@ import {
 } from "lucide-react";
 import { normalizeLc, formatLcCurrency } from "@/lib/lc";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 export default function Dashboard() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
-  useUnauthorizedRedirect({
-    isAuthenticated,
-    isLoading,
-  });
   const [selectedLC, setSelectedLC] = useState<any>(null);
   const [showLCSummary, setShowLCSummary] = useState(false);
   const [selectedContract, setSelectedContract] = useState<any>(null);
@@ -89,15 +82,6 @@ export default function Dashboard() {
     }),
     [stats],
   );
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
   return (
     <MainLayout title="Dashboard" subtitle="Welcome back, manage your import operations">
           {/* KPI Cards */}

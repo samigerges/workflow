@@ -20,7 +20,7 @@ import {
 } from "@/lib/lc";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
+import { useProtectedRouteContext } from "@/components/ProtectedRoute";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -51,13 +51,10 @@ const JOURNEY_SEGMENTS: JourneySegment[] = [
 ];
 
 export default function LettersCredit() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { redirectToLogin } = useUnauthorizedRedirect({
-    isAuthenticated,
-    isLoading,
-  });
+  const { redirectToLogin } = useProtectedRouteContext();
   const [journeyFilter, setJourneyFilter] = useState<FlowKey>("gasc_to_upf");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [suppressJourneySelection, setSuppressJourneySelection] = useState(false);
@@ -160,14 +157,6 @@ export default function LettersCredit() {
       });
     },
   });
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   return (
     <MainLayout title="Letters of Credit" subtitle="Manage financial instruments and LC processing">

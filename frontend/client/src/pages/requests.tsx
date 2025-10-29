@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, FileText, Edit, Trash, Settings, Vote, Eye, MessageSquare } from "lucide-react";
-import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
+import { useProtectedRouteContext } from "@/components/ProtectedRoute";
 
 const formatRequestPreview = (description?: string) => {
   if (!description) return "No additional notes";
@@ -32,11 +32,8 @@ const getRequestLabel = (request?: any) => {
 
 export default function Requests() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading, user } = useAuth();
-  const { redirectToLogin } = useUnauthorizedRedirect({
-    isAuthenticated,
-    isLoading,
-  });
+  const { user } = useAuth();
+  const { redirectToLogin } = useProtectedRouteContext();
   const queryClient = useQueryClient();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingRequest, setEditingRequest] = useState<any>(null);
@@ -113,15 +110,6 @@ export default function Requests() {
       default: return "bg-gray-100 text-gray-800";
     }
   };
-
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   return (
     <MainLayout title="Contract Requests" subtitle="Manage statements of needs and contract requests">

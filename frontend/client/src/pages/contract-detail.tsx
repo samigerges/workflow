@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/main-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,29 +23,21 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 
 export default function ContractDetail() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
-  const { isAuthenticated, isLoading } = useAuth();
-  useUnauthorizedRedirect({
-    isAuthenticated,
-    isLoading,
-  });
   const [selectedVessel, setSelectedVessel] = useState<any>(null);
   const [showVesselDialog, setShowVesselDialog] = useState(false);
 
   // Fetch contract data
   const { data: contracts = [], isLoading: contractsLoading } = useQuery({
     queryKey: ["/api/contracts"],
-    enabled: isAuthenticated,
   });
 
   // Fetch vessels data
   const { data: vessels = [], isLoading: vesselsLoading } = useQuery({
     queryKey: ["/api/vessels"],
-    enabled: isAuthenticated,
   });
 
   const isFetchingPrimaryData = contractsLoading || vesselsLoading;
@@ -64,7 +55,7 @@ export default function ContractDetail() {
     isLoading: documentsLoading,
   } = useQuery({
     queryKey: ["/api/document-votes/contract", contractId],
-    enabled: isAuthenticated && !!contractId,
+    enabled: !!contractId,
     retry: false,
   });
 

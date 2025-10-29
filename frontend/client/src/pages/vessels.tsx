@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { VESSEL_STATUSES } from "@/lib/constants";
 import { Plus, Ship, Edit, MapPin, Calendar, Eye, Activity, Trash, Loader2 } from "lucide-react";
 import { normalizeLc, type NormalizedLC } from "@/lib/lc";
-import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
+import { useProtectedRouteContext } from "@/components/ProtectedRoute";
 
 function extractLcId(link: any): string | null {
   if (!link) return null;
@@ -131,11 +131,8 @@ function VesselLCDisplay({
 
 export default function Vessels() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading, user } = useAuth();
-  const { redirectToLogin } = useUnauthorizedRedirect({
-    isAuthenticated,
-    isLoading,
-  });
+  const { user } = useAuth();
+  const { redirectToLogin } = useProtectedRouteContext();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -278,15 +275,6 @@ export default function Vessels() {
     if (nextStatusKey === vessel.statusKey) return;
     updateStatusMutation.mutate({ vesselId: vessel.id, statusKey: nextStatusKey });
   };
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
   return (
     <MainLayout title="Vessels" subtitle="Manage vessel nominations and shipping coordination">
           {/* Header Actions */}

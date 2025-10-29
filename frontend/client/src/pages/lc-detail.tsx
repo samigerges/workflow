@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/main-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,20 +20,17 @@ import { normalizeLc, formatLcCurrency, formatLcDate } from "@/lib/lc";
 export default function LCDetail() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
-  const { isAuthenticated } = useAuth();
   const [selectedVessel, setSelectedVessel] = useState<any>(null);
   const [showVesselDialog, setShowVesselDialog] = useState(false);
 
   // Fetch LC data
   const { data: lettersOfCredit = [], isLoading: lcsLoading } = useQuery({
     queryKey: ["/api/letters-of-credit"],
-    enabled: isAuthenticated,
   });
 
   // Fetch vessels data
   const { data: vessels = [], isLoading: vesselsLoading } = useQuery({
     queryKey: ["/api/vessels"],
-    enabled: isAuthenticated,
   });
 
   // Find the specific LC
@@ -46,7 +42,7 @@ export default function LCDetail() {
   const lcId = lcData?.id;
   const { data: lcVesselRelations, isLoading: lcVesselRelationsLoading } = useQuery({
     queryKey: ["/api/letters-of-credit", lcId, "vessels"],
-    enabled: isAuthenticated && !!lcId,
+    enabled: !!lcId,
   });
 
   const isLoading = lcsLoading || vesselsLoading || lcVesselRelationsLoading;

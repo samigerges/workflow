@@ -26,7 +26,7 @@ import {
   CONTRACT_SHIPPING_METHODS,
 } from "@/lib/constants";
 import { getOptionLabel } from "@/lib/utils";
-import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
+import { useProtectedRouteContext } from "@/components/ProtectedRoute";
 
 type ContractWithFile = ContractRecord & {
   fileName?: string | null;
@@ -48,11 +48,8 @@ const normalizeContract = (contract: any): ContractWithFile => {
 
 export default function Contracts() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading, user } = useAuth();
-  const { redirectToLogin } = useUnauthorizedRedirect({
-    isAuthenticated,
-    isLoading,
-  });
+  const { user } = useAuth();
+  const { redirectToLogin } = useProtectedRouteContext();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -205,15 +202,6 @@ export default function Contracts() {
   const hasVessels = (contractId: number) => {
     return vessels && (vessels as any[]).some((vessel: any) => vessel.contractId === contractId);
   };
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
   return (
     <MainLayout title="Contracts" subtitle="Manage import contracts and approvals">
           {/* Header Actions */}

@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { useReportsData } from "@/hooks/useReportsData";
 import MainLayout from "@/components/layout/main-layout";
 import { FiltersSection } from "@/components/reports/FiltersSection";
@@ -12,7 +11,6 @@ import type { DateRange } from "@/lib/schemas";
 
 
 export default function Reports() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({ from: "", to: "" });
@@ -44,16 +42,12 @@ export default function Reports() {
     console.log('Export functionality to be implemented');
   }, []);
 
-  if (authLoading || dataLoading) {
+  if (dataLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg text-secondary-600">Loading reports...</div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null;
   }
 
   // Error handling

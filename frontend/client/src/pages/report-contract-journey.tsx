@@ -6,8 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import StatusBadge from "@/components/ui/status-badge";
-import { useAuth } from "@/hooks/useAuth";
-import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
 import { FileText, Ship, TrendingUp, AlertTriangle, Clock, Flag } from "lucide-react";
 
 interface ContractJourneyReport {
@@ -158,12 +156,9 @@ function isLateVessel(vessel: ContractJourneyReport["vessels"][number]): boolean
 
 export default function ContractJourneyReportPage() {
   const { id } = useParams();
-  const { isAuthenticated, isLoading } = useAuth();
-  useUnauthorizedRedirect({ isAuthenticated, isLoading });
-
   const { data, isLoading: isReportLoading, error } = useQuery<ContractJourneyReport | null>({
     queryKey: [`/api/reports/contract-journey/${id}`],
-    enabled: isAuthenticated && !!id,
+    enabled: !!id,
   });
 
   const report = data ?? undefined;

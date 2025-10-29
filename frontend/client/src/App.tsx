@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -18,36 +17,33 @@ import LCDetail from "@/pages/lc-detail";
 import ContractDetail from "@/pages/contract-detail";
 import ContractJourneyReportPage from "@/pages/report-contract-journey";
 import Reports from "@/pages/operations";
+import { withProtectedRoute } from "@/components/ProtectedRoute";
+
+const ProtectedDashboard = withProtectedRoute(Dashboard);
+const ProtectedRequests = withProtectedRoute(Requests);
+const ProtectedContracts = withProtectedRoute(Contracts);
+const ProtectedLettersCredit = withProtectedRoute(LettersCredit);
+const ProtectedVessels = withProtectedRoute(Vessels);
+const ProtectedVesselTracking = withProtectedRoute(VesselTracking);
+const ProtectedLCDetail = withProtectedRoute(LCDetail);
+const ProtectedContractDetail = withProtectedRoute(ContractDetail);
+const ProtectedReports = withProtectedRoute(Reports);
+const ProtectedContractJourneyReport = withProtectedRoute(ContractJourneyReportPage);
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <Switch>
-      {!isAuthenticated ? (
-        <Route path="*" component={Login} />
-      ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/requests" component={Requests} />
-          <Route path="/contracts" component={Contracts} />
-          <Route path="/letters-credit" component={LettersCredit} />
-          <Route path="/vessels" component={Vessels} />
-          <Route path="/vessel-tracking" component={VesselTracking} />
-          <Route path="/lc/:id" component={LCDetail} />
-          <Route path="/contract/:id" component={ContractDetail} />
-          <Route path="/reports" component={Reports} />
-          <Route path="/reports/contracts/:id" component={ContractJourneyReportPage} />
-        </>
-      )}
+      <Route path="/login" component={Login} />
+      <Route path="/" component={ProtectedDashboard} />
+      <Route path="/requests" component={ProtectedRequests} />
+      <Route path="/contracts" component={ProtectedContracts} />
+      <Route path="/letters-credit" component={ProtectedLettersCredit} />
+      <Route path="/vessels" component={ProtectedVessels} />
+      <Route path="/vessel-tracking" component={ProtectedVesselTracking} />
+      <Route path="/lc/:id" component={ProtectedLCDetail} />
+      <Route path="/contract/:id" component={ProtectedContractDetail} />
+      <Route path="/reports" component={ProtectedReports} />
+      <Route path="/reports/contracts/:id" component={ProtectedContractJourneyReport} />
       <Route component={NotFound} />
     </Switch>
   );
