@@ -22,4 +22,9 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: path.resolve(__dirname, "src", "setup-tests.ts"),
+  },
 });

@@ -8,11 +8,14 @@ import { VesselsTable } from "@/components/reports/VesselsTable";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import type { DateRange } from "@/lib/schemas";
+import { useToast } from "@/hooks/use-toast";
+import { exportReports, triggerFileDownload } from "@/lib/exports";
 
 
 
 export default function Reports() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({ from: "", to: "" });
@@ -22,6 +25,11 @@ export default function Reports() {
     availableSuppliers,
     vesselsWithContractInfo,
     vessels,
+    contracts,
+    requests,
+    suppliersData,
+    quantityMetrics,
+    selectedSupplierData,
     selectedSupplierLabel,
     isLoading: dataLoading,
     error,
@@ -39,10 +47,52 @@ export default function Reports() {
     setSelectedCountry(null);
   }, []);
 
-  const handleExport = useCallback(() => {
-    // Export functionality can be implemented here
-    console.log('Export functionality to be implemented');
-  }, []);
+  const handleExport = useCallback(async () => {
+    try {
+      const result = await exportReports({
+        totals: displayTotals,
+        suppliers: suppliersData,
+        vessels: vesselsWithContractInfo,
+        contracts,
+        requests,
+        quantityMetrics,
+        selectedSupplierData,
+        filters: {
+          selectedSupplierValue: selectedSupplier,
+          selectedSupplierLabel,
+          selectedCountry,
+          dateRange,
+        },
+      });
+
+      triggerFileDownload(result);
+
+      toast({
+        title: "Export ready",
+        description: `The reports export has started downloading as ${result.filename}.`,
+      });
+    } catch (error) {
+      console.error("Failed to export reports", error);
+      toast({
+        title: "Export failed",
+        description: "We couldn't generate the export. Please try again shortly.",
+        variant: "destructive",
+      });
+    }
+  }, [
+    contracts,
+    dateRange,
+    displayTotals,
+    quantityMetrics,
+    requests,
+    selectedCountry,
+    selectedSupplier,
+    selectedSupplierData,
+    selectedSupplierLabel,
+    suppliersData,
+    toast,
+    vesselsWithContractInfo,
+  ]);
 
   if (authLoading || dataLoading) {
     return (
