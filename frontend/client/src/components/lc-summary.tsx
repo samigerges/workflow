@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { University, Calendar, FileText, ExternalLink, Ship, Users, ClipboardList } from "lucide-react";
+import { University, Calendar, FileText, ExternalLink, Ship, Users, ClipboardList, FileSignature } from "lucide-react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,19 @@ interface LCSummaryProps {
   lc: any;
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface LcModificationDocument {
+  id: string;
+  title: string;
+  type: string | null;
+  entityType: string;
+  entityId: string;
+  fileName: string | null;
+  fileUrl: string | null;
+  tags: string[];
+  uploadedByUserId: string | null;
+  uploadedAt: string;
 }
 
 function buildDetailItems(lc: NormalizedLC) {
@@ -70,6 +83,28 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
     queryKey: normalizedLc?.id ? [`/api/letters-of-credit/${normalizedLc.id}/vessels`] : [],
     enabled: isOpen && !!normalizedLc?.id,
   });
+
+  const normalizedLcId = normalizedLc?.id ? String(normalizedLc.id) : null;
+  const shouldShowModifications = normalizedLc?.flowKey === "upf_to_supplier";
+
+  const {
+    data: modificationDocumentsRaw,
+    isLoading: modificationsLoading,
+  } = useQuery<LcModificationDocument[]>({
+    queryKey: [
+      "/api/documents",
+      {
+        entityType: "LetterOfCredit",
+        entityId: normalizedLcId ?? null,
+        tag: "lc-modification",
+      },
+    ],
+    enabled: Boolean(normalizedLcId) && isOpen && shouldShowModifications,
+  });
+
+  const modificationDocuments = Array.isArray(modificationDocumentsRaw)
+    ? modificationDocumentsRaw
+    : [];
 
   const lcVessels = useMemo(() => {
     if (!Array.isArray(vessels) || !Array.isArray(lcVesselRelations)) return [];
@@ -191,6 +226,64 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
             </Card>
           )}
 
+          {shouldShowModifications ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileSignature className="h-5 w-5" />
+                  <span>Modifications</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {modificationsLoading ? (
+                  <div className="text-center py-6 text-gray-500">Loading modifications…</div>
+                ) : modificationDocuments.length > 0 ? (
+                  <div className="space-y-4">
+                    {modificationDocuments.map((modification) => {
+                      const uploadedLabel = formatLcDate(modification.uploadedAt);
+
+                      return (
+                        <div
+                          key={String(modification.id)}
+                          className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 md:flex-row md:items-center md:justify-between"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-gray-500">
+                              {uploadedLabel}
+                              {modification.fileName ? ` • ${modification.fileName}` : ""}
+                            </p>
+                            <p className="text-gray-900 font-semibold line-clamp-3">{modification.title}</p>
+                          </div>
+                          {modification.fileUrl ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="self-start md:self-auto bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                              onClick={() => {
+                                window.open(modification.fileUrl ?? "", "_blank", "noopener");
+                              }}
+                            >
+                              <ExternalLink size={14} className="mr-1" />
+                              View document
+                            </Button>
+                          ) : (
+                            <Badge variant="secondary" className="self-start md:self-auto">
+                              No document uploaded
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+                    <p>No modifications recorded for this LC yet.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>
