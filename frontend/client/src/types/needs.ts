@@ -1,4 +1,4 @@
-import type { Request, Contract, Vessel } from "@/lib/schemas";
+import type { Request, Contract, Vessel, Need } from "@/lib/schemas";
 
 export interface SupplierOption {
   value: string;
@@ -6,7 +6,9 @@ export interface SupplierOption {
 }
 
 export interface NeedProgress {
-  request: Request;
+  need: Need;
+  requests: Request[];
+  primaryRequest: Request | null;
   contracts: Contract[];
   vessels: Vessel[];
   dischargedThisMonth: number;
@@ -36,6 +38,7 @@ export interface DischargedVesselInfo {
   vessel: Vessel;
   contract: Contract | null;
   relatedRequest: Request | null;
+  relatedNeed: Need | null;
   dischargedQuantity: number;
   activityDate: string | null;
   monthKey: string | null;

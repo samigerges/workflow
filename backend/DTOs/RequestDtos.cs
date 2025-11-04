@@ -43,6 +43,8 @@ namespace WorkflowBackend.Api.DTOs
 
         [MaxLength(50)]
         public string? Status { get; init; }
+
+        public Guid? NeedId { get; init; }
     }
 
     public class RequestUpdateRequest
@@ -86,6 +88,8 @@ namespace WorkflowBackend.Api.DTOs
 
         [MaxLength(50)]
         public string? Status { get; init; }
+
+        public Guid? NeedId { get; init; }
     }
 
     public record RequestStatusChangeRequest(
@@ -144,6 +148,7 @@ namespace WorkflowBackend.Api.DTOs
         string? LetterOfGuarantee,
         DateTime? StartDate,
         DateTime? EndDate,
-        string? UploadedFile
+        string? UploadedFile,
+        Guid? NeedId
     );
 }

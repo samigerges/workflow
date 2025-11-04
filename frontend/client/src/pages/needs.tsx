@@ -6,6 +6,7 @@ import { NeedsSummaryCards } from "@/components/needs/NeedsSummaryCards";
 import { NeedsProgressTable } from "@/components/needs/NeedsProgressTable";
 import { DischargedVesselsCard } from "@/components/needs/DischargedVesselsCard";
 import { NeedsAlerts } from "@/components/needs/NeedsAlerts";
+import ContractRequestForm from "@/components/forms/contract-request-form";
 import StatementOfNeedsForm from "@/components/forms/statement-of-needs-form";
 import { useNeedsData } from "@/hooks/useNeedsData";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -37,7 +38,8 @@ export default function NeedsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState<string>(() => getCurrentMonthKey());
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isContractRequestDialogOpen, setIsContractRequestDialogOpen] = useState(false);
+  const [isNeedDialogOpen, setIsNeedDialogOpen] = useState(false);
 
   const {
     needs,
@@ -114,23 +116,49 @@ export default function NeedsPage() {
               onReset={handleReset}
             />
           </div>
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary-500 hover:bg-primary-600 text-black w-full sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                Record Need
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Record New Statement of Need</DialogTitle>
-              </DialogHeader>
-              <StatementOfNeedsForm
-                onSuccess={() => setIsCreateDialogOpen(false)}
-                onCancel={() => setIsCreateDialogOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex flex-col gap-2 w-full sm:w-auto">
+            <Dialog
+              open={isContractRequestDialogOpen}
+              onOpenChange={setIsContractRequestDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button className="bg-primary-500 hover:bg-primary-600 text-black w-full sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Contract Request Form
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Contract Request Form</DialogTitle>
+                </DialogHeader>
+                <ContractRequestForm
+                  onSuccess={() => setIsContractRequestDialogOpen(false)}
+                  onCancel={() => setIsContractRequestDialogOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isNeedDialogOpen} onOpenChange={setIsNeedDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Record Statement of Need
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Record Statement of Need</DialogTitle>
+                </DialogHeader>
+                <StatementOfNeedsForm
+                  onSuccess={() => setIsNeedDialogOpen(false)}
+                  onCancel={() => setIsNeedDialogOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <NeedsSummaryCards summary={summary} supplierLabel={supplierLabel} />

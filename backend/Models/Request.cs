@@ -55,6 +55,9 @@ namespace WorkflowBackend.Api.Models
         public Guid? CreatedByUserId { get; set; }
         public User? CreatedBy { get; set; }
 
+        public Guid? NeedId { get; set; }
+        public Need? Need { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

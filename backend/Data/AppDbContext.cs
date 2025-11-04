@@ -13,6 +13,8 @@ namespace WorkflowBackend.Api.Data
         public DbSet<Request> Requests => Set<Request>();
         public DbSet<RequestVote> RequestVotes => Set<RequestVote>();
 
+        public DbSet<Need> Needs => Set<Need>();
+
         public DbSet<Contract> Contracts => Set<Contract>();
         public DbSet<ContractVote> ContractVotes => Set<ContractVote>();
 
@@ -40,6 +42,28 @@ namespace WorkflowBackend.Api.Data
 
             // User
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+
+            // Need
+            modelBuilder.Entity<Need>().Property(n => n.Title).HasMaxLength(200).IsRequired();
+            modelBuilder.Entity<Need>().Property(n => n.Description).HasMaxLength(2000);
+            modelBuilder.Entity<Need>().Property(n => n.Status).HasMaxLength(50).HasDefaultValue("draft");
+            modelBuilder.Entity<Need>().Property(n => n.Category).HasMaxLength(100).IsRequired();
+            modelBuilder.Entity<Need>().Property(n => n.RequiredQuantity).HasPrecision(18, 2).HasDefaultValue(0m);
+            modelBuilder.Entity<Need>().Property(n => n.UnitOfMeasure).HasMaxLength(50).IsRequired();
+            modelBuilder.Entity<Need>().Property(n => n.DepartmentCode).HasMaxLength(50);
+            modelBuilder.Entity<Need>().Property(n => n.Notes).HasMaxLength(2000);
+            modelBuilder.Entity<Need>().Property(n => n.MaxPricePerUnit).HasPrecision(18, 2);
+            modelBuilder.Entity<Need>().Property(n => n.ActualQuantityReceived).HasDefaultValue(0);
+            modelBuilder.Entity<Need>()
+                .HasOne(n => n.CreatedBy)
+                .WithMany()
+                .HasForeignKey(n => n.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Need>()
+                .HasMany(n => n.Requests)
+                .WithOne(r => r.Need)
+                .HasForeignKey(r => r.NeedId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // Request
             modelBuilder.Entity<Request>().Property(r => r.Status).HasMaxLength(50).HasDefaultValue("pending");

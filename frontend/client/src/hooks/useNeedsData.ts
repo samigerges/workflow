@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import type { Request, Contract, Vessel } from "@/lib/schemas";
+import type { Request, Contract, Vessel, Need } from "@/lib/schemas";
 import type {
   SupplierOption,
   NeedProgress,
@@ -72,6 +72,15 @@ export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeed
   const { isAuthenticated } = useAuth();
 
   const {
+    data: needs = [],
+    isLoading: needsLoading,
+    error: needsError,
+  } = useQuery<Need[]>({
+    queryKey: ["/api/needs"],
+    enabled: isAuthenticated,
+  });
+
+  const {
     data: requests = [],
     isLoading: requestsLoading,
     error: requestsError,
@@ -121,10 +130,31 @@ export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeed
     return match?.label ?? null;
   }, [availableSuppliers, normalizedSupplier]);
 
-  const requestsForMonth = useMemo(() => {
-    return requests.filter((request) => {
-      const requestMonth = getMonthKey(getRequestPrimaryDate(request));
-      if (requestMonth !== monthKey) {
+  const requestsByNeedId = useMemo(() => {
+    const map = new Map<string, Request[]>();
+    requests.forEach((request) => {
+      const needId = request.needId;
+      if (!needId) {
+        return;
+      }
+      const key = String(needId);
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key)!.push(request);
+    });
+    return map;
+  }, [requests]);
+
+  const needsForMonth = useMemo(() => {
+    return needs.filter((need) => {
+      const possibleKeys = [
+        getMonthKey(need.fulfillmentStartDate),
+        getMonthKey(need.fulfillmentEndDate),
+        getMonthKey(need.createdAt ?? null),
+      ];
+
+      if (!possibleKeys.includes(monthKey)) {
         return false;
       }
 
@@ -132,47 +162,57 @@ export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeed
         return true;
       }
 
-      return normalizeSupplier(request.supplierName) === normalizedSupplier;
+      const relatedRequests = requestsByNeedId.get(need.id) ?? [];
+      return relatedRequests.some(
+        (request) => normalizeSupplier(request.supplierName) === normalizedSupplier,
+      );
     });
-  }, [requests, monthKey, normalizedSupplier]);
+  }, [needs, monthKey, normalizedSupplier, requestsByNeedId]);
 
   const contractsByRequestId = useMemo(() => {
-    const map = new Map<number, Contract[]>();
+    const map = new Map<string, Contract[]>();
     contracts.forEach((contract) => {
       if (contract.requestId == null) {
         return;
       }
 
-      if (!map.has(contract.requestId)) {
-        map.set(contract.requestId, []);
+      const key = String(contract.requestId);
+      if (!map.has(key)) {
+        map.set(key, []);
       }
-      map.get(contract.requestId)?.push(contract);
+      map.get(key)!.push(contract);
     });
 
     return map;
   }, [contracts]);
 
   const vesselsByContractId = useMemo(() => {
-    const map = new Map<number, Vessel[]>();
+    const map = new Map<string, Vessel[]>();
     vessels.forEach((vessel) => {
       if (vessel.contractId == null) {
         return;
       }
 
-      if (!map.has(vessel.contractId)) {
-        map.set(vessel.contractId, []);
+      const key = String(vessel.contractId);
+      if (!map.has(key)) {
+        map.set(key, []);
       }
-      map.get(vessel.contractId)?.push(vessel);
+      map.get(key)!.push(vessel);
     });
 
     return map;
   }, [vessels]);
 
-  const needs = useMemo<NeedProgress[]>(() => {
-    return requestsForMonth.map((request) => {
-      const relatedContracts = contractsByRequestId.get(request.id) ?? [];
+  const needProgress = useMemo<NeedProgress[]>(() => {
+    return needsForMonth.map((need) => {
+      const relatedRequests = requestsByNeedId.get(need.id) ?? [];
+      const primaryRequest = relatedRequests[0] ?? null;
+
+      const relatedContracts = relatedRequests.flatMap((request) =>
+        contractsByRequestId.get(String(request.id)) ?? [],
+      );
       const relatedVessels: Vessel[] = relatedContracts.flatMap((contract) =>
-        vesselsByContractId.get(contract.id) ?? [],
+        vesselsByContractId.get(String(contract.id)) ?? [],
       );
 
       const dischargedThisMonth = relatedVessels
@@ -184,14 +224,18 @@ export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeed
         0,
       );
 
-      const requestedQuantity = toNumber(request.quantity ?? 0);
+      const requestedQuantity = toNumber(need.requiredQuantity ?? 0);
       const remainingQuantity = Math.max(requestedQuantity - totalDischarged, 0);
       const overallFulfillmentRate = requestedQuantity > 0 ? totalDischarged / requestedQuantity : 0;
       const monthFulfillmentRate = requestedQuantity > 0 ? dischargedThisMonth / requestedQuantity : 0;
-      const isUnassigned = relatedContracts.length === 0 || relatedVessels.length === 0;
+      const isUnassigned = relatedRequests.length === 0 || relatedVessels.length === 0;
+      const isFulfilled =
+        remainingQuantity <= 0 || need.status?.toLowerCase() === "fulfilled" || need.status?.toLowerCase() === "completed";
 
       return {
-        request,
+        need,
+        requests: relatedRequests,
+        primaryRequest,
         contracts: relatedContracts,
         vessels: relatedVessels,
         dischargedThisMonth,
@@ -199,43 +243,46 @@ export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeed
         remainingQuantity,
         overallFulfillmentRate,
         monthFulfillmentRate,
-        isFulfilled: remainingQuantity <= 0,
+        isFulfilled,
         isUnassigned,
       } satisfies NeedProgress;
     });
-  }, [requestsForMonth, contractsByRequestId, vesselsByContractId, monthKey]);
+  }, [needsForMonth, requestsByNeedId, contractsByRequestId, vesselsByContractId, monthKey]);
 
   const summary = useMemo<NeedsSummary>(() => {
-    const totalRequestedQuantity = needs.reduce(
-      (sum, need) => sum + toNumber(need.request.quantity ?? 0),
+    const totalRequestedQuantity = needProgress.reduce(
+      (sum, entry) => sum + toNumber(entry.need.requiredQuantity ?? 0),
       0,
     );
 
-    const totalDischargedQuantity = needs.reduce(
-      (sum, need) => sum + need.dischargedThisMonth,
+    const totalDischargedQuantity = needProgress.reduce(
+      (sum, entry) => sum + entry.dischargedThisMonth,
       0,
     );
 
-    const overallDischargedQuantity = needs.reduce(
-      (sum, need) => sum + need.totalDischarged,
+    const overallDischargedQuantity = needProgress.reduce(
+      (sum, entry) => sum + entry.totalDischarged,
       0,
     );
 
-    const pendingQuantity = Math.max(totalRequestedQuantity - totalDischargedQuantity, 0);
-    const backlogQuantity = needs
-      .filter((need) => !need.isFulfilled)
-      .reduce((sum, need) => sum + need.remainingQuantity, 0);
+    const pendingQuantity = needProgress.reduce(
+      (sum, entry) => sum + Math.max(toNumber(entry.need.requiredQuantity ?? 0) - entry.dischargedThisMonth, 0),
+      0,
+    );
+    const backlogQuantity = needProgress
+      .filter((entry) => !entry.isFulfilled)
+      .reduce((sum, entry) => sum + entry.remainingQuantity, 0);
 
-    const fulfilledNeeds = needs.filter((need) => need.isFulfilled).length;
-    const inProgressNeeds = needs.filter((need) => !need.isFulfilled && need.totalDischarged > 0).length;
-    const unassignedNeeds = needs.filter((need) => need.isUnassigned).length;
+    const fulfilledNeeds = needProgress.filter((entry) => entry.isFulfilled).length;
+    const inProgressNeeds = needProgress.filter((entry) => !entry.isFulfilled && entry.totalDischarged > 0).length;
+    const unassignedNeeds = needProgress.filter((entry) => entry.isUnassigned).length;
 
     const fulfillmentRate =
       totalRequestedQuantity > 0 ? (totalDischargedQuantity / totalRequestedQuantity) * 100 : 0;
 
     return {
       monthKey,
-      totalNeeds: needs.length,
+      totalNeeds: needProgress.length,
       totalRequestedQuantity,
       totalDischargedQuantity,
       overallDischargedQuantity,
@@ -246,43 +293,49 @@ export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeed
       unassignedNeeds,
       fulfillmentRate,
     } satisfies NeedsSummary;
-  }, [needs, monthKey]);
+  }, [needProgress, monthKey]);
 
   const dischargedVessels = useMemo<DischargedVesselInfo[]>(() => {
-    const relevantContractIds = new Set<number>();
-    needs.forEach((need) => {
-      need.contracts.forEach((contract) => relevantContractIds.add(contract.id));
+    const relevantContractIds = new Set<string>();
+    needProgress.forEach((entry) => {
+      entry.contracts.forEach((contract) => relevantContractIds.add(String(contract.id)));
     });
 
     return vessels
       .filter((vessel) => {
         if (vessel.contractId == null) return false;
-        if (!relevantContractIds.has(vessel.contractId)) return false;
+        if (!relevantContractIds.has(String(vessel.contractId))) return false;
         return getMonthKey(getVesselActivityDate(vessel)) === monthKey;
       })
       .map((vessel) => {
-        const contract = contracts.find((item) => item.id === vessel.contractId) ?? null;
+        const contract =
+          contracts.find((item) => String(item.id) === String(vessel.contractId)) ?? null;
         const relatedRequest =
           contract?.requestId != null
-            ? requests.find((request) => request.id === contract.requestId) ?? null
+            ? requests.find((request) => String(request.id) === String(contract.requestId)) ?? null
+            : null;
+        const relatedNeed =
+          relatedRequest?.needId != null
+            ? needs.find((need) => need.id === String(relatedRequest.needId)) ?? null
             : null;
 
         return {
           vessel,
           contract,
           relatedRequest,
+          relatedNeed,
           dischargedQuantity: toNumber(vessel.dischargedQuantity ?? vessel.quantity ?? 0),
           activityDate: getVesselActivityDate(vessel) ?? null,
           monthKey: getMonthKey(getVesselActivityDate(vessel)),
         } satisfies DischargedVesselInfo;
       });
-  }, [vessels, needs, contracts, requests, monthKey]);
+  }, [vessels, needProgress, contracts, requests, needs, monthKey]);
 
-  const isLoading = requestsLoading || contractsLoading || vesselsLoading;
-  const error = (requestsError || contractsError || vesselsError) ?? null;
+  const isLoading = needsLoading || requestsLoading || contractsLoading || vesselsLoading;
+  const error = (needsError || requestsError || contractsError || vesselsError) ?? null;
 
   return {
-    needs,
+    needs: needProgress,
     summary,
     dischargedVessels,
     availableSuppliers,
