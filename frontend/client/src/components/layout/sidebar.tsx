@@ -30,6 +30,13 @@ const getNavigation = (t: any) => [
     roles: ["admin", "procurement_officer", "finance_officer", "shipping_officer"]
   },
   {
+    nameKey: "navigation.needs",
+    name: t("navigation.needs"),
+    href: "/needs",
+    icon: ListChecks,
+    roles: ["admin", "procurement_officer", "shipping_officer"]
+  },
+  {
     nameKey: "navigation.contractRequests",
     name: t("navigation.contractRequests"),
     href: "/requests",
@@ -63,13 +70,6 @@ const getNavigation = (t: any) => [
     href: "/vessel-tracking",
     icon: MapPin,
     roles: ["admin", "shipping_officer"]
-  },
-  {
-    nameKey: "navigation.needs",
-    name: t("navigation.needs"),
-    href: "/needs",
-    icon: ListChecks,
-    roles: ["admin", "procurement_officer", "shipping_officer"]
   },
   {
     nameKey: "navigation.reports",
