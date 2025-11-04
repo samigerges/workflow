@@ -11,7 +11,10 @@ interface NeedsProgressTableProps {
   isLoading: boolean;
 }
 
-const formatQuantity = (value: number) => `${Math.round(value).toLocaleString()} tons`;
+const formatQuantity = (value: number, unit: string | undefined) => {
+  const normalizedUnit = unit ? unit.toLowerCase() : "units";
+  return `${Math.round(value).toLocaleString()} ${normalizedUnit}`;
+};
 
 export function NeedsProgressTable({ needs, isLoading }: NeedsProgressTableProps) {
   if (isLoading) {
@@ -43,12 +46,12 @@ export function NeedsProgressTable({ needs, isLoading }: NeedsProgressTableProps
     );
   }
 
-  const getStatusBadge = (need: NeedProgress) => {
-    if (need.isFulfilled) {
+  const getStatusBadge = (entry: NeedProgress) => {
+    if (entry.isFulfilled) {
       return <Badge className="bg-emerald-100 text-emerald-700 border-transparent">Fulfilled</Badge>;
     }
 
-    if (need.isUnassigned) {
+    if (entry.isUnassigned) {
       return <Badge className="bg-amber-100 text-amber-700 border-transparent">Unassigned</Badge>;
     }
 
@@ -77,31 +80,32 @@ export function NeedsProgressTable({ needs, isLoading }: NeedsProgressTableProps
             </TableRow>
           </TableHeader>
           <TableBody>
-            {needs.map((need) => {
-              const overallPercent = Math.min(need.overallFulfillmentRate * 100, 100);
-              const monthPercent = Math.min(need.monthFulfillmentRate * 100, 100);
+            {needs.map((entry) => {
+              const overallPercent = Math.min(entry.overallFulfillmentRate * 100, 100);
+              const monthPercent = Math.min(entry.monthFulfillmentRate * 100, 100);
+              const primaryRequest = entry.primaryRequest;
               return (
-                <TableRow key={need.request.id}>
+                <TableRow key={entry.need.id}>
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       <span className="font-semibold text-secondary-900">
-                        {need.request.description || `Request #${need.request.id}`}
+                        {entry.need.title}
                       </span>
                       <span className="text-xs uppercase tracking-wide text-secondary-500">
-                        {need.request.cargoType} · {need.request.unitOfMeasure}
+                        {entry.need.category} · {entry.need.unitOfMeasure}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-secondary-700 font-medium">
-                      {need.request.supplierName ?? "Unknown"}
+                      {primaryRequest?.supplierName ?? "Unassigned"}
                     </span>
                   </TableCell>
-                  <TableCell>{formatQuantity(need.request.quantity ?? 0)}</TableCell>
+                  <TableCell>{formatQuantity(entry.need.requiredQuantity ?? 0, entry.need.unitOfMeasure)}</TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-semibold text-secondary-900">
-                        {formatQuantity(need.dischargedThisMonth)}
+                        {formatQuantity(entry.dischargedThisMonth, entry.need.unitOfMeasure)}
                       </span>
                       <span className="text-xs text-secondary-500">{monthPercent.toFixed(1)}% this month</span>
                     </div>
@@ -112,8 +116,8 @@ export function NeedsProgressTable({ needs, isLoading }: NeedsProgressTableProps
                       <span className="text-xs text-secondary-500">{overallPercent.toFixed(1)}% fulfilled</span>
                     </div>
                   </TableCell>
-                  <TableCell>{formatQuantity(need.remainingQuantity)}</TableCell>
-                  <TableCell>{getStatusBadge(need)}</TableCell>
+                  <TableCell>{formatQuantity(entry.remainingQuantity, entry.need.unitOfMeasure)}</TableCell>
+                  <TableCell>{getStatusBadge(entry)}</TableCell>
                 </TableRow>
               );
             })}

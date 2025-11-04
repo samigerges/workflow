@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import MainLayout from "@/components/layout/main-layout";
-import StatementOfNeedsForm from "@/components/forms/statement-of-needs-form";
+import ContractRequestForm from "@/components/forms/contract-request-form";
 import DocumentVoting from "@/components/document-voting";
 import RequestVoting, { RequestVotingContent, RequestVoteButton } from "@/components/request-voting";
 import RequestSummary from "@/components/request-summary";
@@ -139,7 +139,7 @@ export default function Requests() {
                 <DialogHeader>
                   <DialogTitle>Create New Import Request</DialogTitle>
                 </DialogHeader>
-                <StatementOfNeedsForm 
+                <ContractRequestForm
                   onSuccess={() => setShowCreateDialog(false)}
                   onCancel={() => setShowCreateDialog(false)}
                 />
@@ -154,7 +154,7 @@ export default function Requests() {
                 <DialogTitle>Edit Contract Request</DialogTitle>
               </DialogHeader>
               {editingRequest && (
-                <StatementOfNeedsForm 
+                <ContractRequestForm
                   request={editingRequest}
                   onSuccess={() => {
                     setShowEditDialog(false);

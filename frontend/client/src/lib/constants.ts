@@ -142,6 +142,24 @@ export const CONTRACT_SHIPPING_METHODS = [
   { value: "c&f", label: "C&F" },
 ];
 
+export const NEED_CATEGORIES = [
+  { value: "grains", label: "Grains" },
+  { value: "oils", label: "Oils" },
+  { value: "logistics", label: "Logistics" },
+  { value: "equipment", label: "Equipment" },
+  { value: "services", label: "Services" },
+  { value: "other", label: "Other" },
+];
+
+export const NEED_STATUSES = [
+  { value: "draft", label: "Draft" },
+  { value: "submitted", label: "Submitted" },
+  { value: "approved", label: "Approved" },
+  { value: "in_progress", label: "In progress" },
+  { value: "fulfilled", label: "Fulfilled" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
 export const SHIPMENT_STATUSES = {
   loading: { label: 'Loading', color: 'bg-blue-100 text-blue-800' },
   loaded: { label: 'Loaded', color: 'bg-green-100 text-green-800' },

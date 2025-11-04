@@ -46,6 +46,9 @@ namespace WorkflowBackend.Api.Migrations
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("NeedId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Description")
                         .HasMaxLength(20000)
                         .HasColumnType("text");
@@ -115,6 +118,8 @@ namespace WorkflowBackend.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("NeedId");
 
                     b.HasIndex("PublicId")
                         .IsUnique();
@@ -369,6 +374,83 @@ namespace WorkflowBackend.Api.Migrations
                     b.HasIndex("VesselId");
 
                     b.ToTable("LoadingPorts");
+                });
+
+            modelBuilder.Entity("WorkflowBackend.Api.Models.Need", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActualQuantityReceived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DepartmentCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("FulfillmentEndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FulfillmentStartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("MaxPricePerUnit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<decimal>("RequiredQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("draft");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("UnitOfMeasure")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.ToTable("Needs");
                 });
 
             modelBuilder.Entity("WorkflowBackend.Api.Models.Request", b =>
@@ -1052,7 +1134,26 @@ namespace WorkflowBackend.Api.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("WorkflowBackend.Api.Models.Need", "Need")
+                        .WithMany("Requests")
+                        .HasForeignKey("NeedId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CreatedBy");
+
+                    b.Navigation("Need");
+                });
+
+            modelBuilder.Entity("WorkflowBackend.Api.Models.Need", b =>
+                {
+                    b.HasOne("WorkflowBackend.Api.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Requests");
                 });
 
             modelBuilder.Entity("WorkflowBackend.Api.Models.RequestVote", b =>

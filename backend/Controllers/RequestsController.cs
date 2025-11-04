@@ -190,7 +190,8 @@ namespace WorkflowBackend.Api.Controllers
                 r.LetterOfGuarantee,
                 r.StartDate,
                 r.EndDate,
-                r.UploadedFile
+                r.UploadedFile,
+                r.NeedId
             );
         }
 
@@ -238,6 +239,15 @@ namespace WorkflowBackend.Api.Controllers
             if (req.WheatPercentage is < 0 or > 100)
                 return BadRequest(new { message = "Wheat percentage must be between 0 and 100." });
 
+            if (req.NeedId is Guid needId)
+            {
+                var needExists = await _db.Needs.AnyAsync(n => n.Id == needId);
+                if (!needExists)
+                {
+                    return BadRequest(new { message = "The referenced statement of need does not exist." });
+                }
+            }
+
             var r = new Request
             {
                 Description = NormalizeString(req.Description),
@@ -255,7 +265,8 @@ namespace WorkflowBackend.Api.Controllers
                 StartDate = req.StartDate?.Date,
                 EndDate = req.EndDate?.Date,
                 UploadedFile = NormalizeString(req.UploadedFile),
-                CreatedByUserId = CurrentUserId()
+                CreatedByUserId = CurrentUserId(),
+                NeedId = req.NeedId
             };
 
             if (!string.Equals(r.CargoType, "wheat", StringComparison.OrdinalIgnoreCase))
@@ -289,6 +300,16 @@ namespace WorkflowBackend.Api.Controllers
 
             if (req.WheatPercentage is < 0 or > 100)
                 return BadRequest(new { message = "Wheat percentage must be between 0 and 100." });
+
+            if (req.NeedId is Guid needId)
+            {
+                var needExists = await _db.Needs.AnyAsync(n => n.Id == needId);
+                if (!needExists)
+                {
+                    return BadRequest(new { message = "The referenced statement of need does not exist." });
+                }
+                r.NeedId = needId;
+            }
 
             if (req.Description is not null)
                 r.Description = NormalizeString(req.Description);

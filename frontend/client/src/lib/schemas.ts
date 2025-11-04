@@ -83,6 +83,10 @@ export const insertRequestSchema = z
     }),
   status: z.string().max(50).optional(),
   uploadedFile: z.string().max(255).optional(),
+  needId: z
+    .string()
+    .uuid({ message: "Select a valid statement of need" })
+    .optional(),
 })
   .superRefine((data, ctx) => {
     if (data.cargoType?.toLowerCase() === "wheat") {
@@ -98,6 +102,87 @@ export const insertRequestSchema = z
         code: z.ZodIssueCode.custom,
         message: "Wheat percentage should only be provided for wheat cargo",
         path: ["wheatPercentage"],
+      });
+    }
+  });
+
+export const insertNeedSchema = z
+  .object({
+    title: z
+      .string({ required_error: "Title is required" })
+      .min(1, "Title is required")
+      .max(200, "Title must be 200 characters or less"),
+    description: z
+      .string()
+      .max(2000, "Description must be 2000 characters or less")
+      .optional(),
+    category: z
+      .string({ required_error: "Category is required" })
+      .min(1, "Category is required")
+      .max(100, "Category must be 100 characters or less"),
+    requiredQuantity: z
+      .number({ invalid_type_error: "Required quantity is required" })
+      .superRefine((val, ctx) => {
+        if (!Number.isFinite(val)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required quantity is required" });
+          return;
+        }
+        if (val <= 0) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required quantity must be greater than 0" });
+        }
+      }),
+    unitOfMeasure: z
+      .string({ required_error: "Unit of measure is required" })
+      .min(1, "Unit of measure is required")
+      .max(50, "Unit of measure must be 50 characters or less"),
+    fulfillmentStartDate: z
+      .string({ required_error: "Start date is required" })
+      .min(1, "Start date is required")
+      .refine((val) => !Number.isNaN(Date.parse(val)), { message: "Invalid date" }),
+    fulfillmentEndDate: z
+      .string({ required_error: "End date is required" })
+      .min(1, "End date is required")
+      .refine((val) => !Number.isNaN(Date.parse(val)), { message: "Invalid date" }),
+    departmentCode: z
+      .string()
+      .max(50, "Department code must be 50 characters or less")
+      .optional(),
+    maxPricePerUnit: z
+      .preprocess(
+        (value) => (value === "" || value === null ? undefined : value),
+        z
+          .number({ invalid_type_error: "Maximum price must be a valid number" })
+          .superRefine((val, ctx) => {
+            if (!Number.isFinite(val)) {
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Maximum price must be a valid number" });
+              return;
+            }
+            if (val < 0) {
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Maximum price cannot be negative" });
+            }
+          })
+          .optional(),
+      ),
+    notes: z
+      .string()
+      .max(2000, "Notes must be 2000 characters or less")
+      .optional(),
+    status: z.string().max(50, "Status must be 50 characters or less").optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.fulfillmentStartDate || !data.fulfillmentEndDate) {
+      return;
+    }
+    const start = Date.parse(data.fulfillmentStartDate);
+    const end = Date.parse(data.fulfillmentEndDate);
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      return;
+    }
+    if (end < start) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["fulfillmentEndDate"],
+        message: "End date must be on or after the start date",
       });
     }
   });
@@ -181,6 +266,7 @@ export type Request = z.infer<typeof insertRequestSchema> & {
   sequenceNumber?: number;
   createdAt?: string;
   updatedAt?: string;
+  needId?: string | null;
 };
 
 export type Contract = z.infer<typeof insertContractSchema> & {
@@ -196,6 +282,15 @@ export type Vessel = z.infer<typeof insertVesselSchema> & {
   dischargedQuantity?: number;
   createdAt?: string;
   updatedAt?: string;
+};
+
+export type Need = z.infer<typeof insertNeedSchema> & {
+  id: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdByUserId?: string | null;
+  actualQuantityReceived?: number;
+  maxPricePerUnit?: number | null;
 };
 
 export type Shipment = z.infer<typeof insertShipmentSchema> & {

@@ -55,8 +55,13 @@ export function DischargedVesselsCard({ vessels, monthKey }: DischargedVesselsCa
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-medium text-secondary-900">
-                        {entry.relatedRequest?.description ?? "Unlinked need"}
+                        {entry.relatedNeed?.title ?? entry.relatedRequest?.description ?? "Unlinked need"}
                       </span>
+                      {entry.relatedNeed && (
+                        <span className="text-xs text-secondary-500">
+                          {entry.relatedNeed.category} · {entry.relatedNeed.unitOfMeasure}
+                        </span>
+                      )}
                       {entry.contract?.publicId && (
                         <span className="text-xs text-secondary-500">Contract {entry.contract.publicId}</span>
                       )}
