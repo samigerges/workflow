@@ -22,6 +22,7 @@ import LCDetail from "@/pages/lc-detail";
 import ContractDetail from "@/pages/contract-detail";
 import ContractJourneyReportPage from "@/pages/report-contract-journey";
 import Reports from "@/pages/operations";
+import NeedsPage from "@/pages/needs";
 
 function Redirect({ to }: { to: string }) {
   const [, setLocation] = useLocation();
@@ -90,6 +91,7 @@ const PRIVATE_ROUTES: Array<{
   { path: "/letters-credit", component: LettersCredit },
   { path: "/vessels", component: Vessels },
   { path: "/vessel-tracking", component: VesselTracking },
+  { path: "/needs", component: NeedsPage },
   { path: "/lc/:id", component: LCDetail },
   { path: "/contract/:id", component: ContractDetail },
   { path: "/reports", component: Reports },
