@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { formatLcDate, normalizeLc } from "@/lib/lc";
+import { formatLcDate } from "@/lib/lc";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { CARGO_TYPES } from "@/lib/constants";
@@ -50,6 +50,58 @@ const formatQuantity = (value: number | null | undefined) => {
 
 const ALL_CARGO_TYPES_VALUE = "all";
 
+const toNumber = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return 0;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+};
+
+const normalizeAvailableLc = (raw: any): AvailableLcItem | null => {
+  const id = raw?.id ?? raw?.Id ?? "";
+  if (!id) {
+    return null;
+  }
+
+  const lcNumberRaw = raw?.lcNumber ?? raw?.LcNumber ?? "";
+  const lcNumber = lcNumberRaw ? String(lcNumberRaw) : `LC-${String(id).slice(-6).toUpperCase()}`;
+  const supplier = raw?.supplier ?? raw?.Supplier ?? null;
+  const product = raw?.product ?? raw?.Product ?? null;
+  const totalQuantity = toNumber(raw?.totalQuantity ?? raw?.TotalQuantity);
+  const usedQuantity = toNumber(raw?.usedQuantity ?? raw?.UsedQuantity);
+  const remainingQuantity = Math.max(0, toNumber(raw?.remainingQuantity ?? raw?.RemainingQuantity));
+  const expiryRaw = raw?.expiryDate ?? raw?.ExpiryDate ?? null;
+  const expiryDate = expiryRaw instanceof Date
+    ? expiryRaw.toISOString()
+    : typeof expiryRaw === "string"
+      ? expiryRaw
+      : null;
+
+  return {
+    id: String(id),
+    lcNumber,
+    supplier: supplier ?? null,
+    product: product ?? null,
+    totalQuantity,
+    usedQuantity,
+    remainingQuantity,
+    expiryDate,
+    status: "Active",
+    contractId: raw?.contractId ?? raw?.ContractId ?? null,
+    isSelectable: remainingQuantity > 0,
+  } satisfies AvailableLcItem;
+};
+
 interface ContractAvailableLcsDialogProps {
   contract: ContractReference | null;
   open: boolean;
@@ -66,6 +118,11 @@ export default function ContractAvailableLcsDialog({
   const [selectedLcId, setSelectedLcId] = useState("");
   const [cargoTypeFilter, setCargoTypeFilter] = useState(ALL_CARGO_TYPES_VALUE);
 
+  const contractId = useMemo(() => {
+    if (!contract?.id) return null;
+    return String(contract.id);
+  }, [contract?.id]);
+
   useEffect(() => {
     if (!open) {
       setSelectedLcId("");
@@ -75,21 +132,29 @@ export default function ContractAvailableLcsDialog({
   useEffect(() => {
     setSelectedLcId("");
     setCargoTypeFilter(ALL_CARGO_TYPES_VALUE);
-  }, [contract?.id]);
+  }, [contractId]);
 
   useEffect(() => {
     setSelectedLcId("");
   }, [cargoTypeFilter]);
 
-  const lcListQueryKey = useMemo(
-    () => [
-      "/api/letters-of-credit",
+  const lcListQueryKey = useMemo(() => {
+    if (!contractId) return null;
+
+    const cargoFilter = cargoTypeFilter === ALL_CARGO_TYPES_VALUE
+      ? undefined
+      : cargoTypeFilter;
+
+    return [
+      "/api/contracts",
+      contractId,
+      "available-lcs",
       {
-        flow: "UPF_TO_SUPPLIER",
+        all: true,
+        cargoType: cargoFilter,
       },
-    ] as const,
-    [],
-  );
+    ] as const;
+  }, [cargoTypeFilter, contractId]);
 
   const {
     data,
@@ -97,58 +162,40 @@ export default function ContractAvailableLcsDialog({
     isError,
     error,
     refetch,
-  } = useQuery<any[]>({
-    queryKey: lcListQueryKey,
-    enabled: open,
+  } = useQuery<any>({
+    queryKey: lcListQueryKey ?? ["/api/contracts", "available-lcs", "disabled"],
+    enabled: open && !!lcListQueryKey,
     placeholderData: keepPreviousData,
   });
 
-  const rawItems = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+  const rawItems = useMemo<unknown[]>(() => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data as unknown[];
+    if (Array.isArray((data as any)?.items)) return (data as any).items as unknown[];
+    return [];
+  }, [data]);
 
-  const normalizedItems = useMemo(() => rawItems.map(normalizeLc), [rawItems]);
+  const normalizedItems = useMemo<AvailableLcItem[]>(() => {
+    const mapped: (AvailableLcItem | null)[] = rawItems.map((item) => normalizeAvailableLc(item));
+    const filtered = mapped.filter((item): item is AvailableLcItem => item !== null);
 
-  const filteredItems: AvailableLcItem[] = useMemo(() => {
-    const cargoFilter = cargoTypeFilter === ALL_CARGO_TYPES_VALUE ? null : cargoTypeFilter;
+    return filtered.sort((a: AvailableLcItem, b: AvailableLcItem) => {
+      const remainingDiff = b.remainingQuantity - a.remainingQuantity;
+      if (remainingDiff !== 0) {
+        return remainingDiff;
+      }
+      return a.lcNumber.localeCompare(b.lcNumber);
+    });
+  }, [rawItems]);
 
-    return normalizedItems
-      .filter(lc => {
-        if (!cargoFilter) return true;
-        return lc.cargoType?.toLowerCase() === cargoFilter.toLowerCase();
-      })
-      .map(lc => {
-        const totalQuantity = lc.quantity ?? 0;
-        const usedQuantity = lc.allocatedQuantity ?? 0;
-        const remainingQuantity = Math.max(0, totalQuantity - usedQuantity);
-        const status = lc.status ?? null;
-        const normalizedContractId = lc.contractId;
-        const isActive = (status ?? "").toLowerCase() === "active";
-        const matchesContract =
-          !normalizedContractId ||
-          (contract?.id !== undefined && normalizedContractId === String(contract.id));
-        const isSelectable = isActive && remainingQuantity > 0 && matchesContract;
+  const filteredItems = useMemo(() => {
+    if (cargoTypeFilter === ALL_CARGO_TYPES_VALUE) {
+      return normalizedItems;
+    }
 
-        return {
-          id: String(lc.id ?? ""),
-          lcNumber: lc.number,
-          supplier: lc.supplierName,
-          product: lc.cargoType,
-          totalQuantity,
-          usedQuantity,
-          remainingQuantity,
-          expiryDate: lc.expiryDate,
-          status,
-          contractId: normalizedContractId,
-          isSelectable,
-        } satisfies AvailableLcItem;
-      })
-      .sort((a, b) => {
-        const remainingDiff = (b.remainingQuantity ?? 0) - (a.remainingQuantity ?? 0);
-        if (remainingDiff !== 0) {
-          return remainingDiff;
-        }
-        return (a.lcNumber ?? "").localeCompare(b.lcNumber ?? "");
-      });
-  }, [cargoTypeFilter, contract?.id, normalizedItems]);
+    const normalizedFilter = cargoTypeFilter.toLowerCase();
+    return normalizedItems.filter((item) => (item.product ?? "").toLowerCase() === normalizedFilter);
+  }, [cargoTypeFilter, normalizedItems]);
 
   const total = filteredItems.length;
   const selectedOption = filteredItems.find(item => item.id === selectedLcId) ?? null;
@@ -170,7 +217,6 @@ export default function ContractAvailableLcsDialog({
 
   const attachMutation = useMutation({
     mutationFn: async (letterOfCreditId: string) => {
-      const contractId = contract?.id;
       if (!contractId) {
         throw new Error("Contract identifier is missing.");
       }
@@ -187,7 +233,9 @@ export default function ContractAvailableLcsDialog({
       setSelectedLcId("");
       queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
-      queryClient.invalidateQueries({ queryKey: lcListQueryKey });
+      if (lcListQueryKey) {
+        queryClient.invalidateQueries({ queryKey: lcListQueryKey });
+      }
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : "Failed to link the letter of credit.";
@@ -209,7 +257,7 @@ export default function ContractAvailableLcsDialog({
   const isAttachDisabled =
     !selectedLcId ||
     attachMutation.isPending ||
-    !contract?.id ||
+    !contractId ||
     (selectedOption ? !selectedOption.isSelectable : false);
 
   return (
@@ -227,7 +275,7 @@ export default function ContractAvailableLcsDialog({
             <Select
               value={cargoTypeFilter}
               onValueChange={(value) => setCargoTypeFilter(value)}
-              disabled={isLoading}
+              disabled={isLoading || !contractId}
             >
               <SelectTrigger id="availableLcCargoFilter" className="w-full">
                 <SelectValue placeholder="Choose cargo type" />
@@ -268,13 +316,9 @@ export default function ContractAvailableLcsDialog({
                           </span>
                           {!item.isSelectable && (
                             <span className="text-xs text-red-600">
-                              {item.status && item.status.toLowerCase() !== "active"
-                                ? `Status ${item.status} cannot be linked`
-                                : item.remainingQuantity <= 0
-                                  ? "No remaining quantity"
-                                  : item.contractId && contract?.id && item.contractId !== String(contract.id)
-                                    ? "Linked to another contract"
-                                    : "Unavailable"}
+                              {item.remainingQuantity <= 0
+                                ? "No remaining quantity"
+                                : "Unavailable"}
                             </span>
                           )}
                         </div>
@@ -284,8 +328,7 @@ export default function ContractAvailableLcsDialog({
                 </Select>
                 {selectedOption && (
                   <p className="text-xs text-secondary-600">
-                    Selected LC has {formatQuantity(selectedOption.remainingQuantity)} remaining out of
-                    {" "}
+                    Selected LC has {formatQuantity(selectedOption.remainingQuantity)} remaining out of {" "}
                     {formatQuantity(selectedOption.totalQuantity)} total.
                   </p>
                 )}
@@ -360,7 +403,10 @@ export default function ContractAvailableLcsDialog({
                             <TableCell className={!item.isSelectable ? "text-amber-700" : ""}>
                               {item.status ?? "—"}
                             </TableCell>
-                            <TableCell className={item.contractId && (!contract?.id || item.contractId !== String(contract.id)) ? "text-red-600" : ""}>
+                            <TableCell className={item.contractId && (!contractId || item.contractId !== contractId)
+                              ? "text-red-600"
+                              : ""}
+                            >
                               {item.contractId ?? "—"}
                             </TableCell>
                           </TableRow>
