@@ -168,7 +168,7 @@ export default function LettersCredit() {
     setShowModificationDialog(true);
   };
 
-  const handleModificationSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleModificationSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!modificationDescription.trim()) {
@@ -181,14 +181,63 @@ export default function LettersCredit() {
       return;
     }
 
-    const lcLabel = modificationLc?.number ? `LC ${modificationLc.number}` : "the selected LC";
+    if (!modificationLc?.id) {
+      setModificationError("Unable to identify the selected letter of credit.");
+      return;
+    }
 
-    toast({
-      title: "Modification saved",
-      description: `Your modification for ${lcLabel} has been recorded.`,
-    });
+    const trimmedDescription = modificationDescription.trim();
+    const lcId = String(modificationLc.id);
+    const formData = new FormData();
+    const maxTitleLength = 200;
+    const truncatedDescription =
+      trimmedDescription.length > maxTitleLength
+        ? `${trimmedDescription.slice(0, maxTitleLength - 1)}…`
+        : trimmedDescription;
 
-    resetModificationState();
+    formData.append("title", truncatedDescription);
+    formData.append("entityType", "LetterOfCredit");
+    formData.append("entityId", lcId);
+    formData.append("type", "LC Modification");
+    formData.append("tags", "lc-modification");
+
+    if (modificationLc.number) {
+      formData.append("tags", `lc-number:${modificationLc.number}`);
+    }
+
+    const [firstFile] = modificationFiles;
+    if (firstFile) {
+      formData.append("file", firstFile);
+    }
+
+    try {
+      await apiRequest("POST", "/api/documents/upload", formData);
+
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+
+      const lcLabel = modificationLc?.number ? `LC ${modificationLc.number}` : "the selected LC";
+
+      toast({
+        title: "Modification saved",
+        description: `Your modification for ${lcLabel} has been recorded.`,
+      });
+
+      resetModificationState();
+    } catch (error) {
+      if (error instanceof Error && isUnauthorizedError(error)) {
+        redirectToLogin();
+        return;
+      }
+
+      toast({
+        title: "Error",
+        description: "Failed to save the LC modification. Please try again.",
+        variant: "destructive",
+      });
+
+      setModificationError("Failed to save the LC modification. Please try again.");
+    }
+
   };
 
   const deleteMutation = useMutation<void, Error, string | number>({
@@ -435,8 +484,14 @@ export default function LettersCredit() {
                                   size="sm"
                                   variant="outline"
                                   className="bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700"
-                                  onClick={() => handleOpenModification(normalized)}
+                                  onClick={() => {
+                                    if (!lcId) {
+                                      return;
+                                    }
+                                    handleOpenModification(normalized);
+                                  }}
                                   title="Add modification"
+                                  disabled={!lcId}
                                 >
                                   <FilePlus2 size={14} className="mr-1" />
                                   Add modification
@@ -527,7 +582,7 @@ export default function LettersCredit() {
                     multiple={false}
                     description="Upload one file to support this modification request"
                     onFileSelect={(files) => {
-                      setModificationFiles(files);
+                      setModificationFiles(files.slice(0, 1));
                       if (modificationError) {
                         setModificationError(null);
                       }
