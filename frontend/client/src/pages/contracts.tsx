@@ -8,7 +8,6 @@ import MainLayout from "@/components/layout/main-layout";
 import ContractForm from "@/components/forms/contract-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,7 +16,6 @@ import DocumentUploadVote from "@/components/ui/document-upload-vote";
 import DocumentVoting from "@/components/document-voting";
 import { ContractVotingContent, ContractVoteButton } from "@/components/contract-voting";
 import ContractSummary from "@/components/contract-summary";
-import StatusChangeDropdown from "@/components/ui/status-change-dropdown";
 import ContractAvailableLcsDialog from "@/components/contract-available-lcs-dialog";
 import type { Contract as ContractRecord } from "@/lib/schemas";
 import {
@@ -174,18 +172,9 @@ export default function Contracts() {
     },
   });
 
-  const getContractStatusColor = (status: string) => {
-    switch (status) {
-      case "started": return "bg-blue-100 text-blue-800";
-      case "in progress": return "bg-yellow-100 text-yellow-800";
-      case "completed": return "bg-green-100 text-green-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
   const calculateContractStatus = (contract: any, vessels: any[]) => {
     if (!vessels) return "started";
-    
+
     const contractVessels = vessels.filter(vessel => vessel.contractId === contract.id);
     const allocatedQuantity = contractVessels.reduce((sum, vessel) => sum + (vessel.quantity || 0), 0);
     
@@ -313,19 +302,11 @@ export default function Contracts() {
                       <TableHead>Price per Unit</TableHead>
                       <TableHead>Shipping Method</TableHead>
                       <TableHead>Payment Method</TableHead>
-                      <TableHead>Allocated Quantity</TableHead>
-                      <TableHead>Remaining Quantity</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {(contracts as any[]).map((contract: any) => {
-                      // Calculate allocated quantity from vessels
-                      const contractVessels = vessels ? (vessels as any[]).filter(vessel => vessel.contractId === contract.id) : [];
-                      const allocatedQuantity = contractVessels.reduce((sum, vessel) => sum + (vessel.quantity || 0), 0);
-                      const remainingQuantity = (contract.quantity || 0) - allocatedQuantity;
-                      const dynamicStatus = calculateContractStatus(contract, (vessels as any[]) || []);
                       const cargoTypeLabel = contract.cargoType
                         ? getOptionLabel(CARGO_TYPES, contract.cargoType)
                         : "-";
@@ -353,23 +334,6 @@ export default function Contracts() {
                           </TableCell>
                           <TableCell>{shippingMethodLabel}</TableCell>
                           <TableCell>{paymentMethodLabel}</TableCell>
-                          <TableCell>
-                            <span className={allocatedQuantity > 0 ? 'text-blue-600 font-medium' : 'text-gray-500'}>
-                              {allocatedQuantity.toLocaleString()}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className={remainingQuantity > 0 ? 'text-orange-600 font-medium' : 'text-green-600 font-medium'}>
-                              {remainingQuantity.toLocaleString()}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col space-y-2">
-                              <Badge className={getContractStatusColor(dynamicStatus)}>
-                                {dynamicStatus.charAt(0).toUpperCase() + dynamicStatus.slice(1)}
-                              </Badge>
-                            </div>
-                          </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <Button
