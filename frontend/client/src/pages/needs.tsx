@@ -6,9 +6,18 @@ import { NeedsSummaryCards } from "@/components/needs/NeedsSummaryCards";
 import { NeedsProgressTable } from "@/components/needs/NeedsProgressTable";
 import { DischargedVesselsCard } from "@/components/needs/DischargedVesselsCard";
 import { NeedsAlerts } from "@/components/needs/NeedsAlerts";
+import StatementOfNeedsForm from "@/components/forms/statement-of-needs-form";
 import { useNeedsData } from "@/hooks/useNeedsData";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
+import { AlertCircle, Plus } from "lucide-react";
 
 function getCurrentMonthKey() {
   const today = new Date();
@@ -28,6 +37,7 @@ export default function NeedsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState<string>(() => getCurrentMonthKey());
   const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const {
     needs,
@@ -93,14 +103,35 @@ export default function NeedsPage() {
   return (
     <MainLayout title="Needs" subtitle="Monthly overview of requirements and vessel discharge progress">
       <div className="space-y-6">
-        <NeedsFilters
-          monthKey={selectedMonth}
-          onMonthChange={setSelectedMonth}
-          selectedSupplier={selectedSupplier}
-          onSupplierChange={setSelectedSupplier}
-          supplierOptions={availableSuppliers}
-          onReset={handleReset}
-        />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex-1 w-full">
+            <NeedsFilters
+              monthKey={selectedMonth}
+              onMonthChange={setSelectedMonth}
+              selectedSupplier={selectedSupplier}
+              onSupplierChange={setSelectedSupplier}
+              supplierOptions={availableSuppliers}
+              onReset={handleReset}
+            />
+          </div>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary-500 hover:bg-primary-600 text-black w-full sm:w-auto">
+                <Plus className="mr-2 h-4 w-4" />
+                Record Need
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Record New Statement of Need</DialogTitle>
+              </DialogHeader>
+              <StatementOfNeedsForm
+                onSuccess={() => setIsCreateDialogOpen(false)}
+                onCancel={() => setIsCreateDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <NeedsSummaryCards summary={summary} supplierLabel={supplierLabel} />
 
