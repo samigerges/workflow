@@ -86,6 +86,28 @@ const fallbackNumberFromId = (id: unknown): string | null => {
   return `LC-${suffix}`;
 };
 
+const normalizeLcId = (value: unknown): string | number | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "object" && "toString" in value && typeof value.toString === "function") {
+    const str = value.toString().trim();
+    return str.length > 0 ? str : null;
+  }
+
+  return null;
+};
+
 export function normalizeLc(raw: any): NormalizedLC {
   const allowedFlows = new Set(["GASC_TO_UPF", "UPF_TO_SUPPLIER"]);
   const defaultFlow = "GASC_TO_UPF";
@@ -207,8 +229,17 @@ export function normalizeLc(raw: any): NormalizedLC {
     return total + (allocation.amount ?? 0);
   }, 0);
 
+  const id =
+    normalizeLcId(raw?.id) ??
+    normalizeLcId((raw as Record<string, unknown>)?.Id) ??
+    normalizeLcId((raw as Record<string, unknown>)?.lcId) ??
+    normalizeLcId((raw as Record<string, unknown>)?.LCId) ??
+    normalizeLcId((raw as Record<string, unknown>)?.letterOfCreditId) ??
+    normalizeLcId((raw as Record<string, unknown>)?.LetterOfCreditId) ??
+    null;
+
   return {
-    id: raw?.id ?? null,
+    id,
     number,
     amount,
     quantity,
