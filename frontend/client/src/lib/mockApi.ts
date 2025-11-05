@@ -800,7 +800,9 @@ export async function apiRequest(
   if (match && method === "GET") {
     const lcId = Number(match[1]);
     const vesselsForLc = vessels.filter((v) =>
-      (vesselLettersOfCredit[v.id] || []).some((lc) => lc.id === lcId),
+      (vesselLettersOfCredit[v.id] || []).some(
+        (lc) => Number(lc?.letterOfCreditId ?? lc?.id) === lcId,
+      ),
     );
     return jsonResponse(vesselsForLc);
   }
@@ -831,15 +833,162 @@ export async function apiRequest(
       }
     }
   }
+  match = url.match(/^\/api\/vessels\/(\d+)\/available-letters-of-credit$/);
+  if (match && method === "GET") {
+    const vesselId = Number(match[1]);
+    const vessel = vessels.find((v) => Number(v.id) === vesselId);
+    if (!vessel) {
+      return jsonResponse({ message: "Vessel not found" }, 404);
+    }
+
+    const toNumber = (value: unknown) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const normalizeFlow = (value: unknown) =>
+      String(value ?? "")
+        .trim()
+        .replace(/->/g, "to")
+        .replace(/→/g, "to")
+        .replace(/suppliers/gi, "supplier")
+        .replace(/[_\-\s]/g, "")
+        .toLowerCase();
+
+    const allowedStatuses = new Set(["active", "issued", "amended"]);
+
+    const vesselContractId =
+      vessel.contractId !== undefined && vessel.contractId !== null
+        ? Number(vessel.contractId)
+        : null;
+    const vesselContract = vesselContractId
+      ? contracts.find((contract) => Number(contract.id) === vesselContractId)
+      : null;
+
+    const normalizedCargo = (vessel.cargoType || vesselContract?.cargoType || "")
+      .toString()
+      .trim()
+      .toLowerCase();
+
+    const options = lettersOfCredit
+      .filter((lc) => {
+        const lcStatus = String(lc.status ?? "").toLowerCase();
+        if (!allowedStatuses.has(lcStatus)) {
+          return false;
+        }
+
+        if (normalizeFlow(lc.flow) !== "upftosupplier") {
+          return false;
+        }
+
+        const lcContractId =
+          lc.contractId !== undefined && lc.contractId !== null ? Number(lc.contractId) : null;
+        if (vesselContractId === null) {
+          if (lcContractId !== null && lcContractId !== 0) {
+            return false;
+          }
+        } else if (lcContractId !== null && lcContractId !== 0 && lcContractId !== vesselContractId) {
+          return false;
+        }
+
+        if (normalizedCargo) {
+          const lcContract = lcContractId
+            ? contracts.find((contract) => Number(contract.id) === lcContractId)
+            : null;
+          const lcCargo = (lc.cargoType || lcContract?.cargoType || "")
+            .toString()
+            .trim()
+            .toLowerCase();
+          if (lcCargo !== normalizedCargo) {
+            return false;
+          }
+        }
+
+        return true;
+      })
+      .map((lc) => {
+        const lcId = Number(lc.id);
+        const totalQuantity = toNumber(lc.quantity);
+        const supplierAllocationsForLc = lcSupplierAllocations[lcId] || [];
+        const supplierUsage = supplierAllocationsForLc.reduce((sum, allocation) => {
+          const quantity =
+            allocation?.quantity ?? allocation?.allocationQuantity ?? 0;
+          return sum + toNumber(quantity);
+        }, 0);
+
+        const vesselUsage = Object.entries(vesselLettersOfCredit).reduce((sum, [key, links]) => {
+          const hasLink = Array.isArray(links)
+            ? links.some((link) => Number(link?.letterOfCreditId ?? link?.id) === lcId)
+            : false;
+          if (!hasLink) {
+            return sum;
+          }
+          const linkedVessel = vessels.find((candidate) => Number(candidate.id) === Number(key));
+          if (!linkedVessel) {
+            return sum;
+          }
+          const vesselQuantity =
+            typeof linkedVessel.actualQuantity === "number"
+              ? linkedVessel.actualQuantity
+              : linkedVessel.quantity;
+          return sum + toNumber(vesselQuantity);
+        }, 0);
+
+        const usedQuantity = supplierUsage + vesselUsage;
+        const remainingQuantity = Math.max(totalQuantity - usedQuantity, 0);
+
+        const lcContract = lc.contractId
+          ? contracts.find((contract) => Number(contract.id) === Number(lc.contractId))
+          : null;
+        const supplierName = lcContract?.supplierName ?? supplierAllocationsForLc[0]?.supplierName ?? null;
+        const product = lc.cargoType ?? lcContract?.cargoType ?? null;
+
+        return {
+          id: lcId,
+          lcNumber: lc.number ?? `LC-${lcId}`,
+          supplier: supplierName ?? null,
+          product,
+          totalQuantity,
+          usedQuantity,
+          remainingQuantity,
+          expiryDate: lc.expiryDate ?? null,
+        };
+      })
+      .filter((summary) => summary.totalQuantity > 0 && summary.remainingQuantity > 0)
+      .sort((a, b) => {
+        if (b.remainingQuantity !== a.remainingQuantity) {
+          return b.remainingQuantity - a.remainingQuantity;
+        }
+        const dateA = a.expiryDate ? new Date(a.expiryDate).getTime() : Number.POSITIVE_INFINITY;
+        const dateB = b.expiryDate ? new Date(b.expiryDate).getTime() : Number.POSITIVE_INFINITY;
+        return dateA - dateB;
+      });
+
+    return jsonResponse(options);
+  }
   match = url.match(/^\/api\/vessels\/(\d+)\/letters-of-credit$/);
   if (match) {
     const vesselId = Number(match[1]);
     if (method === "GET") return jsonResponse(vesselLettersOfCredit[vesselId] || []);
     if (method === "POST") {
       const payload = body instanceof FormData ? formDataToObject(body) : body || {};
-      const lc = { id: generateId(vesselLettersOfCredit[vesselId] || []), ...payload } as any;
-      vesselLettersOfCredit[vesselId] = [...(vesselLettersOfCredit[vesselId] || []), lc];
-      return jsonResponse(lc, 201);
+      const lcId = Number(payload?.letterOfCreditId);
+      const lcRecord = lettersOfCredit.find((lc) => Number(lc.id) === lcId);
+      if (!lcRecord) {
+        return jsonResponse({ message: "Letter of credit not found" }, 404);
+      }
+      const current = vesselLettersOfCredit[vesselId] || [];
+      if (!current.some((entry) => Number(entry?.letterOfCreditId ?? entry?.id) === lcId)) {
+        vesselLettersOfCredit[vesselId] = [
+          ...current,
+          {
+            letterOfCreditId: lcRecord.id,
+            number: lcRecord.number,
+            status: lcRecord.status,
+          },
+        ];
+      }
+      return jsonResponse({ ok: true });
     }
   }
   match = url.match(/^\/api\/vessels\/(\d+)\/loading-ports$/);

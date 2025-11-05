@@ -123,9 +123,36 @@ export const contracts = [
 ];
 
 export const lettersOfCredit = [
-  { id: 1, number: "LC-001", contractId: 1, status: "issued", amount: 1250000 },
-  { id: 2, number: "LC-002", contractId: 2, status: "issued", amount: 1200000 },
-  { id: 3, number: "LC-003", contractId: 3, status: "draft", amount: 1600000 }
+  {
+    id: 1,
+    number: "LC-001",
+    contractId: 1,
+    status: "issued",
+    amount: 1_250_000,
+    quantity: 5000,
+    cargoType: "wheat",
+    flow: "UPF_TO_SUPPLIER",
+  },
+  {
+    id: 2,
+    number: "LC-002",
+    contractId: 2,
+    status: "issued",
+    amount: 1_200_000,
+    quantity: 3000,
+    cargoType: "rice",
+    flow: "UPF_TO_SUPPLIER",
+  },
+  {
+    id: 3,
+    number: "LC-003",
+    contractId: 3,
+    status: "draft",
+    amount: 1_600_000,
+    quantity: 2000,
+    cargoType: "steel",
+    flow: "GASC_TO_UPF",
+  },
 ];
 
 export const vessels = [
@@ -584,7 +611,13 @@ export const requestVotes: Record<number, any[]> = {};
 export const contractVotes: Record<number, any[]> = {};
 
 export const vesselLettersOfCredit: Record<number, any[]> = {
-  1: [lettersOfCredit[0]],
+  1: [
+    {
+      letterOfCreditId: lettersOfCredit[0].id,
+      number: lettersOfCredit[0].number,
+      status: lettersOfCredit[0].status,
+    },
+  ],
 };
 
 export const vesselLoadingPorts: Record<number, any[]> = {};
