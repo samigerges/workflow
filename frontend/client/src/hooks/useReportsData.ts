@@ -171,6 +171,12 @@ export function useReportsData({ selectedSupplier, selectedCountry, dateRange }:
       );
 
       const arrivedQuantity = vessels.reduce((sum: number, vessel: Vessel) => {
+        const status = vessel.status?.toLowerCase();
+
+        if (status !== "completed") {
+          return sum;
+        }
+
         const discharged = vessel.dischargedQuantity ?? vessel.quantity ?? 0;
         return sum + Number(discharged);
       }, 0);
