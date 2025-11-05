@@ -16,7 +16,6 @@ import DocumentUploadVote from "@/components/ui/document-upload-vote";
 import DocumentVoting from "@/components/document-voting";
 import { ContractVotingContent, ContractVoteButton } from "@/components/contract-voting";
 import ContractSummary from "@/components/contract-summary";
-import ContractAvailableLcsDialog from "@/components/contract-available-lcs-dialog";
 import type { Contract as ContractRecord } from "@/lib/schemas";
 import {
   CARGO_TYPES,
@@ -62,8 +61,6 @@ export default function Contracts() {
   const [contractForVoting, setContractForVoting] = useState<any>(null);
   const [showContractSummaryDialog, setShowContractSummaryDialog] = useState(false);
   const [contractForSummary, setContractForSummary] = useState<any>(null);
-  const [showAvailableLcsDialog, setShowAvailableLcsDialog] = useState(false);
-  const [contractForAvailableLcs, setContractForAvailableLcs] = useState<ContractWithFile | null>(null);
 
   const { data: allContracts, isLoading: contractsLoading } = useQuery({
     queryKey: ["/api/contracts"],
@@ -336,43 +333,32 @@ export default function Contracts() {
                           <TableCell>{paymentMethodLabel}</TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
+                              {/* Contract Summary Button */}
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-green-200 bg-green-50 text-green-900 hover:bg-green-100"
+                                className="bg-blue-50 hover:bg-blue-100 border-blue-200"
                                 onClick={() => {
-                                  setContractForAvailableLcs(contract);
-                                  setShowAvailableLcsDialog(true);
+                                  setContractForSummary(contract);
+                                  setShowContractSummaryDialog(true);
+                                }}
+                                title="View contract summary"
+                              >
+                                <Eye size={14} className="mr-1" />
+                                View
+                              </Button>
+
+                              {/* Edit Button */}
+                              <Button
+                                size="sm"
+                                className="bg-blue-500 hover:bg-blue-600 text-white"
+                                onClick={() => {
+                                  setEditingContract(contract);
+                                  setShowEditDialog(true);
                                 }}
                               >
-                                Open LCs
+                                <Edit size={14} />
                               </Button>
-                            {/* Contract Summary Button */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="bg-blue-50 hover:bg-blue-100 border-blue-200"
-                              onClick={() => {
-                                setContractForSummary(contract);
-                                setShowContractSummaryDialog(true);
-                              }}
-                              title="View contract summary"
-                            >
-                              <Eye size={14} className="mr-1" />
-                              View
-                            </Button>
-                            
-                            {/* Edit Button */}
-                            <Button 
-                              size="sm" 
-                              className="bg-blue-500 hover:bg-blue-600 text-white"
-                              onClick={() => {
-                                setEditingContract(contract);
-                                setShowEditDialog(true);
-                              }}
-                            >
-                              <Edit size={14} />
-                            </Button>
 
                             {(user as any)?.role === 'admin' && contract.status === 'under_review' && (
                               <>
@@ -477,17 +463,6 @@ export default function Contracts() {
           onClose={() => {
             setShowContractSummaryDialog(false);
             setContractForSummary(null);
-          }}
-        />
-
-        <ContractAvailableLcsDialog
-          contract={contractForAvailableLcs}
-          open={showAvailableLcsDialog}
-          onOpenChange={(open) => {
-            setShowAvailableLcsDialog(open);
-            if (!open) {
-              setContractForAvailableLcs(null);
-            }
           }}
         />
     </MainLayout>
