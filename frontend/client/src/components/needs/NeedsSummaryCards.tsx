@@ -5,18 +5,17 @@ import type { NeedsSummary } from "@/types/needs";
 
 interface NeedsSummaryCardsProps {
   summary: NeedsSummary;
-  supplierLabel: string | null;
 }
 
 const formatNumber = (value: number, unit = "tons") =>
   `${Math.round(value).toLocaleString()} ${unit}`;
 
-export function NeedsSummaryCards({ summary, supplierLabel }: NeedsSummaryCardsProps) {
+export function NeedsSummaryCards({ summary }: NeedsSummaryCardsProps) {
   const cards = [
     {
       title: "Total needs",
       value: summary.totalNeeds.toLocaleString(),
-      description: supplierLabel ? `for ${supplierLabel}` : "registered this month",
+      description: "registered this month",
       icon: ClipboardList,
       accent: "bg-indigo-100 text-indigo-700",
     },
