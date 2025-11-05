@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, Package, ClipboardList, AlertTriangle } from "lucide-react";
+import { Package, ClipboardList, Ship } from "lucide-react";
 import type { NeedsSummary } from "@/types/needs";
 
 interface NeedsSummaryCardsProps {
@@ -13,37 +13,30 @@ const formatNumber = (value: number, unit = "tons") =>
 export function NeedsSummaryCards({ summary }: NeedsSummaryCardsProps) {
   const cards = [
     {
-      title: "Total needs",
-      value: summary.totalNeeds.toLocaleString(),
-      description: "registered this month",
+      title: "Needs quantity",
+      value: formatNumber(summary.totalNeedQuantity),
+      description: `${summary.totalNeeds.toLocaleString()} statements recorded`,
       icon: ClipboardList,
       accent: "bg-indigo-100 text-indigo-700",
     },
     {
-      title: "Requested quantity",
-      value: formatNumber(summary.totalRequestedQuantity),
-      description: `Pending ${formatNumber(summary.pendingQuantity)} this month`,
+      title: "Contractual quantity",
+      value: formatNumber(summary.totalContractedQuantity),
+      description: "Aligned contracts in the selected month",
       icon: Package,
       accent: "bg-blue-100 text-blue-700",
     },
     {
-      title: "Discharged this month",
-      value: formatNumber(summary.totalDischargedQuantity),
-      description: `${summary.fulfillmentRate.toFixed(1)}% of monthly needs covered`,
-      icon: TrendingUp,
+      title: "Discharged quantity",
+      value: formatNumber(summary.totalCompletedDischargedQuantity),
+      description: "From vessels marked as completed",
+      icon: Ship,
       accent: "bg-emerald-100 text-emerald-700",
-    },
-    {
-      title: "Outstanding backlog",
-      value: formatNumber(summary.backlogQuantity),
-      description: `${summary.unassignedNeeds} unassigned needs`,
-      icon: AlertTriangle,
-      accent: "bg-amber-100 text-amber-700",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
@@ -62,7 +55,7 @@ export function NeedsSummaryCards({ summary }: NeedsSummaryCardsProps) {
               </div>
               <Separator />
               <p className="text-sm text-secondary-600">{card.description}</p>
-              {card.title === "Discharged this month" && (
+              {card.title === "Discharged quantity" && (
                 <p className="text-xs text-secondary-500">
                   {`Overall discharged to date ${formatNumber(summary.overallDischargedQuantity)}`}
                 </p>

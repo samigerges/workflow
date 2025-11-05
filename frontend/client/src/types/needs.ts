@@ -19,6 +19,9 @@ export interface NeedsSummary {
   monthKey: string;
   totalNeeds: number;
   totalRequestedQuantity: number;
+  totalNeedQuantity: number;
+  totalContractedQuantity: number;
+  totalCompletedDischargedQuantity: number;
   totalDischargedQuantity: number;
   overallDischargedQuantity: number;
   pendingQuantity: number;

@@ -211,6 +211,56 @@ export function useNeedsData({ monthKey }: UseNeedsDataProps): UseNeedsDataResul
       0,
     );
 
+    const contractIdsIncluded = new Set<string>();
+    let totalContractedQuantity = 0;
+
+    const vesselIdsIncluded = new Set<string>();
+    let totalCompletedDischargedQuantity = 0;
+
+    needProgress.forEach((entry) => {
+      entry.contracts.forEach((contract) => {
+        const contractId = String(contract.id);
+        if (contractIdsIncluded.has(contractId)) {
+          return;
+        }
+
+        const extendedContract = contract as Contract & { createdAt?: string };
+        const contractMonthKeys = [
+          getMonthKey(extendedContract.startDate),
+          getMonthKey(extendedContract.endDate),
+          getMonthKey(extendedContract.createdAt),
+        ];
+
+        if (!contractMonthKeys.includes(monthKey)) {
+          return;
+        }
+
+        contractIdsIncluded.add(contractId);
+        totalContractedQuantity += toNumber(extendedContract.quantity ?? 0);
+      });
+
+      entry.vessels.forEach((vessel) => {
+        const vesselId = String(vessel.id);
+        if (vesselIdsIncluded.has(vesselId)) {
+          return;
+        }
+
+        const status = String((vessel as Vessel & { status?: string }).status ?? "").toLowerCase();
+        const isCompletedStatus = status === "completed" || status === "discharged";
+        if (!isCompletedStatus) {
+          return;
+        }
+
+        const vesselMonthKey = getMonthKey(getVesselActivityDate(vessel));
+        if (vesselMonthKey !== monthKey) {
+          return;
+        }
+
+        vesselIdsIncluded.add(vesselId);
+        totalCompletedDischargedQuantity += toNumber(vessel.dischargedQuantity ?? vessel.quantity ?? 0);
+      });
+    });
+
     const totalDischargedQuantity = needProgress.reduce(
       (sum, entry) => sum + entry.dischargedThisMonth,
       0,
@@ -240,6 +290,9 @@ export function useNeedsData({ monthKey }: UseNeedsDataProps): UseNeedsDataResul
       monthKey,
       totalNeeds: needProgress.length,
       totalRequestedQuantity,
+      totalNeedQuantity: totalRequestedQuantity,
+      totalContractedQuantity,
+      totalCompletedDischargedQuantity,
       totalDischargedQuantity,
       overallDischargedQuantity,
       pendingQuantity,
