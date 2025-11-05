@@ -453,358 +453,327 @@ export default function ContractForm({ onSuccess, onCancel, onDelete, requests, 
   return (
     <Card>
       <CardContent className="p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
-          <section className="space-y-6">
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">Contract Overview</h3>
-              <p className="text-sm text-muted-foreground">
-                Link this contract to an existing request and capture core supplier details.
-              </p>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="md:col-span-2 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="requestId">Related Request</Label>
+                {selectedRequest && (
+                  <Button type="button" variant="secondary" size="sm" onClick={handleManualCopyFromRequest}>
+                    Copy data from request
+                  </Button>
+                )}
+              </div>
+              <Select
+                onValueChange={(value) =>
+                  setValue("requestId", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={requestIdValue ?? undefined}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a request (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No related request</SelectItem>
+                  {requests.map((request) => (
+                    <SelectItem key={request.id} value={request.id.toString()}>
+                      {(request.publicId ?? `REQ-${request.id.toString().padStart(3, "0")}`)} - {formatRequestPreview(request.description)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <div className="md:col-span-2 lg:col-span-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="requestId">Related Request</Label>
-                  {selectedRequest && (
-                    <Button type="button" variant="secondary" size="sm" onClick={handleManualCopyFromRequest}>
-                      Copy data from request
-                    </Button>
-                  )}
-                </div>
-                <Select
-                  onValueChange={(value) =>
-                    setValue("requestId", value, { shouldDirty: true, shouldTouch: true })
-                  }
-                  value={requestIdValue ?? undefined}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a request (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No related request</SelectItem>
-                    {requests.map((request) => (
-                      <SelectItem key={request.id} value={request.id.toString()}>
-                        {(request.publicId ?? `REQ-${request.id.toString().padStart(3, "0")}`)} - {formatRequestPreview(request.description)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="supplierName">Supplier/Vendor Name *</Label>
-                <Input
-                  id="supplierName"
-                  {...register("supplierName")}
-                  placeholder="Company name"
-                  className={errors.supplierName ? "border-red-500" : ""}
-                />
-                {errors.supplierName && (
-                  <p className="text-sm text-red-500 mt-1">{errors.supplierName.message}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="countryOfOrigin">Country of Origin</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setValue("countryOfOrigin", value, { shouldDirty: true, shouldTouch: true })
-                  }
-                  value={countryOfOriginValue ?? undefined}
-                >
-                  <SelectTrigger className={errors.countryOfOrigin ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select country of origin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRIES.map((country) => (
-                      <SelectItem key={country} value={country}>{country}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.countryOfOrigin && (
-                  <p className="text-sm text-red-500 mt-1">{errors.countryOfOrigin.message}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="startDate">Import Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  {...register("startDate")}
-                  placeholder="Select start date"
-                />
-              </div>
-              <div>
-                <Label htmlFor="endDate">Import End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  {...register("endDate")}
-                  placeholder="Select end date"
-                />
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-6">
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">Cargo & Logistics</h3>
-              <p className="text-sm text-muted-foreground">
-                Capture shipment specifics, volumes, and transportation preferences.
-              </p>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <Label htmlFor="cargoType">Cargo Type *</Label>
-                <Select
-                  onValueChange={(value) => setValue("cargoType", value, { shouldDirty: true, shouldTouch: true })}
-                  value={cargoTypeValue ?? undefined}
-                >
-                  <SelectTrigger className={errors.cargoType ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select cargo type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CARGO_TYPES.map((cargo) => (
-                      <SelectItem key={cargo.value} value={cargo.value}>{cargo.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.cargoType && (
-                  <p className="text-sm text-red-500 mt-1">{errors.cargoType.message}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="quantity">Quantity *</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  step="1"
-                  {...register("quantity", { valueAsNumber: true })}
-                  placeholder="e.g. 1000"
-                  className={errors.quantity ? "border-red-500" : ""}
-                />
-                {errors.quantity && (
-                  <p className="text-sm text-red-500 mt-1">{errors.quantity.message}</p>
-                )}
-              </div>
-              {isWheat && (
-                <div>
-                  <Label htmlFor="wheatPercentage">Wheat Percentage</Label>
-                  <Input
-                    id="wheatPercentage"
-                    type="number"
-                    step="0.01"
-                    {...register("wheatPercentage", { valueAsNumber: true })}
-                    placeholder="e.g. 12.5"
-                    className={errors.wheatPercentage ? "border-red-500" : ""}
-                  />
-                  {errors.wheatPercentage && (
-                    <p className="text-sm text-red-500 mt-1">{errors.wheatPercentage.message}</p>
-                  )}
-                </div>
+            <div>
+              <Label htmlFor="supplierName">Supplier/Vendor Name *</Label>
+              <Input
+                id="supplierName"
+                {...register("supplierName")}
+                placeholder="Company name"
+                className={errors.supplierName ? "border-red-500" : ""}
+              />
+              {errors.supplierName && (
+                <p className="text-sm text-red-500 mt-1">{errors.supplierName.message}</p>
               )}
-              <div>
-                <Label htmlFor="unitOfMeasure">Unit of Measure</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setValue("unitOfMeasure", value, { shouldDirty: true, shouldTouch: true })
-                  }
-                  value={unitOfMeasureValue ?? undefined}
-                >
-                  <SelectTrigger className={errors.unitOfMeasure ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select unit of measure" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNITS_OF_MEASURE.map((unit) => (
-                      <SelectItem key={unit} value={unit}>
-                        {unit}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.unitOfMeasure && (
-                  <p className="text-sm text-red-500 mt-1">{errors.unitOfMeasure.message}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="shippingMethod">Shipping Method</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setValue("shippingMethod", value, { shouldDirty: true, shouldTouch: true })
-                  }
-                  value={shippingMethodValue ?? undefined}
-                >
-                  <SelectTrigger className={errors.shippingMethod ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select shipping method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CONTRACT_SHIPPING_METHODS.map((method) => (
-                      <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.shippingMethod && (
-                  <p className="text-sm text-red-500 mt-1">{errors.shippingMethod.message}</p>
-                )}
-              </div>
             </div>
-          </section>
+            <div>
+              <Label htmlFor="countryOfOrigin">Country of Origin</Label>
+              <Select
+                onValueChange={(value) =>
+                  setValue("countryOfOrigin", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={countryOfOriginValue ?? undefined}
+              >
+                <SelectTrigger className={errors.countryOfOrigin ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select country of origin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COUNTRIES.map((country) => (
+                    <SelectItem key={country} value={country}>{country}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.countryOfOrigin && (
+                <p className="text-sm text-red-500 mt-1">{errors.countryOfOrigin.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="startDate">Import Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                {...register("startDate")}
+                placeholder="Select start date"
+              />
+            </div>
+            <div>
+              <Label htmlFor="endDate">Import End Date</Label>
+              <Input
+                id="endDate"
+                type="date"
+                {...register("endDate")}
+                placeholder="Select end date"
+              />
+            </div>
+          </div>
 
-          <section className="space-y-6">
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">Pricing & Payment</h3>
-              <p className="text-sm text-muted-foreground">
-                Record the agreed price and preferred payment arrangements.
-              </p>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <Label htmlFor="cargoType">Cargo Type *</Label>
+              <Select
+                onValueChange={(value) => setValue("cargoType", value, { shouldDirty: true, shouldTouch: true })}
+                value={cargoTypeValue ?? undefined}
+              >
+                <SelectTrigger className={errors.cargoType ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select cargo type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CARGO_TYPES.map((cargo) => (
+                    <SelectItem key={cargo.value} value={cargo.value}>{cargo.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.cargoType && (
+                <p className="text-sm text-red-500 mt-1">{errors.cargoType.message}</p>
+              )}
             </div>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <Label htmlFor="quantity">Quantity *</Label>
+              <Input
+                id="quantity"
+                type="number"
+                step="1"
+                {...register("quantity", { valueAsNumber: true })}
+                placeholder="e.g. 1000"
+                className={errors.quantity ? "border-red-500" : ""}
+              />
+              {errors.quantity && (
+                <p className="text-sm text-red-500 mt-1">{errors.quantity.message}</p>
+              )}
+            </div>
+            {isWheat && (
               <div>
-                <Label htmlFor="pricePerTon">Price per Ton (USD)</Label>
+                <Label htmlFor="wheatPercentage">Wheat Percentage</Label>
                 <Input
-                  id="pricePerTon"
+                  id="wheatPercentage"
                   type="number"
                   step="0.01"
-                  {...register("pricePerTon", { valueAsNumber: true })}
-                  placeholder="e.g. 500.00"
-                  className={errors.pricePerTon ? "border-red-500" : ""}
+                  {...register("wheatPercentage", { valueAsNumber: true })}
+                  placeholder="e.g. 12.5"
+                  className={errors.wheatPercentage ? "border-red-500" : ""}
                 />
-                {errors.pricePerTon && (
-                  <p className="text-sm text-red-500 mt-1">{errors.pricePerTon.message}</p>
+                {errors.wheatPercentage && (
+                  <p className="text-sm text-red-500 mt-1">{errors.wheatPercentage.message}</p>
                 )}
               </div>
-              <div>
-                <Label htmlFor="paymentCurrency">Payment Currency</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setValue("paymentCurrency", value, { shouldDirty: true, shouldTouch: true })
-                  }
-                  value={paymentCurrencyValue ?? undefined}
-                >
-                  <SelectTrigger className={errors.paymentCurrency ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select payment currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map((currency) => (
-                      <SelectItem key={currency} value={currency}>
-                        {currency}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.paymentCurrency && (
-                  <p className="text-sm text-red-500 mt-1">{errors.paymentCurrency.message}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="paymentMethod">Payment Method</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setValue("paymentMethod", value, { shouldDirty: true, shouldTouch: true })
-                  }
-                  value={paymentMethodValue ?? undefined}
-                >
-                  <SelectTrigger className={errors.paymentMethod ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CONTRACT_PAYMENT_METHODS.map((method) => (
-                      <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.paymentMethod && (
-                  <p className="text-sm text-red-500 mt-1">{errors.paymentMethod.message}</p>
-                )}
-              </div>
+            )}
+            <div>
+              <Label htmlFor="unitOfMeasure">Unit of Measure</Label>
+              <Select
+                onValueChange={(value) =>
+                  setValue("unitOfMeasure", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={unitOfMeasureValue ?? undefined}
+              >
+                <SelectTrigger className={errors.unitOfMeasure ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select unit of measure" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNITS_OF_MEASURE.map((unit) => (
+                    <SelectItem key={unit} value={unit}>
+                      {unit}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.unitOfMeasure && (
+                <p className="text-sm text-red-500 mt-1">{errors.unitOfMeasure.message}</p>
+              )}
             </div>
-          </section>
+            <div>
+              <Label htmlFor="shippingMethod">Shipping Method</Label>
+              <Select
+                onValueChange={(value) =>
+                  setValue("shippingMethod", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={shippingMethodValue ?? undefined}
+              >
+                <SelectTrigger className={errors.shippingMethod ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select shipping method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONTRACT_SHIPPING_METHODS.map((method) => (
+                    <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.shippingMethod && (
+                <p className="text-sm text-red-500 mt-1">{errors.shippingMethod.message}</p>
+              )}
+            </div>
+          </div>
 
-          <section className="space-y-6">
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">Documentation & Notes</h3>
-              <p className="text-sm text-muted-foreground">
-                Upload the contract file and capture any key terms or internal remarks.
-              </p>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <Label htmlFor="pricePerTon">Price per Ton (USD)</Label>
+              <Input
+                id="pricePerTon"
+                type="number"
+                step="0.01"
+                {...register("pricePerTon", { valueAsNumber: true })}
+                placeholder="e.g. 500.00"
+                className={errors.pricePerTon ? "border-red-500" : ""}
+              />
+              {errors.pricePerTon && (
+                <p className="text-sm text-red-500 mt-1">{errors.pricePerTon.message}</p>
+              )}
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-4">
-                <div>
-                  <Label>Contract Document *</Label>
-                  <FileUpload
-                    accept=".pdf,.doc,.docx"
-                    onFileSelect={setSelectedFiles}
-                    existingFile={existingFileName}
-                    description="PDF, DOC, DOCX up to 10MB (Required)"
-                  />
-                  {selectedFiles.length === 0 && !hasExistingFile && (
-                    <p className="text-sm text-red-500 mt-1">Contract document is required</p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="description">Additional Notes</Label>
-                  <Textarea
-                    id="description"
-                    {...register("description")}
-                    rows={4}
-                    placeholder="Add any extra context, requirements, or considerations"
-                    maxLength={CONTRACT_NARRATIVE_LIMIT}
-                    className={errors.description ? "border-red-500" : ""}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
-                  {errors.description && (
-                    <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
-                  )}
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="contractTerms">Contract Terms & Conditions</Label>
-                  <Textarea
-                    id="contractTerms"
-                    {...register("contractTerms")}
-                    rows={4}
-                    placeholder="Key terms, payment conditions, delivery terms, etc."
-                    maxLength={CONTRACT_NARRATIVE_LIMIT}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
-                  {errors.contractTerms && (
-                    <p className="text-sm text-red-500 mt-1">{errors.contractTerms.message}</p>
-                  )}
-                </div>
-              </div>
+            <div>
+              <Label htmlFor="paymentCurrency">Payment Currency</Label>
+              <Select
+                onValueChange={(value) =>
+                  setValue("paymentCurrency", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={paymentCurrencyValue ?? undefined}
+              >
+                <SelectTrigger className={errors.paymentCurrency ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select payment currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency} value={currency}>
+                      {currency}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.paymentCurrency && (
+                <p className="text-sm text-red-500 mt-1">{errors.paymentCurrency.message}</p>
+              )}
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="letterOfGuarantee">Letter of Guarantee</Label>
-                <Textarea
-                  id="letterOfGuarantee"
-                  {...register("letterOfGuarantee")}
-                  rows={4}
-                  placeholder="Enter letter of guarantee details or requirements"
-                  maxLength={LETTER_OF_GUARANTEE_LIMIT}
-                  className={errors.letterOfGuarantee ? "border-red-500" : ""}
+            <div>
+              <Label htmlFor="paymentMethod">Payment Method</Label>
+              <Select
+                onValueChange={(value) =>
+                  setValue("paymentMethod", value, { shouldDirty: true, shouldTouch: true })
+                }
+                value={paymentMethodValue ?? undefined}
+              >
+                <SelectTrigger className={errors.paymentMethod ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONTRACT_PAYMENT_METHODS.map((method) => (
+                    <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.paymentMethod && (
+                <p className="text-sm text-red-500 mt-1">{errors.paymentMethod.message}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <div>
+                <Label>Contract Document *</Label>
+                <FileUpload
+                  accept=".pdf,.doc,.docx"
+                  onFileSelect={setSelectedFiles}
+                  existingFile={existingFileName}
+                  description="PDF, DOC, DOCX up to 10MB (Required)"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Maximum {LETTER_OF_GUARANTEE_LIMIT.toLocaleString()} characters
-                </p>
-                {errors.letterOfGuarantee && (
-                  <p className="text-sm text-red-500 mt-1">{errors.letterOfGuarantee.message}</p>
+                {selectedFiles.length === 0 && !hasExistingFile && (
+                  <p className="text-sm text-red-500 mt-1">Contract document is required</p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="reviewNotes">Review Notes</Label>
+              <div>
+                <Label htmlFor="description">Additional Notes</Label>
                 <Textarea
-                  id="reviewNotes"
-                  {...register("reviewNotes")}
+                  id="description"
+                  {...register("description")}
                   rows={4}
-                  placeholder="Administrative notes and comments"
-                  maxLength={REVIEW_NOTES_LIMIT}
+                  placeholder="Add any extra context, requirements, or considerations"
+                  maxLength={CONTRACT_NARRATIVE_LIMIT}
+                  className={errors.description ? "border-red-500" : ""}
                 />
                 <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
-                {errors.reviewNotes && (
-                  <p className="text-sm text-red-500 mt-1">{errors.reviewNotes.message}</p>
+                {errors.description && (
+                  <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
                 )}
               </div>
             </div>
-          </section>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="contractTerms">Contract Terms & Conditions</Label>
+                <Textarea
+                  id="contractTerms"
+                  {...register("contractTerms")}
+                  rows={4}
+                  placeholder="Key terms, payment conditions, delivery terms, etc."
+                  maxLength={CONTRACT_NARRATIVE_LIMIT}
+                />
+                <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+                {errors.contractTerms && (
+                  <p className="text-sm text-red-500 mt-1">{errors.contractTerms.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="letterOfGuarantee">Letter of Guarantee</Label>
+              <Textarea
+                id="letterOfGuarantee"
+                {...register("letterOfGuarantee")}
+                rows={4}
+                placeholder="Enter letter of guarantee details or requirements"
+                maxLength={LETTER_OF_GUARANTEE_LIMIT}
+                className={errors.letterOfGuarantee ? "border-red-500" : ""}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Maximum {LETTER_OF_GUARANTEE_LIMIT.toLocaleString()} characters
+              </p>
+              {errors.letterOfGuarantee && (
+                <p className="text-sm text-red-500 mt-1">{errors.letterOfGuarantee.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reviewNotes">Review Notes</Label>
+              <Textarea
+                id="reviewNotes"
+                {...register("reviewNotes")}
+                rows={4}
+                placeholder="Administrative notes and comments"
+                maxLength={REVIEW_NOTES_LIMIT}
+              />
+              <p className="text-xs text-muted-foreground mt-1">{longNarrativeHelper}</p>
+              {errors.reviewNotes && (
+                <p className="text-sm text-red-500 mt-1">{errors.reviewNotes.message}</p>
+              )}
+            </div>
+          </div>
 
           <div className="flex justify-between">
             <div className="flex space-x-3">
