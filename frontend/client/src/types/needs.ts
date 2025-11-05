@@ -1,10 +1,5 @@
 import type { Request, Contract, Vessel, Need } from "@/lib/schemas";
 
-export interface SupplierOption {
-  value: string;
-  label: string;
-}
-
 export interface NeedProgress {
   need: Need;
   requests: Request[];

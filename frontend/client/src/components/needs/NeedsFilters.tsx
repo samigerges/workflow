@@ -2,25 +2,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, Filter, RefreshCcw } from "lucide-react";
-import type { SupplierOption } from "@/types/needs";
 
 interface NeedsFiltersProps {
   monthKey: string;
   onMonthChange: (monthKey: string) => void;
-  selectedSupplier: string | null;
-  onSupplierChange: (value: string | null) => void;
-  supplierOptions: SupplierOption[];
   onReset: () => void;
 }
 
 export function NeedsFilters({
   monthKey,
   onMonthChange,
-  selectedSupplier,
-  onSupplierChange,
-  supplierOptions,
   onReset,
 }: NeedsFiltersProps) {
   return (
@@ -36,7 +28,7 @@ export function NeedsFilters({
         </Button>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="month-picker" className="text-sm font-medium text-secondary-700">
               Reporting month
@@ -51,26 +43,6 @@ export function NeedsFilters({
                 className="pl-10"
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-secondary-700">Filter by supplier</Label>
-            <Select
-              value={selectedSupplier ?? "all"}
-              onValueChange={(value) => onSupplierChange(value === "all" ? null : value)}
-            >
-              <SelectTrigger className="bg-white border-secondary-200">
-                <SelectValue placeholder="All suppliers" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All suppliers</SelectItem>
-                {supplierOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2">

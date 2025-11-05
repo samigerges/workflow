@@ -2,24 +2,16 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import type { Request, Contract, Vessel, Need } from "@/lib/schemas";
-import type {
-  SupplierOption,
-  NeedProgress,
-  NeedsSummary,
-  DischargedVesselInfo,
-} from "@/types/needs";
+import type { NeedProgress, NeedsSummary, DischargedVesselInfo } from "@/types/needs";
 
 interface UseNeedsDataProps {
   monthKey: string;
-  supplier: string | null;
 }
 
 interface UseNeedsDataResult {
   needs: NeedProgress[];
   summary: NeedsSummary;
   dischargedVessels: DischargedVesselInfo[];
-  availableSuppliers: SupplierOption[];
-  supplierLabel: string | null;
   isLoading: boolean;
   error: Error | null;
 }
@@ -31,12 +23,6 @@ const getMonthKey = (dateString?: string | null): string | null => {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
-};
-
-const normalizeSupplier = (value?: string | null): string | null => {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed.toLowerCase() : null;
 };
 
 const getRequestPrimaryDate = (request: Request): string | undefined => {
@@ -68,7 +54,7 @@ const toNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeedsDataResult {
+export function useNeedsData({ monthKey }: UseNeedsDataProps): UseNeedsDataResult {
   const { isAuthenticated } = useAuth();
 
   const {
@@ -107,29 +93,6 @@ export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeed
     enabled: isAuthenticated,
   });
 
-  const normalizedSupplier = useMemo(() => normalizeSupplier(supplier), [supplier]);
-
-  const availableSuppliers = useMemo<SupplierOption[]>(() => {
-    const supplierMap = new Map<string, string>();
-    requests.forEach((request) => {
-      const key = normalizeSupplier(request.supplierName);
-      if (!key) return;
-      if (!supplierMap.has(key)) {
-        supplierMap.set(key, request.supplierName ?? "Unknown Supplier");
-      }
-    });
-
-    return Array.from(supplierMap.entries())
-      .sort((a, b) => a[1].localeCompare(b[1]))
-      .map(([value, label]) => ({ value, label }));
-  }, [requests]);
-
-  const supplierLabel = useMemo(() => {
-    if (!normalizedSupplier) return null;
-    const match = availableSuppliers.find((option) => option.value === normalizedSupplier);
-    return match?.label ?? null;
-  }, [availableSuppliers, normalizedSupplier]);
-
   const requestsByNeedId = useMemo(() => {
     const map = new Map<string, Request[]>();
     requests.forEach((request) => {
@@ -158,16 +121,9 @@ export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeed
         return false;
       }
 
-      if (!normalizedSupplier) {
-        return true;
-      }
-
-      const relatedRequests = requestsByNeedId.get(need.id) ?? [];
-      return relatedRequests.some(
-        (request) => normalizeSupplier(request.supplierName) === normalizedSupplier,
-      );
+      return true;
     });
-  }, [needs, monthKey, normalizedSupplier, requestsByNeedId]);
+  }, [needs, monthKey]);
 
   const contractsByRequestId = useMemo(() => {
     const map = new Map<string, Contract[]>();
@@ -338,8 +294,6 @@ export function useNeedsData({ monthKey, supplier }: UseNeedsDataProps): UseNeed
     needs: needProgress,
     summary,
     dischargedVessels,
-    availableSuppliers,
-    supplierLabel,
     isLoading,
     error,
   };
