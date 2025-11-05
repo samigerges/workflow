@@ -18,6 +18,15 @@ namespace WorkflowBackend.Api.Controllers
         private readonly AppDbContext _db;
         private readonly IWebHostEnvironment _env;
 
+        private static readonly HashSet<string> EligibleLetterOfCreditStatuses = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Active",
+            "Issued",
+            "Amended"
+        };
+
+        private const string NormalizedUpfToSupplierFlow = "upftosupplier";
+
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         { "Planned", "Nominated", "Confirmed", "Loading", "In Transit", "Sailing", "Arrived", "Discharged", "Completed", "Closed", "Archived" };
 
@@ -80,6 +89,22 @@ namespace WorkflowBackend.Api.Controllers
 
         private static DateTime? ToUtc(DateTime? value) =>
             value.HasValue ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc) : null;
+
+        private static string NormalizeFlow(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            return value
+                .Trim()
+                .Replace("->", "to")
+                .Replace("→", "to")
+                .Replace("suppliers", "supplier")
+                .Replace("_", string.Empty)
+                .Replace("-", string.Empty)
+                .Replace(" ", string.Empty)
+                .ToLowerInvariant();
+        }
 
         private void ApplyUpsert(Vessel vessel, VesselUpsertRequest req)
         {
@@ -830,6 +855,115 @@ namespace WorkflowBackend.Api.Controllers
                 l.LetterOfCredit!.Number,
                 l.LetterOfCredit.Status
             }).ToList();
+        }
+
+        // GET /api/vessels/{id}/available-letters-of-credit
+        [HttpGet("{id:guid}/available-letters-of-credit")]
+        public async Task<ActionResult<IEnumerable<AvailableLetterOfCreditSummary>>> GetAvailableLettersOfCredit(Guid id, [FromQuery] string? search = null)
+        {
+            var vessel = await _db.Vessels
+                .AsNoTracking()
+                .Select(v => new
+                {
+                    v.Id,
+                    v.CargoType,
+                    v.ContractId,
+                    ContractCargoType = v.Contract != null ? v.Contract.CargoType : null
+                })
+                .FirstOrDefaultAsync(v => v.Id == id);
+
+            if (vessel is null)
+            {
+                return NotFound();
+            }
+
+            var normalizedCargo = NormalizeString(vessel.CargoType)?.ToLowerInvariant()
+                ?? NormalizeString(vessel.ContractCargoType)?.ToLowerInvariant();
+
+            var baseLcQuery = _db.LettersOfCredit
+                .AsNoTracking()
+                .Where(lc =>
+                    lc.Status != null && EligibleLetterOfCreditStatuses.Contains(lc.Status) &&
+                    lc.Flow != null && NormalizeFlow(lc.Flow) == NormalizedUpfToSupplierFlow);
+
+            if (vessel.ContractId.HasValue && vessel.ContractId.Value != Guid.Empty)
+            {
+                var contractId = vessel.ContractId.Value;
+                baseLcQuery = baseLcQuery.Where(lc =>
+                    lc.ContractId == null || lc.ContractId == Guid.Empty || lc.ContractId == contractId);
+            }
+            else
+            {
+                baseLcQuery = baseLcQuery.Where(lc => lc.ContractId == null || lc.ContractId == Guid.Empty);
+            }
+
+            if (normalizedCargo is not null)
+            {
+                baseLcQuery = baseLcQuery.Where(lc =>
+                    (lc.CargoType != null && lc.CargoType.Trim().ToLower() == normalizedCargo) ||
+                    (lc.Contract != null &&
+                        lc.Contract.CargoType != null &&
+                        lc.Contract.CargoType.Trim().ToLower() == normalizedCargo));
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                baseLcQuery = baseLcQuery.Where(lc => lc.Number != null && lc.Number.ToLower().Contains(term));
+            }
+
+            var query = baseLcQuery
+                .Select(lc => new
+                {
+                    lc.Id,
+                    LcNumber = lc.Number,
+                    ContractSupplier = lc.Contract != null ? lc.Contract.SupplierName : null,
+                    SupplierFromAllocations = lc.SupplierAllocations
+                        .OrderBy(a => a.CreatedAt)
+                        .Select(a => a.SupplierName)
+                        .FirstOrDefault(),
+                    Product = lc.CargoType ?? (lc.Contract != null ? lc.Contract.CargoType : null),
+                    TotalQuantity = lc.Quantity ?? 0m,
+                    AllocationQuantity = lc.SupplierAllocations.Sum(a => (decimal?)a.Quantity) ?? 0m,
+                    VesselQuantity = _db.VesselLettersOfCredit
+                        .Where(link => link.LetterOfCreditId == lc.Id)
+                        .Select(link => link.Vessel != null
+                            ? (link.Vessel.ActualQuantity ?? link.Vessel.Quantity ?? 0m)
+                            : 0m)
+                        .DefaultIfEmpty(0m)
+                        .Sum(),
+                    lc.ExpiryDate
+                })
+                .Select(lc => new
+                {
+                    lc.Id,
+                    lc.LcNumber,
+                    Supplier = lc.ContractSupplier ?? lc.SupplierFromAllocations,
+                    lc.Product,
+                    lc.TotalQuantity,
+                    UsedQuantity = lc.AllocationQuantity + lc.VesselQuantity,
+                    RemainingQuantity = lc.TotalQuantity - (lc.AllocationQuantity + lc.VesselQuantity),
+                    lc.ExpiryDate
+                })
+                .Where(lc => lc.TotalQuantity > 0m && lc.RemainingQuantity > 0m)
+                .OrderByDescending(lc => lc.RemainingQuantity)
+                .ThenBy(lc => lc.ExpiryDate ?? DateTime.MaxValue);
+
+            var results = await query.ToListAsync();
+
+            var summaries = results
+                .Select(lc => new AvailableLetterOfCreditSummary(
+                    lc.Id,
+                    lc.LcNumber,
+                    lc.Supplier,
+                    lc.Product,
+                    lc.TotalQuantity,
+                    lc.UsedQuantity,
+                    lc.RemainingQuantity,
+                    lc.ExpiryDate))
+                .ToList();
+
+            return summaries;
         }
 
         // POST /api/vessels/{id}/letters-of-credit { letterOfCreditId }

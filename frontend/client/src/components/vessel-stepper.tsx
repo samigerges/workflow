@@ -8,6 +8,8 @@ import {
   FileSignature,
   FileText,
   Fingerprint,
+  Link2,
+  Loader2,
   MapPin,
   Send,
   Save,
@@ -31,6 +33,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -51,7 +60,7 @@ export const VESSEL_STAGES = [
     id: "lc_opend",
     title: "LC Opened",
     description: "Letter of credit activated",
-    entryType: "document" as const,
+    entryType: "lc" as const,
     icon: FileCheck,
     color: "bg-blue-500",
     lightColor: "bg-blue-100",
@@ -189,6 +198,23 @@ interface StageNumberEntry {
   updatedAt: string;
 }
 
+interface VesselLcLink {
+  letterOfCreditId?: string | number | null;
+  number?: string | null;
+  status?: string | null;
+}
+
+interface AvailableLetterOfCreditSummaryItem {
+  id: string | number;
+  lcNumber: string;
+  supplier?: string | null;
+  product?: string | null;
+  totalQuantity: number;
+  usedQuantity: number;
+  remainingQuantity: number;
+  expiryDate?: string | null;
+}
+
 type StageCompletion =
   | { kind: "document"; data: StageDocument }
   | { kind: "number"; data: StageNumberEntry };
@@ -220,6 +246,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [stageNumberValue, setStageNumberValue] = useState("");
   const [hasEditedStageNumber, setHasEditedStageNumber] = useState(false);
+  const [selectedLcId, setSelectedLcId] = useState("");
 
   const vesselId = selectedVessel?.id;
 
@@ -231,6 +258,21 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
   const { data: stageEntries = [], isLoading: stageEntriesLoading } = useQuery<StageNumberEntry[]>({
     queryKey: ["/api/vessels", vesselId, "stage-entries"],
     enabled: Boolean(vesselId),
+  });
+
+  const { data: vesselLcLinksRaw = [], isLoading: vesselLcLinksLoading } = useQuery<VesselLcLink[]>({
+    queryKey: ["/api/vessels", vesselId, "letters-of-credit"],
+    enabled: Boolean(vesselId),
+  });
+
+  const {
+    data: availableLcSummaries = [],
+    isLoading: availableLcsLoading,
+    error: availableLcsError,
+  } = useQuery<AvailableLetterOfCreditSummaryItem[]>({
+    queryKey: ["/api/vessels", vesselId, "available-letters-of-credit"],
+    enabled: Boolean(vesselId) && showDocumentDialog && activeStageId === "lc_opend",
+    select: (data) => (Array.isArray(data) ? data : []),
   });
 
   const documentsByStage = useMemo(() => {
@@ -264,6 +306,44 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
 
     return map;
   }, [stageEntries]);
+
+  const vesselLcLinks = useMemo(() => {
+    const links = Array.isArray(vesselLcLinksRaw) ? vesselLcLinksRaw : [];
+    return links
+      .map((link) => {
+        const rawId = link?.letterOfCreditId ?? (link as Record<string, unknown>)?.id ?? null;
+        if (rawId === null || rawId === undefined) {
+          return null;
+        }
+        return {
+          id: String(rawId),
+          number: link?.number ?? null,
+          status: link?.status ?? null,
+        };
+      })
+      .filter((link): link is { id: string; number: string | null; status: string | null } => link !== null);
+  }, [vesselLcLinksRaw]);
+
+  const availableLcOptions = useMemo(
+    () =>
+      availableLcSummaries
+        .map((summary) => {
+          const rawId = summary?.id;
+          if (rawId === null || rawId === undefined) {
+            return null;
+          }
+          return { id: String(rawId), summary } as const;
+        })
+        .filter(
+          (
+            option,
+          ): option is {
+            id: string;
+            summary: AvailableLetterOfCreditSummaryItem;
+          } => option !== null,
+        ),
+    [availableLcSummaries],
+  );
 
   const stageCompletionByStage = useMemo(() => {
     const map = new Map<VesselStageId, StageCompletion>();
@@ -346,6 +426,36 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
     },
   });
 
+  const linkLcMutation = useMutation({
+    mutationFn: async ({ letterOfCreditId }: { letterOfCreditId: string }) => {
+      if (!vesselId) throw new Error("Missing vessel identifier");
+      await apiRequest("POST", `/api/vessels/${vesselId}/letters-of-credit`, {
+        letterOfCreditId,
+      });
+    },
+    onSuccess: () => {
+      if (vesselId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/vessels", vesselId, "letters-of-credit"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/vessels", vesselId, "available-letters-of-credit"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/vessels"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
+      toast({
+        title: "Letter of credit linked",
+        description: "The vessel has been associated with the selected letter of credit.",
+      });
+      handleDialogClose();
+    },
+    onError: (error: any) => {
+      console.error("Error linking letter of credit", error);
+      toast({
+        title: "Link failed",
+        description: error?.message ?? "We couldn't link this letter of credit. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleStageClick = (stageId: VesselStageId) => {
     setActiveStageId(stageId);
     setSelectedFile(null);
@@ -358,6 +468,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
       setStageNumberValue("");
       setHasEditedStageNumber(false);
     }
+    setSelectedLcId("");
     setShowDocumentDialog(true);
   };
 
@@ -367,6 +478,7 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
     setSelectedFile(null);
     setStageNumberValue("");
     setHasEditedStageNumber(false);
+    setSelectedLcId("");
   };
 
   const handleDialogOpenChange = (open: boolean) => {
@@ -393,6 +505,24 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
     hasEditedStageNumber,
   ]);
 
+  useEffect(() => {
+    if (!showDocumentDialog || !activeStageId) return;
+    const stage = VESSEL_STAGES.find((item) => item.id === activeStageId);
+    if (stage?.entryType !== "lc") return;
+
+    if (availableLcOptions.length === 0) {
+      if (selectedLcId !== "") {
+        setSelectedLcId("");
+      }
+      return;
+    }
+
+    const hasSelection = availableLcOptions.some((option) => option.id === selectedLcId);
+    if (!hasSelection) {
+      setSelectedLcId(availableLcOptions[0].id);
+    }
+  }, [showDocumentDialog, activeStageId, availableLcOptions, selectedLcId]);
+
   const activeStage = activeStageId
     ? VESSEL_STAGES.find((stage) => stage.id === activeStageId)
     : undefined;
@@ -412,6 +542,12 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
       return;
     }
 
+    if (activeStage.entryType === "lc") {
+      if (!selectedLcId) return;
+      linkLcMutation.mutate({ letterOfCreditId: selectedLcId });
+      return;
+    }
+
     if (!selectedFile) return;
     uploadMutation.mutate({ file: selectedFile, stageId: activeStageId });
   };
@@ -428,8 +564,10 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
       ? existingStageCompletion.data
       : undefined;
   const isNumberStage = activeStage?.entryType === "number";
+  const isLcStage = activeStage?.entryType === "lc";
   const trimmedStageNumberValue = stageNumberValue.trim();
-  const isActionPending = uploadMutation.isPending || saveStageNumberMutation.isPending;
+  const isActionPending =
+    uploadMutation.isPending || saveStageNumberMutation.isPending || linkLcMutation.isPending;
 
   const getCurrentStageIndex = (vessel: any) => {
     if (!vessel || !vessel.status) return 0;
@@ -757,6 +895,87 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                 </p>
               </div>
             </>
+          ) : isLcStage ? (
+            <>
+              <div className="space-y-3">
+                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-4 text-sm">
+                  {vesselLcLinksLoading ? (
+                    <div className="flex items-center text-gray-600">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading linked letters of credit…
+                    </div>
+                  ) : vesselLcLinks.length > 0 ? (
+                    <>
+                      <div className="text-sm font-semibold text-gray-700">Linked letters of credit</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {vesselLcLinks.map((link) => (
+                          <Badge key={link.id} variant="secondary" className="text-xs">
+                            {link.number ?? `LC-${link.id}`}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        Linking another letter of credit keeps existing links in place.
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-gray-600">
+                      No letters of credit have been linked to this vessel yet.
+                    </div>
+                  )}
+                </div>
+
+                {availableLcsLoading ? (
+                  <div className="flex items-center justify-center rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading available letters of credit…
+                  </div>
+                ) : availableLcsError ? (
+                  <div className="rounded-lg border border-red-200 bg-red-50/60 p-4 text-sm text-red-700">
+                    {availableLcsError instanceof Error
+                      ? availableLcsError.message
+                      : "We couldn't load available letters of credit."}
+                  </div>
+                ) : availableLcOptions.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="lc-selection">Select letter of credit</Label>
+                    <Select
+                      value={selectedLcId}
+                      onValueChange={(value) => {
+                        setSelectedLcId(value);
+                      }}
+                      disabled={isActionPending}
+                    >
+                      <SelectTrigger id="lc-selection">
+                        <SelectValue placeholder="Choose letter of credit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableLcOptions.map(({ id, summary }) => {
+                          const remainingLabel = summary.remainingQuantity.toLocaleString(undefined, {
+                            maximumFractionDigits: 3,
+                          });
+                          const totalLabel = summary.totalQuantity.toLocaleString(undefined, {
+                            maximumFractionDigits: 3,
+                          });
+                          return (
+                            <SelectItem key={id} value={id}>
+                              {summary.lcNumber} • {remainingLabel} / {totalLabel} tons remaining
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">
+                      Only letters of credit matching the vessel cargo type with remaining quantity are shown.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-700">
+                    No matching letters of credit with remaining quantity are currently available for this vessel.
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <>
               {existingStageDocument ? (
@@ -823,7 +1042,13 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
               disabled={
                 isNumberStage
                   ? !trimmedStageNumberValue || isActionPending
-                  : !selectedFile || isActionPending
+                  : isLcStage
+                    ?
+                      !selectedLcId ||
+                      isActionPending ||
+                      availableLcsLoading ||
+                      availableLcOptions.length === 0
+                    : !selectedFile || isActionPending
               }
             >
               {isNumberStage ? (
@@ -836,6 +1061,18 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                   <>
                     <Save className="mr-2 h-4 w-4" />
                     Save number
+                  </>
+                )
+              ) : isLcStage ? (
+                linkLcMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Linking
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="mr-2 h-4 w-4" />
+                    Link LC
                   </>
                 )
               ) : uploadMutation.isPending ? (
