@@ -49,6 +49,8 @@ namespace WorkflowBackend.Api.Controllers
             "Amended"
         };
 
+        private const string NormalizedUpfToSupplierFlow = "upftosupplier";
+
         public ContractsController(AppDbContext db, IWebHostEnvironment env, IConfiguration config, ILogger<ContractsController> logger)
         {
             _db = db;
@@ -566,7 +568,16 @@ namespace WorkflowBackend.Api.Controllers
                 .AsNoTracking()
                 .Where(lc =>
                     lc.Status != null && EligibleLetterOfCreditStatuses.Contains(lc.Status) &&
-                    lc.Flow != null && lc.Flow.ToLower() == "upf_to_supplier");
+                    lc.Flow != null && (
+                        lc.Flow.ToLower() == "upf_to_supplier" ||
+                        lc.Flow.ToLower()
+                            .Replace("->", "to")
+                            .Replace("→", "to")
+                            .Replace("suppliers", "supplier")
+                            .Replace("_", string.Empty)
+                            .Replace("-", string.Empty)
+                            .Replace(" ", string.Empty)
+                            == NormalizedUpfToSupplierFlow));
 
             baseLcQuery = baseLcQuery.Where(lc =>
                 lc.ContractId == null ||

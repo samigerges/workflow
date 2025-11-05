@@ -659,6 +659,89 @@ public class ContractsControllerTests
     }
 
     [Fact]
+    public async Task GetAvailableLettersOfCredit_AcceptsAlternateFlowFormatting()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Target Contract",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-ALT"
+        };
+
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        var arrowFlow = new LetterOfCredit
+        {
+            Number = "LC-ARROW",
+            Status = "Active",
+            Quantity = 80m,
+            CargoType = "Wheat",
+            Flow = "UPF → Suppliers",
+            ExpiryDate = new DateTime(2030, 2, 1)
+        };
+
+        var asciiArrowFlow = new LetterOfCredit
+        {
+            Number = "LC-ASCII",
+            Status = "Active",
+            Quantity = 70m,
+            CargoType = "Wheat",
+            Flow = "UPF->Supplier",
+            ExpiryDate = new DateTime(2030, 3, 1)
+        };
+
+        var wrongFlow = new LetterOfCredit
+        {
+            Number = "LC-WRONG",
+            Status = "Active",
+            Quantity = 60m,
+            CargoType = "Wheat",
+            Flow = "GASC_TO_UPF",
+            ExpiryDate = new DateTime(2030, 4, 1)
+        };
+
+        context.LettersOfCredit.AddRange(arrowFlow, asciiArrowFlow, wrongFlow);
+        await context.SaveChangesAsync();
+
+        context.LetterOfCreditSupplierAllocations.AddRange(
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = arrowFlow.Id,
+                SupplierName = "Supplier A",
+                Quantity = 10m
+            },
+            new LetterOfCreditSupplierAllocation
+            {
+                LetterOfCreditId = asciiArrowFlow.Id,
+                SupplierName = "Supplier A",
+                Quantity = 5m
+            });
+
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.GetAvailableLettersOfCredit(contract.Id, page: 1, pageSize: 10, search: null, all: true);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<PaginatedResponse<AvailableLetterOfCreditSummary>>(ok.Value);
+
+        Assert.Equal(2, payload.Items.Count);
+        var numbers = payload.Items.Select(i => i.LcNumber).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("LC-ARROW", numbers);
+        Assert.Contains("LC-ASCII", numbers);
+    }
+
+    [Fact]
     public async Task GetAvailableLettersOfCredit_TreatsEmptyContractIdAsUnlinked()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
