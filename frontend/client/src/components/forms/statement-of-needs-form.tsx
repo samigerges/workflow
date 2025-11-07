@@ -7,7 +7,7 @@ import { insertNeedSchema } from "@/lib/schemas";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { NEED_CATEGORIES, NEED_STATUSES, UNITS_OF_MEASURE } from "@/lib/constants";
+import { NEED_CATEGORIES, UNITS_OF_MEASURE } from "@/lib/constants";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +58,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, need }: Stat
           maxPricePerUnit: need.maxPricePerUnit ?? undefined,
         }
       : {
-          title: "",
+          title: "Bee cargo need",
           description: "",
           category: NEED_CATEGORIES[0]?.value ?? "other",
           requiredQuantity: 0,
@@ -128,28 +128,36 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, need }: Stat
   });
 
   const onSubmit = (data: StatementOfNeedFormData) => {
-    mutation.mutate(data);
+    const sanitizedData: StatementOfNeedFormData = {
+      ...data,
+      maxPricePerUnit:
+        typeof data.maxPricePerUnit === "number" && Number.isFinite(data.maxPricePerUnit)
+          ? data.maxPricePerUnit
+          : undefined,
+    };
+
+    mutation.mutate(sanitizedData);
   };
 
   return (
     <Card>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <input type="hidden" {...register("title")} />
+          <input type="hidden" {...register("status")} />
+          <input type="hidden" {...register("departmentCode")} />
+          <input
+            type="hidden"
+            {...register("maxPricePerUnit", {
+              setValueAs: (value) =>
+                value === "" || value === null || value === undefined ? undefined : Number(value),
+            })}
+          />
+          <input type="hidden" {...register("notes")} />
           <section className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <Label htmlFor="title">Need title *</Label>
-                <Input
-                  id="title"
-                  placeholder="Brief summary of the need"
-                  {...register("title")}
-                  className={errors.title ? "border-red-500" : ""}
-                />
-                {errors.title && <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>}
-              </div>
-
               <div>
-                <Label htmlFor="category">Category *</Label>
+                <Label htmlFor="category">Bee cargo type *</Label>
                 <Select
                   value={watch("category")}
                   onValueChange={(value) => setValue("category", value as StatementOfNeedFormData["category"])}
@@ -230,50 +238,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, need }: Stat
                   <p className="text-sm text-red-500 mt-1">{errors.fulfillmentEndDate.message}</p>
                 )}
               </div>
-
-              <div>
-                <Label htmlFor="departmentCode">Department code</Label>
-                <Input id="departmentCode" placeholder="e.g. SUPPLY" {...register("departmentCode")}
-                  className={errors.departmentCode ? "border-red-500" : ""}
-                />
-                {errors.departmentCode && (
-                  <p className="text-sm text-red-500 mt-1">{errors.departmentCode.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="maxPricePerUnit">Maximum price per unit</Label>
-                <Input
-                  id="maxPricePerUnit"
-                  type="number"
-                  step="0.01"
-                  {...register("maxPricePerUnit", { valueAsNumber: true })}
-                  className={errors.maxPricePerUnit ? "border-red-500" : ""}
-                />
-                {errors.maxPricePerUnit && (
-                  <p className="text-sm text-red-500 mt-1">{errors.maxPricePerUnit.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={watch("status")}
-                  onValueChange={(value) => setValue("status", value as StatementOfNeedFormData["status"])}
-                >
-                  <SelectTrigger className={errors.status ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NEED_STATUSES.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.status && <p className="text-sm text-red-500 mt-1">{errors.status.message}</p>}
-              </div>
             </div>
           </section>
 
@@ -289,17 +253,6 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, need }: Stat
               {errors.description && (
                 <p className="text-sm text-red-500 mt-1">{errors.description.message}</p>
               )}
-            </div>
-
-            <div>
-              <Label htmlFor="notes">Internal notes</Label>
-              <Textarea
-                id="notes"
-                rows={3}
-                placeholder="Operational notes or approvals"
-                {...register("notes")}
-              />
-              {errors.notes && <p className="text-sm text-red-500 mt-1">{errors.notes.message}</p>}
             </div>
           </section>
 
