@@ -4,7 +4,7 @@ This document captures the current state of the authenticated pages and highligh
 
 ## Routing overview
 - The router exposes authenticated routes for the dashboard, workflow pages, and detail views once a user session is detected, and otherwise forces every path back to the login screen.【F:frontend/client/src/App.tsx†L35-L56】
-- Marketing content such as the landing page and the analytics view defined in `operations.tsx` are not reachable because no routes point to them, so there is no unauthenticated discovery path or alternate analytics workspace yet.【F:frontend/client/src/App.tsx†L35-L52】【F:frontend/client/src/pages/landing.tsx†L6-L149】【F:frontend/client/src/pages/operations.tsx†L14-L107】
+- With the landing page removed, the analytics preview remains the lone marketing surface and is only available via its direct route; unauthenticated visitors hitting `/` are redirected straight to the login screen.【F:frontend/client/src/App.tsx†L35-L56】
 
 ## Dashboard
 - The dashboard already pulls live counts for requests, contracts, LCs, and vessels with 30‑second refresh intervals, and surfaces recent activity cards with drill-down modals.【F:frontend/client/src/pages/dashboard.tsx†L49-L198】
