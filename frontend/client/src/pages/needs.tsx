@@ -5,7 +5,6 @@ import { NeedsFilters } from "@/components/needs/NeedsFilters";
 import { NeedsSummaryCards } from "@/components/needs/NeedsSummaryCards";
 import { NeedsProgressTable } from "@/components/needs/NeedsProgressTable";
 import { DischargedVesselsCard } from "@/components/needs/DischargedVesselsCard";
-import { NeedsAlerts } from "@/components/needs/NeedsAlerts";
 import StatementOfNeedsForm from "@/components/forms/statement-of-needs-form";
 import { useNeedsData } from "@/hooks/useNeedsData";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -51,9 +50,6 @@ export default function NeedsPage() {
       return b.totalDischarged - a.totalDischarged;
     });
   }, [needs]);
-
-  const backlogNeeds = useMemo(() => sortedNeeds.filter((need) => !need.isFulfilled), [sortedNeeds]);
-  const unassignedNeeds = useMemo(() => sortedNeeds.filter((need) => need.isUnassigned), [sortedNeeds]);
 
   const monthLabel = useMemo(() => getMonthLabel(summary.monthKey), [summary.monthKey]);
 
@@ -122,8 +118,6 @@ export default function NeedsPage() {
         </div>
 
         <NeedsSummaryCards summary={summary} />
-
-        <NeedsAlerts backlogNeeds={backlogNeeds} unassignedNeeds={unassignedNeeds} />
 
         <NeedsProgressTable needs={sortedNeeds} isLoading={false} />
 
