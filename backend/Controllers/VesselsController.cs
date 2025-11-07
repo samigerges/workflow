@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Security.Claims;
@@ -912,7 +913,7 @@ namespace WorkflowBackend.Api.Controllers
                 baseLcQuery = baseLcQuery.Where(lc => lc.Number != null && lc.Number.ToLower().Contains(term));
             }
 
-            var query = baseLcQuery
+            var baseResults = await baseLcQuery
                 .Select(lc => new
                 {
                     lc.Id,
@@ -925,42 +926,55 @@ namespace WorkflowBackend.Api.Controllers
                     Product = lc.CargoType ?? (lc.Contract != null ? lc.Contract.CargoType : null),
                     TotalQuantity = lc.Quantity ?? 0m,
                     AllocationQuantity = lc.SupplierAllocations.Sum(a => (decimal?)a.Quantity) ?? 0m,
-                    VesselQuantity = _db.VesselLettersOfCredit
-                        .Where(link => link.LetterOfCreditId == lc.Id)
-                        .Select(link => link.Vessel != null
-                            ? (link.Vessel.ActualQuantity ?? link.Vessel.Quantity ?? 0m)
-                            : 0m)
-                        .DefaultIfEmpty(0m)
-                        .Sum(),
                     lc.ExpiryDate
                 })
-                .Select(lc => new
+                .ToListAsync();
+
+            var lcIds = baseResults.Select(lc => lc.Id).ToList();
+
+            var vesselQuantities = lcIds.Count == 0
+                ? new Dictionary<Guid, decimal>()
+                : await _db.VesselLettersOfCredit
+                    .Where(link => lcIds.Contains(link.LetterOfCreditId))
+                    .Join(
+                        _db.Vessels,
+                        link => link.VesselId,
+                        vessel => vessel.Id,
+                        (link, vessel) => new
+                        {
+                            link.LetterOfCreditId,
+                            Quantity = vessel.ActualQuantity ?? vessel.Quantity ?? 0m
+                        })
+                    .GroupBy(x => x.LetterOfCreditId)
+                    .Select(g => new
+                    {
+                        LetterOfCreditId = g.Key,
+                        Quantity = g.Sum(x => x.Quantity)
+                    })
+                    .ToDictionaryAsync(x => x.LetterOfCreditId, x => x.Quantity);
+
+            var summaries = baseResults
+                .Select(lc =>
                 {
-                    lc.Id,
-                    lc.LcNumber,
-                    Supplier = lc.ContractSupplier ?? lc.SupplierFromAllocations,
-                    lc.Product,
-                    lc.TotalQuantity,
-                    UsedQuantity = lc.AllocationQuantity + lc.VesselQuantity,
-                    RemainingQuantity = lc.TotalQuantity - (lc.AllocationQuantity + lc.VesselQuantity),
-                    lc.ExpiryDate
+                    var vesselQuantity = vesselQuantities.TryGetValue(lc.Id, out var quantity)
+                        ? quantity
+                        : 0m;
+                    var usedQuantity = lc.AllocationQuantity + vesselQuantity;
+                    var remainingQuantity = lc.TotalQuantity - usedQuantity;
+
+                    return new AvailableLetterOfCreditSummary(
+                        lc.Id,
+                        lc.LcNumber,
+                        lc.ContractSupplier ?? lc.SupplierFromAllocations,
+                        lc.Product,
+                        lc.TotalQuantity,
+                        usedQuantity,
+                        remainingQuantity,
+                        lc.ExpiryDate);
                 })
-                .Where(lc => lc.TotalQuantity > 0m && lc.RemainingQuantity > 0m)
-                .OrderByDescending(lc => lc.RemainingQuantity)
-                .ThenBy(lc => lc.ExpiryDate ?? DateTime.MaxValue);
-
-            var results = await query.ToListAsync();
-
-            var summaries = results
-                .Select(lc => new AvailableLetterOfCreditSummary(
-                    lc.Id,
-                    lc.LcNumber,
-                    lc.Supplier,
-                    lc.Product,
-                    lc.TotalQuantity,
-                    lc.UsedQuantity,
-                    lc.RemainingQuantity,
-                    lc.ExpiryDate))
+                .Where(summary => summary.TotalQuantity > 0m && summary.RemainingQuantity > 0m)
+                .OrderByDescending(summary => summary.RemainingQuantity)
+                .ThenBy(summary => summary.ExpiryDate ?? DateTime.MaxValue)
                 .ToList();
 
             return summaries;
