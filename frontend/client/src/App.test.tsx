@@ -21,10 +21,6 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-vi.mock("@/pages/landing", () => ({
-  default: () => <div>Landing Page</div>,
-}));
-
 vi.mock("@/pages/login", () => ({
   default: () => <div>Login Page</div>,
 }));
@@ -46,12 +42,12 @@ describe("Router", () => {
     cleanup();
   });
 
-  it("renders the landing page for logged-out users hitting the root path", async () => {
+  it("redirects logged-out users to the login page when hitting the root path", async () => {
     mockUseAuth.mockReturnValue({ isAuthenticated: false, isLoading: false });
 
     renderWithRoute("/");
 
-    expect(await screen.findByText("Landing Page")).toBeInTheDocument();
+    expect(await screen.findByText("Login Page")).toBeInTheDocument();
   });
 
   it("allows logged-out users to view the analytics preview", async () => {

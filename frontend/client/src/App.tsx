@@ -10,7 +10,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
-import Landing from "@/pages/landing";
 import AnalyticsPreview from "@/pages/analytics-preview";
 import Dashboard from "@/pages/dashboard";
 import Requests from "@/pages/requests";
@@ -66,7 +65,6 @@ function Navigation({ isAuthenticated }: { isAuthenticated: boolean }) {
             ImportFlow
           </span>
           <div className="flex items-center gap-3">
-            <NavLink href="/landing">Landing</NavLink>
             <NavLink href="/analytics">Analytics Preview</NavLink>
           </div>
         </div>
@@ -113,13 +111,12 @@ function Router() {
     <>
       <Navigation isAuthenticated={isAuthenticated} />
       <Switch>
-        <Route path="/landing" component={Landing} />
         <Route path="/analytics" component={AnalyticsPreview} />
         <Route path="/login">
           {isAuthenticated ? <Redirect to="/" /> : <Login />}
         </Route>
         <Route path="/">
-          {isAuthenticated ? <Dashboard /> : <Redirect to="/landing" />}
+          {isAuthenticated ? <Dashboard /> : <Redirect to="/login" />}
         </Route>
         {PRIVATE_ROUTES.map(({ path, component: Component }) => (
           <Route key={path} path={path}>
