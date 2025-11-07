@@ -213,7 +213,29 @@ export default function LettersCredit() {
     try {
       await apiRequest("POST", "/api/documents/upload", formData);
 
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      const modificationQueryKey = [
+        "/api/documents",
+        {
+          entityType: "LetterOfCredit",
+          entityId: lcId,
+          tag: "lc-modification",
+        },
+      ] as const;
+      const lcDocumentsQueryKey = [
+        "/api/documents",
+        {
+          entityType: "LetterOfCredit",
+          entityId: lcId,
+        },
+      ] as const;
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: modificationQueryKey, exact: true }),
+        queryClient.invalidateQueries({ queryKey: lcDocumentsQueryKey, exact: true }),
+        queryClient.invalidateQueries({ queryKey: ["/api/documents"], exact: false }),
+      ]);
+
+      await queryClient.refetchQueries({ queryKey: modificationQueryKey, type: "active" });
 
       const lcLabel = modificationLc?.number ? `LC ${modificationLc.number}` : "the selected LC";
 
