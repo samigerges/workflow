@@ -740,9 +740,10 @@ namespace WorkflowBackend.Api.Controllers
                 return Conflict(new { message = "This letter of credit is already linked to a different contract." });
             }
 
-            if (!string.Equals(letterOfCredit.Status, "Active", StringComparison.OrdinalIgnoreCase))
+            if (letterOfCredit.Status is null
+                || !EligibleLetterOfCreditStatuses.Contains(letterOfCredit.Status))
             {
-                return BadRequest(new { message = "Only active letters of credit can be linked." });
+                return BadRequest(new { message = "Only active, issued, or amended letters of credit can be linked." });
             }
 
             var totalQuantity = letterOfCredit.Quantity ?? 0m;
