@@ -7,7 +7,7 @@ import { insertNeedSchema } from "@/lib/schemas";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { NEED_CATEGORIES, UNITS_OF_MEASURE } from "@/lib/constants";
+import { CARGO_TYPES, UNITS_OF_MEASURE } from "@/lib/constants";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,7 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, need }: Stat
       : {
           title: "Bee cargo need",
           description: "",
-          category: NEED_CATEGORIES[0]?.value ?? "other",
+          category: CARGO_TYPES[0]?.value ?? "other",
           requiredQuantity: 0,
           unitOfMeasure: UNITS_OF_MEASURE[0],
           fulfillmentStartDate: "",
@@ -157,16 +157,16 @@ export default function StatementOfNeedsForm({ onSuccess, onCancel, need }: Stat
           <section className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="category">Bee cargo type *</Label>
+                <Label htmlFor="category">(cargo type) *</Label>
                 <Select
                   value={watch("category")}
                   onValueChange={(value) => setValue("category", value as StatementOfNeedFormData["category"])}
                 >
                   <SelectTrigger className={errors.category ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder="Select cargo type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {NEED_CATEGORIES.map((category) => (
+                    {CARGO_TYPES.map((category) => (
                       <SelectItem key={category.value} value={category.value}>
                         {category.label}
                       </SelectItem>
