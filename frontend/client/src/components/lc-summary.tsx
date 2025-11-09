@@ -10,11 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import StatusBadge from "@/components/ui/status-badge";
 import {
   normalizeLc,
+  normalizeLcSupplierAllocations,
   formatLcCurrency,
   formatLcDate,
   isLcExpired,
   daysUntilLcExpiry,
   type NormalizedLC,
+  type NormalizedLcSupplierAllocation,
 } from "@/lib/lc";
 
 interface LCSummaryProps {
@@ -90,6 +92,29 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
   const shouldShowModifications = normalizedLc?.flowKey === "upf_to_supplier";
 
   const {
+    data: supplierAllocationsRaw,
+    isLoading: supplierAllocationsLoading,
+    isFetching: supplierAllocationsFetching,
+  } = useQuery({
+    queryKey: normalizedLcId ? [`/api/letters-of-credit/${normalizedLcId}/supplier-allocations`] : [],
+    enabled: isOpen && !!normalizedLcId && !isGascToUpf,
+  });
+
+  const supplierAllocations: NormalizedLcSupplierAllocation[] = useMemo(() => {
+    if (!normalizedLc) {
+      return [];
+    }
+
+    if (Array.isArray(supplierAllocationsRaw)) {
+      return normalizeLcSupplierAllocations(supplierAllocationsRaw);
+    }
+
+    return normalizedLc.supplierAllocations;
+  }, [normalizedLc, supplierAllocationsRaw]);
+
+  const supplierAllocationsPending = supplierAllocationsLoading || supplierAllocationsFetching;
+
+  const {
     data: modificationDocumentsRaw,
     isLoading: modificationsLoading,
   } = useQuery<LcModificationDocument[]>({
@@ -130,7 +155,6 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
   const updatedDateLabel = normalizedLc.updatedAt ? formatLcDate(normalizedLc.updatedAt) : null;
   const expiryCountdown = daysUntilLcExpiry(normalizedLc.expiryDate);
   const detailItems = buildDetailItems(normalizedLc);
-  const supplierAllocations = normalizedLc.supplierAllocations;
   const supplierAllocationCount = supplierAllocations.length;
   const totalSupplierQuantity = supplierAllocations.reduce(
     (sum, allocation) => sum + (allocation.quantity ?? 0),
@@ -318,7 +342,11 @@ export default function LCSummary({ lc, isOpen, onClose }: LCSummaryProps) {
                     </div>
                   </div>
 
-                  {supplierAllocationCount > 0 ? (
+                  {supplierAllocationsPending ? (
+                    <div className="text-center py-8 text-gray-500">
+                      Loading supplier allocations…
+                    </div>
+                  ) : supplierAllocationCount > 0 ? (
                     <Table>
                       <TableHeader>
                         <TableRow>

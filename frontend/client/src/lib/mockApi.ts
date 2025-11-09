@@ -927,9 +927,10 @@ export async function apiRequest(
           if (!linkedVessel) {
             return sum;
           }
+          const vesselRecord = linkedVessel as Record<string, any>;
           const vesselQuantity =
-            typeof linkedVessel.actualQuantity === "number"
-              ? linkedVessel.actualQuantity
+            typeof vesselRecord.actualQuantity === "number"
+              ? vesselRecord.actualQuantity
               : linkedVessel.quantity;
           return sum + toNumber(vesselQuantity);
         }, 0);
@@ -943,6 +944,14 @@ export async function apiRequest(
         const supplierName = lcContract?.supplierName ?? supplierAllocationsForLc[0]?.supplierName ?? null;
         const product = lc.cargoType ?? lcContract?.cargoType ?? null;
 
+        const lcRecord = lc as Record<string, any>;
+        const expiryDateValue =
+          typeof lcRecord.expiryDate === "string"
+            ? lcRecord.expiryDate
+            : lcRecord.expiryDate instanceof Date
+              ? lcRecord.expiryDate.toISOString()
+              : null;
+
         return {
           id: lcId,
           lcNumber: lc.number ?? `LC-${lcId}`,
@@ -951,7 +960,7 @@ export async function apiRequest(
           totalQuantity,
           usedQuantity,
           remainingQuantity,
-          expiryDate: lc.expiryDate ?? null,
+          expiryDate: expiryDateValue,
         };
       })
       .filter((summary) => summary.totalQuantity > 0 && summary.remainingQuantity > 0)

@@ -108,6 +108,55 @@ const normalizeLcId = (value: unknown): string | number | null => {
   return null;
 };
 
+export function normalizeLcSupplierAllocations(input: any): NormalizedLcSupplierAllocation[] {
+  const supplierAllocationsRaw = Array.isArray(input)
+    ? input
+    : Array.isArray(input?.supplierAllocations)
+      ? input.supplierAllocations
+      : Array.isArray(input?.SupplierAllocations)
+        ? input.SupplierAllocations
+        : [];
+
+  return supplierAllocationsRaw
+    .map((allocation: any) => {
+      const supplierName =
+        safeString(allocation?.supplierName) ??
+        safeString(allocation?.SupplierName) ??
+        safeString(allocation?.name) ??
+        "";
+
+      const quantity = parseNumber(
+        allocation?.quantity ??
+          allocation?.Quantity ??
+          allocation?.allocationQuantity ??
+          allocation?.allocatedQuantity,
+      );
+
+      const amount = parseNumber(allocation?.amount ?? allocation?.Amount ?? allocation?.allocationAmount);
+
+      const supplierReference =
+        safeString(allocation?.supplierReference) ?? safeString(allocation?.SupplierReference);
+
+      const notes = safeString(allocation?.notes) ?? safeString(allocation?.Notes);
+
+      const createdAt = safeDateString(allocation?.createdAt) ?? safeDateString(allocation?.CreatedAt);
+      const updatedAt = safeDateString(allocation?.updatedAt) ?? safeDateString(allocation?.UpdatedAt);
+
+      return {
+        id: allocation?.id ?? allocation?.Id ?? null,
+        supplierId: normalizeSupplierAllocationId(allocation?.supplierId ?? allocation?.SupplierId),
+        supplierName: supplierName ?? "",
+        quantity: quantity ?? null,
+        amount: amount ?? null,
+        supplierReference: supplierReference ?? null,
+        notes: notes ?? null,
+        createdAt,
+        updatedAt,
+      } satisfies NormalizedLcSupplierAllocation;
+    })
+    .filter((allocation: NormalizedLcSupplierAllocation) => allocation.supplierName.length > 0);
+}
+
 export function normalizeLc(raw: any): NormalizedLC {
   const allowedFlows = new Set(["GASC_TO_UPF", "UPF_TO_SUPPLIER"]);
   const defaultFlow = "GASC_TO_UPF";
@@ -176,50 +225,7 @@ export function normalizeLc(raw: any): NormalizedLC {
   const fileUrl = safeString(raw?.fileUrl) ?? safeString(raw?.uploadedFile);
   const fileName = safeString(raw?.fileName) ?? safeString(raw?.uploadedFileName);
 
-  const supplierAllocationsRaw = Array.isArray(raw?.supplierAllocations)
-    ? raw.supplierAllocations
-    : Array.isArray(raw?.SupplierAllocations)
-      ? raw.SupplierAllocations
-      : [];
-
-  const supplierAllocations: NormalizedLcSupplierAllocation[] = supplierAllocationsRaw
-    .map((allocation: any) => {
-      const supplierName =
-        safeString(allocation?.supplierName) ??
-        safeString(allocation?.SupplierName) ??
-        safeString(allocation?.name) ??
-        "";
-
-      const quantity = parseNumber(
-        allocation?.quantity ??
-          allocation?.Quantity ??
-          allocation?.allocationQuantity ??
-          allocation?.allocatedQuantity,
-      );
-
-      const amount = parseNumber(allocation?.amount ?? allocation?.Amount ?? allocation?.allocationAmount);
-
-      const supplierReference =
-        safeString(allocation?.supplierReference) ?? safeString(allocation?.SupplierReference);
-
-      const notes = safeString(allocation?.notes) ?? safeString(allocation?.Notes);
-
-      const createdAt = safeDateString(allocation?.createdAt) ?? safeDateString(allocation?.CreatedAt);
-      const updatedAt = safeDateString(allocation?.updatedAt) ?? safeDateString(allocation?.UpdatedAt);
-
-      return {
-        id: allocation?.id ?? allocation?.Id ?? null,
-        supplierId: normalizeSupplierAllocationId(allocation?.supplierId ?? allocation?.SupplierId),
-        supplierName: supplierName ?? "",
-        quantity: quantity ?? null,
-        amount: amount ?? null,
-        supplierReference: supplierReference ?? null,
-        notes: notes ?? null,
-        createdAt,
-        updatedAt,
-      } satisfies NormalizedLcSupplierAllocation;
-    })
-    .filter((allocation: NormalizedLcSupplierAllocation) => allocation.supplierName.length > 0);
+  const supplierAllocations = normalizeLcSupplierAllocations(raw);
 
   const allocatedQuantity = supplierAllocations.reduce((total, allocation) => {
     return total + (allocation.quantity ?? 0);
