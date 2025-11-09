@@ -192,7 +192,53 @@ export default function Contracts() {
     setSelectedLcId("");
   };
 
+  type LinkLetterOfCreditVariables = {
+    contractId: string;
+    letterOfCreditId: string;
+    contractLabel: string;
+    lcNumber: string;
+  };
+
+  const linkLetterOfCreditMutation = useMutation<void, Error, LinkLetterOfCreditVariables>({
+    mutationFn: async ({ contractId, letterOfCreditId }) => {
+      await apiRequest("POST", `/api/contracts/${contractId}/letter-of-credit-link`, {
+        letterOfCreditId,
+      });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/letters-of-credit"] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/reports/contract-journey/${variables.contractId}`],
+      });
+
+      toast({
+        title: "Letter of credit linked",
+        description: `${variables.lcNumber} is now linked to ${variables.contractLabel}.`,
+      });
+
+      handleCloseOpenLcDialog();
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        redirectToLogin();
+        return;
+      }
+
+      const message = error.message || "Failed to link letter of credit.";
+      toast({
+        title: "Unable to link letter of credit",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleConfirmOpenLc = () => {
+    if (linkLetterOfCreditMutation.isPending) {
+      return;
+    }
+
     const selected = matchingLettersOfCredit.find((item) => item.id === selectedLcId);
 
     if (!selected) {
@@ -204,18 +250,38 @@ export default function Contracts() {
       return;
     }
 
-    const contractIdLabel = contractForOpenLc?.publicId
+    if (!contractForOpenLc?.id) {
+      toast({
+        title: "Missing contract",
+        description: "Unable to determine which contract to link.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const letterOfCreditId = selected.lc.id ?? selected.id;
+
+    if (!letterOfCreditId) {
+      toast({
+        title: "Missing letter of credit",
+        description: "The selected letter of credit is missing an identifier.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const contractId = String(contractForOpenLc.id);
+    const contractLabel = contractForOpenLc.publicId
       ? String(contractForOpenLc.publicId)
-      : contractForOpenLc?.id
-        ? `CON-${String(contractForOpenLc.id).padStart(3, "0")}`
-        : "this contract";
+      : `CON-${String(contractForOpenLc.id).padStart(3, "0")}`;
+    const lcNumber = selected.lc.number || String(selected.id);
 
-    toast({
-      title: "Letter of credit selected",
-      description: `${selected.lc.number} is ready to proceed for ${contractIdLabel}.`,
+    linkLetterOfCreditMutation.mutate({
+      contractId,
+      letterOfCreditId: String(letterOfCreditId),
+      contractLabel,
+      lcNumber,
     });
-
-    handleCloseOpenLcDialog();
   };
 
   const approveMutation = useMutation({
@@ -652,8 +718,18 @@ export default function Contracts() {
                 <Button variant="outline" onClick={handleCloseOpenLcDialog}>
                   Cancel
                 </Button>
-                <Button onClick={handleConfirmOpenLc} disabled={matchingLettersOfCredit.length === 0}>
-                  Continue
+                <Button
+                  onClick={handleConfirmOpenLc}
+                  disabled={matchingLettersOfCredit.length === 0 || linkLetterOfCreditMutation.isPending}
+                >
+                  {linkLetterOfCreditMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Linking…
+                    </>
+                  ) : (
+                    "Continue"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
