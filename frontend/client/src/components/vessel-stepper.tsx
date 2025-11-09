@@ -542,12 +542,18 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
       return;
     }
 
-    if (activeStage.entryType === "lc") {
-      if (!selectedLcId) return;
-      linkLcMutation.mutate({ letterOfCreditId: selectedLcId });
-      return;
-    }
+    if (!selectedFile) return;
+    uploadMutation.mutate({ file: selectedFile, stageId: activeStageId });
+  };
 
+  const handleLinkLc = () => {
+    if (!activeStageId || !activeStage || activeStage.entryType !== "lc") return;
+    if (!selectedLcId) return;
+    linkLcMutation.mutate({ letterOfCreditId: selectedLcId });
+  };
+
+  const handleUploadLcDocument = () => {
+    if (!activeStageId || !activeStage || activeStage.entryType !== "lc") return;
     if (!selectedFile) return;
     uploadMutation.mutate({ file: selectedFile, stageId: activeStageId });
   };
@@ -566,8 +572,17 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
   const isNumberStage = activeStage?.entryType === "number";
   const isLcStage = activeStage?.entryType === "lc";
   const trimmedStageNumberValue = stageNumberValue.trim();
-  const isActionPending =
-    uploadMutation.isPending || saveStageNumberMutation.isPending || linkLcMutation.isPending;
+  const isSavingStageNumber = saveStageNumberMutation.isPending;
+  const isLinkingLc = linkLcMutation.isPending;
+  const isUploadingDocument = uploadMutation.isPending;
+  const isActionPending = isSavingStageNumber || isLinkingLc || isUploadingDocument;
+  const isLcLinkDisabled =
+    !selectedLcId ||
+    availableLcsLoading ||
+    availableLcOptions.length === 0 ||
+    isLinkingLc ||
+    isUploadingDocument;
+  const isLcUploadDisabled = !selectedFile || isUploadingDocument || isLinkingLc;
 
   const getCurrentStageIndex = (vessel: any) => {
     if (!vessel || !vessel.status) return 0;
@@ -974,6 +989,20 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
                     No matching letters of credit with remaining quantity are currently available for this vessel.
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="lc-stage-document">Upload LC document</Label>
+                  <Input
+                    id="lc-stage-document"
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    disabled={isActionPending}
+                  />
+                  {selectedFile && (
+                    <p className="text-xs text-gray-500">Selected file: {selectedFile.name}</p>
+                  )}
+                </div>
               </div>
             </>
           ) : (
@@ -1036,57 +1065,78 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={handleStageAction}
-              disabled={
-                isNumberStage
-                  ? !trimmedStageNumberValue || isActionPending
-                  : isLcStage
-                    ?
-                      !selectedLcId ||
-                      isActionPending ||
-                      availableLcsLoading ||
-                      availableLcOptions.length === 0
+            {isLcStage ? (
+              <>
+                <Button
+                  type="button"
+                  onClick={handleLinkLc}
+                  disabled={isLcLinkDisabled}
+                >
+                  {linkLcMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Linking
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Link LC
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleUploadLcDocument}
+                  disabled={isLcUploadDisabled}
+                >
+                  {uploadMutation.isPending ? (
+                    <>
+                      <Upload className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload document
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleStageAction}
+                disabled={
+                  isNumberStage
+                    ? !trimmedStageNumberValue || isActionPending
                     : !selectedFile || isActionPending
-              }
-            >
-              {isNumberStage ? (
-                saveStageNumberMutation.isPending ? (
+                }
+              >
+                {isNumberStage ? (
+                  saveStageNumberMutation.isPending ? (
+                    <>
+                      <Save className="mr-2 h-4 w-4 animate-spin" />
+                      Saving
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save number
+                    </>
+                  )
+                ) : uploadMutation.isPending ? (
                   <>
-                    <Save className="mr-2 h-4 w-4 animate-spin" />
-                    Saving
+                    <Upload className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading
                   </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save number
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload document
                   </>
-                )
-              ) : isLcStage ? (
-                linkLcMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Linking
-                  </>
-                ) : (
-                  <>
-                    <Link2 className="mr-2 h-4 w-4" />
-                    Link LC
-                  </>
-                )
-              ) : uploadMutation.isPending ? (
-                <>
-                  <Upload className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload document
-                </>
-              )}
-            </Button>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

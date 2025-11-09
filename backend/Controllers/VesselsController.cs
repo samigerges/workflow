@@ -885,7 +885,16 @@ namespace WorkflowBackend.Api.Controllers
                 .AsNoTracking()
                 .Where(lc =>
                     lc.Status != null && EligibleLetterOfCreditStatuses.Contains(lc.Status) &&
-                    lc.Flow != null && NormalizeFlow(lc.Flow) == NormalizedUpfToSupplierFlow);
+                    lc.Flow != null &&
+                    lc.Flow
+                        .Trim()
+                        .Replace("->", "to")
+                        .Replace("→", "to")
+                        .Replace("suppliers", "supplier")
+                        .Replace("_", string.Empty)
+                        .Replace("-", string.Empty)
+                        .Replace(" ", string.Empty)
+                        .ToLower() == NormalizedUpfToSupplierFlow);
 
             if (vessel.ContractId.HasValue && vessel.ContractId.Value != Guid.Empty)
             {
