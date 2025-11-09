@@ -16,6 +16,86 @@ const formatQuantity = (value: number, unit: string | undefined) => {
   return `${Math.round(value).toLocaleString()} ${normalizedUnit}`;
 };
 
+const toNumber = (value: unknown): number => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+interface SupplierMetric {
+  name: string;
+  contracted: number;
+  discharged: number;
+}
+
+const getSupplierMetrics = (entry: NeedProgress): SupplierMetric[] => {
+  const supplierMap = new Map<string, SupplierMetric>();
+  const contractIdToSupplier = new Map<string, string>();
+
+  entry.contracts.forEach((contract) => {
+    const supplierName = (contract.supplierName ?? "Unassigned").trim();
+    const key = supplierName.toLowerCase();
+    const contracted = toNumber(contract.quantity ?? 0);
+
+    const existing = supplierMap.get(key) ?? {
+      name: supplierName,
+      contracted: 0,
+      discharged: 0,
+    };
+
+    existing.contracted += contracted;
+    existing.name = supplierName;
+    supplierMap.set(key, existing);
+    contractIdToSupplier.set(String(contract.id), key);
+  });
+
+  entry.vessels.forEach((vessel) => {
+    const contractKey =
+      vessel.contractId != null ? contractIdToSupplier.get(String(vessel.contractId)) : undefined;
+    const fallbackKey = "unassigned";
+    const key = contractKey ?? fallbackKey;
+    const name = contractKey
+      ? supplierMap.get(contractKey)?.name ?? "Unassigned"
+      : "Unassigned";
+    const discharged = toNumber(vessel.dischargedQuantity ?? vessel.quantity ?? 0);
+
+    const existing = supplierMap.get(key) ?? {
+      name,
+      contracted: 0,
+      discharged: 0,
+    };
+
+    existing.discharged += discharged;
+    existing.name = name;
+    supplierMap.set(key, existing);
+  });
+
+  entry.requests.forEach((request) => {
+    if (!request.supplierName) {
+      return;
+    }
+
+    const supplierName = request.supplierName.trim();
+    if (!supplierName) {
+      return;
+    }
+
+    const key = supplierName.toLowerCase();
+    if (!supplierMap.has(key)) {
+      supplierMap.set(key, {
+        name: supplierName,
+        contracted: 0,
+        discharged: 0,
+      });
+    }
+  });
+
+  return Array.from(supplierMap.values()).sort((a, b) => b.contracted - a.contracted);
+};
+
 export function NeedsProgressTable({ needs, isLoading }: NeedsProgressTableProps) {
   if (isLoading) {
     return (
@@ -71,9 +151,8 @@ export function NeedsProgressTable({ needs, isLoading }: NeedsProgressTableProps
           <TableHeader>
             <TableRow>
               <TableHead>Need</TableHead>
-              <TableHead>Supplier</TableHead>
               <TableHead>Requested</TableHead>
-              <TableHead>Discharged this month</TableHead>
+              <TableHead>Supplier discharge comparison</TableHead>
               <TableHead>Overall progress</TableHead>
               <TableHead>Remaining</TableHead>
               <TableHead>Status</TableHead>
@@ -82,8 +161,11 @@ export function NeedsProgressTable({ needs, isLoading }: NeedsProgressTableProps
           <TableBody>
             {needs.map((entry) => {
               const overallPercent = Math.min(entry.overallFulfillmentRate * 100, 100);
-              const monthPercent = Math.min(entry.monthFulfillmentRate * 100, 100);
-              const primaryRequest = entry.primaryRequest;
+              const supplierMetrics = getSupplierMetrics(entry);
+              const maxSupplierValue = supplierMetrics.reduce(
+                (max, metric) => Math.max(max, metric.contracted, metric.discharged),
+                0,
+              );
               return (
                 <TableRow key={entry.need.id}>
                   <TableCell>
@@ -96,19 +178,55 @@ export function NeedsProgressTable({ needs, isLoading }: NeedsProgressTableProps
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-secondary-700 font-medium">
-                      {primaryRequest?.supplierName ?? "Unassigned"}
-                    </span>
-                  </TableCell>
                   <TableCell>{formatQuantity(entry.need.requiredQuantity ?? 0, entry.need.unitOfMeasure)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-semibold text-secondary-900">
-                        {formatQuantity(entry.dischargedThisMonth, entry.need.unitOfMeasure)}
-                      </span>
-                      <span className="text-xs text-secondary-500">{monthPercent.toFixed(1)}% this month</span>
-                    </div>
+                    {supplierMetrics.length === 0 ? (
+                      <span className="text-xs text-secondary-500">No supplier assignments</span>
+                    ) : (
+                      <div className="flex flex-col gap-4 min-w-[220px]">
+                        {supplierMetrics.map((metric) => {
+                          const denominator = Math.max(maxSupplierValue, 1);
+                          const contractedPercent = Math.min((metric.contracted / denominator) * 100, 100);
+                          const dischargedPercent = Math.min((metric.discharged / denominator) * 100, 100);
+                          return (
+                            <div key={metric.name} className="space-y-2">
+                              <div className="flex items-center justify-between text-xs text-secondary-600">
+                                <span className="font-medium text-secondary-800">{metric.name}</span>
+                                <span className="text-[11px] text-secondary-500">
+                                  {formatQuantity(metric.discharged, entry.need.unitOfMeasure)}
+                                  {" "}/
+                                  {formatQuantity(metric.contracted, entry.need.unitOfMeasure)}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2 flex-1 rounded-full bg-primary-100">
+                                    <div
+                                      className="h-2 rounded-full bg-primary-500"
+                                      style={{ width: `${contractedPercent}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-semibold uppercase text-primary-700">
+                                    Contract
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2 flex-1 rounded-full bg-emerald-100">
+                                    <div
+                                      className="h-2 rounded-full bg-emerald-500"
+                                      style={{ width: `${dischargedPercent}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-semibold uppercase text-emerald-700">
+                                    Discharged
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="w-64">
                     <div className="flex flex-col gap-2">
