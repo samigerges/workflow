@@ -1211,6 +1211,51 @@ public class ContractsControllerTests
         Assert.Equal(contract.Id, context.LettersOfCredit.Single().ContractId);
     }
 
+    [Theory]
+    [InlineData("Issued")]
+    [InlineData("Amended")]
+    public async Task LinkLetterOfCredit_AllowsOtherEligibleStatuses(string status)
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        await using var context = new AppDbContext(options);
+
+        var contract = new Contract
+        {
+            Title = "Eligible Status",
+            SupplierName = "Supplier A",
+            CargoType = "Wheat",
+            SequenceNumber = 1,
+            PublicId = "CON-0102"
+        };
+
+        var letter = new LetterOfCredit
+        {
+            Number = $"LC-{status.ToUpperInvariant()}",
+            Status = status,
+            Quantity = 80m,
+            CargoType = "Wheat",
+            Flow = "UPF_TO_SUPPLIER"
+        };
+
+        context.Contracts.Add(contract);
+        context.LettersOfCredit.Add(letter);
+        await context.SaveChangesAsync();
+
+        var controller = CreateController(context);
+
+        var result = await controller.LinkLetterOfCredit(contract.Id, new ContractLetterOfCreditLinkRequest(letter.Id));
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        dynamic payload = ok.Value!;
+        Assert.Equal("Letter of credit linked to contract successfully.", (string)payload.message);
+
+        var updated = await context.LettersOfCredit.FindAsync(letter.Id);
+        Assert.Equal(contract.Id, updated!.ContractId);
+    }
+
     [Fact]
     public async Task LinkLetterOfCredit_AllowsLinkWhenContractIdIsEmptyGuid()
     {
