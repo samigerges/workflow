@@ -560,18 +560,21 @@ public class ContractsControllerTests
         Assert.Equal(90m, first.RemainingQuantity);
         Assert.Equal("Supplier A", first.Supplier);
         Assert.Equal("Wheat", first.Product);
+        Assert.Equal("Issued", first.Status);
 
         var second = payload.Items[1];
         Assert.Equal("LC-001", second.LcNumber);
         Assert.Equal(100m, second.TotalQuantity);
         Assert.Equal(40m, second.UsedQuantity);
         Assert.Equal(60m, second.RemainingQuantity);
+        Assert.Equal("Active", second.Status);
 
         var third = payload.Items[2];
         Assert.Equal("LC-002", third.LcNumber);
         Assert.Equal(80m, third.TotalQuantity);
         Assert.Equal(30m, third.UsedQuantity);
         Assert.Equal(50m, third.RemainingQuantity);
+        Assert.Equal("Active", third.Status);
     }
 
     [Fact]

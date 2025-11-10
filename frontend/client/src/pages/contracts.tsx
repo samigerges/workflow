@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +27,7 @@ import {
 } from "@/lib/constants";
 import { getOptionLabel } from "@/lib/utils";
 import { useUnauthorizedRedirect } from "@/hooks/useUnauthorizedRedirect";
-import { formatLcDate, normalizeLc } from "@/lib/lc";
+import { formatLcDate } from "@/lib/lc";
 
 type ContractWithFile = ContractRecord & {
   fileName?: string | null;
@@ -99,72 +99,90 @@ export default function Contracts() {
     retry: false,
   });
 
+  type MatchingLetterOfCreditOption = {
+    id: string;
+    lc: {
+      id: string;
+      number: string;
+      supplierName: string | null;
+      status: string;
+      expiryDate?: string | null;
+    };
+    totalQuantity: number;
+    allocatedQuantity: number;
+    remainingQuantity: number;
+  };
+
+  const contractIdForOpenLc = contractForOpenLc?.id ? String(contractForOpenLc.id) : null;
+
   const {
-    data: lettersOfCredit = [],
+    data: matchingLettersOfCredit = [],
     isLoading: lettersOfCreditLoading,
-  } = useQuery({
-    queryKey: ["/api/letters-of-credit", { flow: "UPF_TO_SUPPLIER" }],
-    enabled: showOpenLcDialog,
-    select: (data: any) => (Array.isArray(data) ? data : []),
+  } = useQuery<MatchingLetterOfCreditOption[]>({
+    queryKey: [
+      "/api/contracts",
+      contractIdForOpenLc ?? "unknown",
+      "available-lcs",
+      { all: true, pageSize: 100 },
+    ],
+    enabled: showOpenLcDialog && Boolean(contractIdForOpenLc),
+    select: (data) => {
+      const items = Array.isArray((data as any)?.items) ? (data as any).items : [];
+
+      const mapped = items
+        .map((item: any): MatchingLetterOfCreditOption | null => {
+          const rawId = item?.id ?? item?.lcId ?? item?.letterOfCreditId ?? null;
+          if (rawId === null || rawId === undefined) {
+            return null;
+          }
+
+          const totalQuantityRaw = Number(item?.totalQuantity ?? 0);
+          const usedQuantityRaw = Number(item?.usedQuantity ?? 0);
+          const remainingQuantityRaw =
+            item?.remainingQuantity !== undefined && item?.remainingQuantity !== null
+              ? Number(item.remainingQuantity)
+              : totalQuantityRaw - usedQuantityRaw;
+
+          const totalQuantity = Number.isFinite(totalQuantityRaw) ? totalQuantityRaw : 0;
+          const allocatedQuantity = Number.isFinite(usedQuantityRaw) ? usedQuantityRaw : 0;
+          const normalizedRemaining = Number.isFinite(remainingQuantityRaw)
+            ? remainingQuantityRaw
+            : totalQuantity - allocatedQuantity;
+
+          const remainingQuantity = Math.max(normalizedRemaining, 0);
+
+          return {
+            id: String(rawId),
+            lc: {
+              id: String(rawId),
+              number: String(item?.lcNumber ?? item?.number ?? ""),
+              supplierName:
+                item?.supplier === null || item?.supplier === undefined
+                  ? null
+                  : String(item.supplier),
+              status: String(item?.status ?? "Draft"),
+              expiryDate: item?.expiryDate ?? null,
+            },
+            totalQuantity,
+            allocatedQuantity,
+            remainingQuantity,
+          };
+        })
+        .filter(
+          (entry): entry is MatchingLetterOfCreditOption =>
+            entry !== null && entry.totalQuantity > 0 && entry.remainingQuantity > 0,
+        )
+        .sort((a, b) => {
+          if (b.remainingQuantity !== a.remainingQuantity) {
+            return b.remainingQuantity - a.remainingQuantity;
+          }
+
+          return a.id.localeCompare(b.id);
+        });
+
+      return mapped;
+    },
   });
-
-  const normalizedLettersOfCredit = useMemo(
-    () => (Array.isArray(lettersOfCredit) ? lettersOfCredit.map((entry: any) => normalizeLc(entry)) : []),
-    [lettersOfCredit],
-  );
-
-  const matchingLettersOfCredit = useMemo(() => {
-    if (!contractForOpenLc) {
-      return [] as {
-        id: string;
-        lc: ReturnType<typeof normalizeLc>;
-        totalQuantity: number;
-        allocatedQuantity: number;
-        remainingQuantity: number;
-      }[];
-    }
-
-    const normalizedCargo = (contractForOpenLc.cargoType ?? "")
-      .toString()
-      .trim()
-      .toLowerCase();
-
-    return normalizedLettersOfCredit
-      .map((lc) => {
-        const rawId = lc.id ?? lc.number ?? "";
-        const id = String(rawId);
-        const totalQuantity = Number.isFinite(lc.quantity ?? 0) ? Number(lc.quantity ?? 0) : 0;
-        const allocatedQuantity = Number.isFinite(lc.allocatedQuantity ?? 0) ? Number(lc.allocatedQuantity ?? 0) : 0;
-        const remainingQuantity = Math.max(totalQuantity - allocatedQuantity, 0);
-
-        return {
-          id,
-          lc,
-          totalQuantity,
-          allocatedQuantity,
-          remainingQuantity,
-        };
-      })
-      .filter(({ lc, remainingQuantity }) => {
-        if (lc.flowKey !== "upf_to_supplier") {
-          return false;
-        }
-
-        if (remainingQuantity <= 0) {
-          return false;
-        }
-
-        const lcCargo = (lc.cargoType ?? "").toString().trim().toLowerCase();
-        return !normalizedCargo || lcCargo === normalizedCargo;
-      })
-      .sort((a, b) => {
-        if (b.remainingQuantity !== a.remainingQuantity) {
-          return b.remainingQuantity - a.remainingQuantity;
-        }
-
-        return a.id.localeCompare(b.id);
-      });
-  }, [contractForOpenLc, normalizedLettersOfCredit]);
 
   useEffect(() => {
     if (!showOpenLcDialog) {

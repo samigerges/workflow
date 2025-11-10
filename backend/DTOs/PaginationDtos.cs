@@ -13,6 +13,7 @@ namespace WorkflowBackend.Api.DTOs
         decimal TotalQuantity,
         decimal UsedQuantity,
         decimal RemainingQuantity,
-        DateTime? ExpiryDate
+        DateTime? ExpiryDate,
+        string Status
     );
 }
