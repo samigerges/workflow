@@ -56,7 +56,7 @@ namespace WorkflowBackend.Api.DTOs
 
     public record ContractLetterOfCreditLinkRequest(
         [param:Required]
-        [property:Required] Guid LetterOfCreditId
+        Guid LetterOfCreditId
     );
 
     public record ContractResponse(
