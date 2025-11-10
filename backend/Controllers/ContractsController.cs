@@ -624,7 +624,8 @@ namespace WorkflowBackend.Api.Controllers
                     Product = lc.CargoType ?? (lc.Contract != null ? lc.Contract.CargoType : null),
                     TotalQuantity = lc.Quantity ?? 0m,
                     UsedQuantity = lc.SupplierAllocations.Sum(a => a.Quantity) ?? 0m,
-                    lc.ExpiryDate
+                    lc.ExpiryDate,
+                    lc.Status
                 })
                 .Select(lc => new
                 {
