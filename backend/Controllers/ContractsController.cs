@@ -635,7 +635,8 @@ namespace WorkflowBackend.Api.Controllers
                     lc.TotalQuantity,
                     lc.UsedQuantity,
                     RemainingQuantity = lc.TotalQuantity - lc.UsedQuantity,
-                    lc.ExpiryDate
+                    lc.ExpiryDate,
+                    lc.Status
                 });
 
             var filtered = lcQuery
@@ -660,7 +661,8 @@ namespace WorkflowBackend.Api.Controllers
                         lc.TotalQuantity,
                         lc.UsedQuantity,
                         lc.RemainingQuantity,
-                        lc.ExpiryDate))
+                        lc.ExpiryDate,
+                        lc.Status ?? "Draft"))
                     .ToList();
 
                 return Ok(new PaginatedResponse<AvailableLetterOfCreditSummary>(
@@ -693,7 +695,8 @@ namespace WorkflowBackend.Api.Controllers
                     lc.TotalQuantity,
                     lc.UsedQuantity,
                     lc.RemainingQuantity,
-                    lc.ExpiryDate))
+                    lc.ExpiryDate,
+                    lc.Status ?? "Draft"))
                 .ToList();
 
             return Ok(new PaginatedResponse<AvailableLetterOfCreditSummary>(

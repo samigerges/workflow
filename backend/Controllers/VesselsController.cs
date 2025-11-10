@@ -935,7 +935,8 @@ namespace WorkflowBackend.Api.Controllers
                     Product = lc.CargoType ?? (lc.Contract != null ? lc.Contract.CargoType : null),
                     TotalQuantity = lc.Quantity ?? 0m,
                     AllocationQuantity = lc.SupplierAllocations.Sum(a => (decimal?)a.Quantity) ?? 0m,
-                    lc.ExpiryDate
+                    lc.ExpiryDate,
+                    lc.Status
                 })
                 .ToListAsync();
 
@@ -979,7 +980,8 @@ namespace WorkflowBackend.Api.Controllers
                         lc.TotalQuantity,
                         usedQuantity,
                         remainingQuantity,
-                        lc.ExpiryDate);
+                        lc.ExpiryDate,
+                        lc.Status ?? "Draft");
                 })
                 .Where(summary => summary.TotalQuantity > 0m && summary.RemainingQuantity > 0m)
                 .OrderByDescending(summary => summary.RemainingQuantity)

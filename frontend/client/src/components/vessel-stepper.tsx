@@ -213,6 +213,7 @@ interface AvailableLetterOfCreditSummaryItem {
   usedQuantity: number;
   remainingQuantity: number;
   expiryDate?: string | null;
+  status: string;
 }
 
 type StageCompletion =
@@ -272,7 +273,13 @@ export default function VesselStepper({ selectedVessel, vessels, onClose }: Vess
   } = useQuery<AvailableLetterOfCreditSummaryItem[]>({
     queryKey: ["/api/vessels", vesselId, "available-letters-of-credit"],
     enabled: Boolean(vesselId) && showDocumentDialog && activeStageId === "lc_opend",
-    select: (data) => (Array.isArray(data) ? data : []),
+    select: (data) =>
+      Array.isArray(data)
+        ? data.map((item) => ({
+            ...item,
+            status: String((item as any)?.status ?? "Draft"),
+          }))
+        : [],
   });
 
   const documentsByStage = useMemo(() => {
