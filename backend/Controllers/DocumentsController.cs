@@ -103,14 +103,19 @@ namespace WorkflowBackend.Api.Controllers
                     (d.TagsCsv != null && d.TagsCsv.Contains(term)));
             }
 
+            var docs = await query
+                .OrderByDescending(d => d.UploadedAt)
+                .ToListAsync();
+
             if (!string.IsNullOrWhiteSpace(tag))
             {
                 var needle = tag.Trim();
-                query = query.Where(d => (d.TagsCsv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Contains(needle));
+                docs = docs
+                    .Where(d => SplitTags(d.TagsCsv)
+                        .Any(t => string.Equals(t, needle, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
             }
 
-            var docs = await query.OrderByDescending(d => d.UploadedAt).ToListAsync();
             return docs.Select(ToResponse).ToList();
         }
 
