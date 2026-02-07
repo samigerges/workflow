@@ -31,8 +31,7 @@ static bool RequestCameOverHttps(HttpContext context)
 
 // Add services
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection") ??
-        "Host=localhost;Port=5432;Database=workflow;Username=workflow;Password=workflow"));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
